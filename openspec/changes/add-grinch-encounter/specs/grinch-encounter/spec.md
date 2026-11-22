@@ -53,7 +53,7 @@ The first phase SHALL start when the Grinch appears and use one 10-second attack
 
 ### Requirement: Defense phase
 
-When the Grinch reaches 75% HP, the encounter SHALL replace the snowball button with two rows of four randomized emoji buttons. The choices SHALL use Christmas trees (🎄) and snowflakes (❄️) and include at least one safe choice. A Christmas tree SHALL leave the player's HP unchanged. A snowflake SHALL remove 10% of that player's maximum HP.
+When the Grinch reaches 75% HP, the encounter SHALL replace the snowball button with two rows of four randomized emoji buttons. The choices SHALL use Christmas trees (🎄) and snowflakes (❄️) and include at least one safe choice. A Christmas tree SHALL leave the player's HP unchanged and deal percentage-based damage to the boss based on the number of players in the encounter. Boss HP SHALL stay at or above 45%. A snowflake SHALL remove 10% of that player's maximum HP.
 
 #### Scenario: Defense board appears at 75% HP
 - **GIVEN** the Grinch has 76 of 100 HP with time remaining in the first phase
@@ -64,21 +64,70 @@ When the Grinch reaches 75% HP, the encounter SHALL replace the snowball button 
 #### Scenario: Choose a safe tile
 - **GIVEN** a player has 100 HP and the defense board is active
 - **WHEN** they choose a Christmas tree
-- **THEN** their HP stays at 100
+- **THEN** their HP stays at 100 and the boss loses HP subject to the 45% floor
 
 #### Scenario: Choose a snowflake
 - **GIVEN** a player has 100 HP and the defense board is active
 - **WHEN** they choose a snowflake
 - **THEN** their HP drops to 90 and the HP of the boss and other players stays the same
 
-### Requirement: Encounter outcome
+### Requirement: Defense damage scaling
 
-At zero HP the group SHALL win. An undefeated Grinch SHALL escape ten minutes after appearing.
+On entry to phase two, the encounter SHALL count the distinct players who landed a snowball in phase one, including the hit that triggered the transition. Each successful defense SHALL deal 30 percentage points of the boss's maximum HP divided by that fixed count, subject to the 45% floor. Damage SHALL accumulate without rounding each hit.
 
-#### Scenario: The Grinch escapes
-- **GIVEN** the fight still has HP ten minutes after appearing
-- **WHEN** the bot checks the fight or a member attempts another attack
-- **THEN** the announcement shows that the Grinch escaped and further attacks cannot lower HP
+#### Scenario: Three players enter defense
+- **GIVEN** three distinct players landed snowballs during phase one
+- **WHEN** a player selects a Christmas tree during defense
+- **THEN** the Grinch loses 10 percentage points of maximum HP unless the health floor caps the damage
+
+#### Scenario: Six players enter defense
+- **GIVEN** six distinct players landed snowballs during phase one
+- **WHEN** a player selects a Christmas tree during defense
+- **THEN** the Grinch loses 5 percentage points of maximum HP unless the health floor caps the damage
+
+#### Scenario: Fractional damage reaches the threshold
+- **GIVEN** seven distinct players landed snowballs during phase one
+- **WHEN** the group records seven successful defenses
+- **THEN** their combined damage brings the Grinch from 75% to exactly 45% HP
+
+#### Scenario: Successful defenses reach the boss health floor
+- **GIVEN** the boss is at 46 of 100 HP during the defense phase
+- **WHEN** successful defenses together would otherwise deal more than 1 HP of damage
+- **THEN** their combined damage is capped at 1 HP and the encounter enters phase three once at 45 HP
+
+### Requirement: Phase three attacks
+
+The encounter SHALL enter phase three at 45% HP. The announcement SHALL show the Grinch shouting and two rows of four randomized attack buttons using 🧊 and 🫯. An accepted 🫯 attack SHALL deal base damage. An accepted 🧊 attack SHALL deal 1.05 times base damage. Phase-three grid attacks SHALL keep boss HP at or above 5%.
+
+#### Scenario: Attack board replaces defense
+- **GIVEN** the boss is above 45% HP in the defense phase
+- **WHEN** a successful defense brings him to 45%
+- **THEN** the announcement shows the Grinch's shout and the randomized attack grid
+- **AND** the defense buttons can no longer apply damage
+
+#### Scenario: Ice attack deals bonus damage
+- **GIVEN** the boss has enough HP above 5% to take full damage
+- **WHEN** players make one eligible 🫯 attack and one eligible 🧊 attack
+- **THEN** the two attacks deal base damage and 105% of base damage respectively
+
+#### Scenario: Phase three reaches the health floor
+- **GIVEN** phase three is active and the boss has 6 of 100 HP
+- **WHEN** eligible phase-three actions would deal more than 1 HP of damage
+- **THEN** their combined damage is capped at 1 HP and the boss enters the final attack at 5 HP
+
+### Requirement: Final attack and encounter outcome
+
+At 5% HP, the encounter SHALL replace the attack grid with one repeatable emoji attack button. Final attacks SHALL reduce boss HP to zero, which ends the fight in victory. The Grinch SHALL escape if undefeated one minute after appearing. The deadline SHALL apply across all phases and the final attack.
+
+#### Scenario: Finish the Grinch
+- **GIVEN** the Grinch has reached 5% HP with time remaining
+- **WHEN** players use the single emoji attack until the Grinch reaches zero HP
+- **THEN** the announcement shows a victory and disables the final attack button
+
+#### Scenario: Overall time limit takes precedence
+- **GIVEN** the Grinch still has HP one minute after appearing
+- **WHEN** the bot checks the fight or receives an attack at or after the deadline
+- **THEN** the announcement shows that the Grinch escaped and no further damage is applied
 
 ### Requirement: Recover an encounter safely
 
