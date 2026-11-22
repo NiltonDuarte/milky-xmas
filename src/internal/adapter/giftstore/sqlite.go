@@ -47,7 +47,8 @@ func OpenSQLite(ctx context.Context, path string) (*SQLite, error) {
 			year INTEGER NOT NULL,
 			day INTEGER NOT NULL CHECK (day BETWEEN 1 AND 24),
 			PRIMARY KEY (server_id, user_id, year, day)
-		)`)
+		);
+		CREATE TABLE IF NOT EXISTS grinch_encounters (scope TEXT PRIMARY KEY, revision INTEGER NOT NULL, payload BLOB NOT NULL)`)
 	if err != nil {
 		db.Close()
 		return nil, err

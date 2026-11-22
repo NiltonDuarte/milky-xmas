@@ -15,6 +15,10 @@ import (
 var chatPage string
 
 func NewHandler(service app.Service) http.Handler {
+	return newHandler(service, newGrinchFixture(time.Now))
+}
+
+func newHandler(service app.Service, grinch grinchFixture) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -29,6 +33,10 @@ func NewHandler(service app.Service) http.Handler {
 
 		text := r.PostForm.Get("command")
 		fields := strings.Fields(text)
+		if len(fields) > 0 && fields[0] == "/grinch" {
+			grinch.reply(w, r, fields[1:])
+			return
+		}
 		if len(fields) > 0 && fields[0] == "/advent" {
 			replyAdvent(w, r, service, fields[1:])
 			return

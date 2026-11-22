@@ -57,3 +57,13 @@ Use `/advent view` to see the 24 doors and your Advent gift total. Use `/advent 
 Each door unlocks at midnight UTC on its December date and stays available until December 24 ends UTC. An opened door counts as one Advent gift for that year. The daily gift total and cooldown are tracked separately.
 
 During December 1–24 UTC, open a door whose date has passed and confirm the Advent total increases. Try the same door again and confirm the total stays the same. On Discord, check that replies are private and the door remains open after a restart with the same database. Outside this window, verify that unopened doors cannot be claimed. The deterministic adapter tests cover the active window with a fixed December clock.
+
+## Grinch encounter
+
+Set `MILKY_GRINCH_CHANNEL_ID` to the ID of a Discord text channel in the configured server, then restart the bot. Allow the bot to view the channel and send messages there. A member with **Manage Messages** can invoke `/grinch summon` in that channel. Try the command again during a fight to verify it creates only one announcement. With a regular member or in another channel, verify the summon is unavailable.
+
+The Grinch can also appear automatically. Each minute, the bot checks the designated channel for human activity within the last ten minutes and rolls a 10% spawn chance if there is no fight or automatic spawn cooldown. Automatic spawning cools down for 30 minutes after a fight. Manual summons skip that cooldown.
+
+Click 🎅 **Join** in the announcement within ten seconds to enter the fight. If nobody joins, the encounter is cancelled. After registration closes, throw snowballs until the Grinch reaches 75% HP. This first phase has no time limit. The shared one-minute countdown starts at 75% HP. Choose 🎄 to defend and damage him by 30 percentage points divided by the number who joined with 🎅, down to 45%, where the 🧊 and 🫯 attack grid appears. At 5%, finish him with ⚔️. The countdown continues through defense, the attack grid, and the final attack.
+
+In the local chat, use `/grinch summon`, then `/grinch join` within ten seconds. Use `/grinch view` to see when combat has started. Use `/grinch hit 1` for the snowball and final attacks, or `/grinch hit <tile>` for the numbered boards. The local fixture needs no Discord credentials.

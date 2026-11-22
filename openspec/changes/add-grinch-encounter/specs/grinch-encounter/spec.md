@@ -13,7 +13,7 @@ With a Grinch channel configured, the bot SHALL check once per minute and roll a
 #### Scenario: Eligible roll
 - **GIVEN** the channel has a recent human message and no active fight or spawn cooldown
 - **WHEN** the next check rolls a spawn
-- **THEN** the bot posts one fight announcement in that channel with 100 HP and a snowball attack button
+- **THEN** the bot posts one fight announcement in that channel with a 🎅 join button
 
 #### Scenario: Inactive channel or missed roll
 - **GIVEN** the configured channel lacks a recent human message, or it is active and the check misses its roll
@@ -33,7 +33,7 @@ The bot SHALL register `/grinch summon` in the configured Discord server. A memb
 #### Scenario: Moderator summons the Grinch
 - **GIVEN** a moderator can manage messages in the configured encounter channel and no fight is active
 - **WHEN** the moderator uses `/grinch summon` in that channel
-- **THEN** the bot announces a normal encounter with 100 HP and the snowball button
+- **THEN** the bot announces the encounter with the 🎅 join button
 
 #### Scenario: Summon is unavailable
 - **GIVEN** the caller lacks permission, uses another channel, or no encounter channel is configured
@@ -45,25 +45,40 @@ The bot SHALL register `/grinch summon` in the configured Discord server. A memb
 - **WHEN** a moderator uses `/grinch summon`
 - **THEN** the bot replies privately that an encounter is already in progress and creates no duplicate announcement
 
+### Requirement: Encounter registration
+
+The announcement SHALL give members ten seconds to join using a 🎅 button. Each member can join once. At the deadline, the same message SHALL start combat with 100 HP if at least one member joined, or show that the encounter was cancelled. Only registered members SHALL be able to fight. Closing registration starts the untimed snowball phase.
+
+#### Scenario: A member joins before combat
+- **GIVEN** registration is open
+- **WHEN** a member presses 🎅 twice before the deadline
+- **THEN** they receive confirmation and are counted once
+- **AND** they can attack when the join button changes to the snowball button
+
+#### Scenario: A member misses registration
+- **GIVEN** combat started and a member did not join
+- **WHEN** they try the join button or a combat action
+- **THEN** they receive private feedback and no HP changes
+
+#### Scenario: Nobody joins
+- **GIVEN** registration opened and nobody joined
+- **WHEN** ten seconds elapse
+- **THEN** the announcement shows a cancellation without starting combat
+
 ### Requirement: Snowball phase
 
-The first phase SHALL start when the Grinch appears and use one 10-second attack window for all members. The announcement SHALL show an Attack button with a snowball icon. Each distinct accepted attack during the phase SHALL remove 1 HP from the shared total. Members SHALL be able to attack repeatedly within the window. Snowball damage SHALL keep shared health at or above 75% of maximum HP, regardless of how many attacks arrive together.
+The first phase SHALL start when the Grinch appears and continue without a time limit until he reaches 75% HP. The announcement SHALL show an Attack button with a snowball icon. Each distinct accepted attack during the phase SHALL remove 1 HP from the shared total. Members SHALL be able to attack repeatedly while this phase is active. Snowball damage SHALL keep shared health at or above 75% of maximum HP, regardless of how many attacks arrive together.
 
 #### Scenario: Members throw snowballs together
 - **GIVEN** the Grinch just appeared with 100 HP
-- **WHEN** one member presses the button twice and another member presses it once within 10 seconds
+- **WHEN** one member presses the button twice and another member presses it once during phase one
 - **THEN** the announcement shows 97 HP
 
-#### Scenario: Late joiner shares the deadline
-- **GIVEN** nine seconds have elapsed since the Grinch appeared
-- **WHEN** a member attacks for the first time
-- **THEN** they deal 1 damage and share the original deadline
-
-#### Scenario: The snowball window ends
-- **GIVEN** the Grinch is still above 75% HP after ten seconds
-- **WHEN** the deadline arrives or a member tries to attack at or after it
-- **THEN** the announcement shows the remaining HP and the phase as ended
-- **AND** the snowball button is disabled and no further snowball damage is applied
+#### Scenario: A single player can finish phase one without a timer
+- **GIVEN** one registered member is fighting and the Grinch is above 75% HP after more than a minute
+- **WHEN** the member keeps throwing snowballs
+- **THEN** the Grinch stays in phase one until he reaches exactly 75% HP after a total of 25 snowballs
+- **AND** the defense phase starts a shared one-minute countdown
 
 #### Scenario: Simultaneous attacks at the health floor
 - **GIVEN** the Grinch has 76 of 100 HP during the snowball phase
@@ -75,10 +90,15 @@ The first phase SHALL start when the Grinch appears and use one 10-second attack
 When the Grinch reaches 75% HP, the encounter SHALL replace the snowball button with two rows of four randomized emoji buttons. The choices SHALL use Christmas trees (🎄) and snowflakes (❄️) and include at least one safe choice. A Christmas tree SHALL leave the player's HP unchanged and deal percentage-based damage to the boss based on the number of players in the encounter. Boss HP SHALL stay at or above 45%. A snowflake SHALL remove 10% of that player's maximum HP.
 
 #### Scenario: Defense board appears at 75% HP
-- **GIVEN** the Grinch has 76 of 100 HP with time remaining in the first phase
+- **GIVEN** the Grinch has 76 of 100 HP during the first phase
 - **WHEN** a snowball hits
 - **THEN** the attack button is replaced by eight defense choices in two rows of four
 - **AND** stale snowball clicks cause no additional damage
+
+#### Scenario: Player runs out of HP
+- **GIVEN** a player has 10 HP left during defense
+- **WHEN** they choose a snowflake
+- **THEN** their HP reaches zero and further actions by that player have no effect for that fight
 
 #### Scenario: Choose a safe tile
 - **GIVEN** a player has 100 HP and the defense board is active
@@ -92,20 +112,20 @@ When the Grinch reaches 75% HP, the encounter SHALL replace the snowball button 
 
 ### Requirement: Defense damage scaling
 
-On entry to phase two, the encounter SHALL count the distinct players who landed a snowball in phase one, including the hit that triggered the transition. Each successful defense SHALL deal 30 percentage points of the boss's maximum HP divided by that fixed count, subject to the 45% floor. Damage SHALL accumulate without rounding each hit.
+On entry to phase two, the encounter SHALL use the number of distinct players who joined with 🎅 before combat, including those who never attacked. Each successful defense SHALL deal 30 percentage points of the boss's maximum HP divided by that fixed count, subject to the 45% floor. Damage SHALL accumulate without rounding each hit.
 
 #### Scenario: Three players enter defense
-- **GIVEN** three distinct players landed snowballs during phase one
+- **GIVEN** three distinct players joined with 🎅 and only one landed snowballs
 - **WHEN** a player selects a Christmas tree during defense
 - **THEN** the Grinch loses 10 percentage points of maximum HP unless the health floor caps the damage
 
 #### Scenario: Six players enter defense
-- **GIVEN** six distinct players landed snowballs during phase one
+- **GIVEN** six distinct players joined with 🎅
 - **WHEN** a player selects a Christmas tree during defense
 - **THEN** the Grinch loses 5 percentage points of maximum HP unless the health floor caps the damage
 
 #### Scenario: Fractional damage reaches the threshold
-- **GIVEN** seven distinct players landed snowballs during phase one
+- **GIVEN** seven distinct players joined with 🎅
 - **WHEN** the group records seven successful defenses
 - **THEN** their combined damage brings the Grinch from 75% to exactly 45% HP
 
@@ -127,7 +147,7 @@ The encounter SHALL enter phase three at 45% HP. The announcement SHALL show the
 #### Scenario: Ice attack deals bonus damage
 - **GIVEN** the boss has enough HP above 5% to take full damage
 - **WHEN** players make one eligible 🫯 attack and one eligible 🧊 attack
-- **THEN** the two attacks deal base damage and 105% of base damage respectively
+- **THEN** the attacks deal 5 HP and 5.25 HP respectively
 
 #### Scenario: Phase three reaches the health floor
 - **GIVEN** phase three is active and the boss has 6 of 100 HP
@@ -136,15 +156,15 @@ The encounter SHALL enter phase three at 45% HP. The announcement SHALL show the
 
 ### Requirement: Final attack and encounter outcome
 
-At 5% HP, the encounter SHALL replace the attack grid with one repeatable emoji attack button. Final attacks SHALL reduce boss HP to zero, which ends the fight in victory. The Grinch SHALL escape if undefeated one minute after appearing. The deadline SHALL apply across all phases and the final attack.
+At 5% HP, the encounter SHALL replace the attack grid with one repeatable emoji attack button. Final attacks SHALL reduce boss HP to zero, which ends the fight in victory. The Grinch SHALL escape if undefeated one minute after reaching 75% HP. The deadline SHALL persist across defense, phase three, and the final attack.
 
 #### Scenario: Finish the Grinch
 - **GIVEN** the Grinch has reached 5% HP with time remaining
-- **WHEN** players use the single emoji attack until the Grinch reaches zero HP
+- **WHEN** players use the ⚔️ button five times, dealing 1 HP each
 - **THEN** the announcement shows a victory and disables the final attack button
 
 #### Scenario: Overall time limit takes precedence
-- **GIVEN** the Grinch still has HP one minute after appearing
+- **GIVEN** the Grinch still has HP one minute after reaching 75% HP
 - **WHEN** the bot checks the fight or receives an attack at or after the deadline
 - **THEN** the announcement shows that the Grinch escaped and no further damage is applied
 

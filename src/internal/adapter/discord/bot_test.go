@@ -34,6 +34,13 @@ func TestRegisterCommands(t *testing.T) {
 				(command.Name == "daily" && (len(command.Options) != 1 || command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand || command.Options[0].Name != "claim")) {
 				t.Errorf("unexpected registered command: %+v", command)
 			}
+			if command.Name == "grinch" {
+				if command.DefaultMemberPermissions == nil || *command.DefaultMemberPermissions != discordgo.PermissionManageMessages ||
+					len(command.Options) != 1 || command.Options[0].Name != "summon" ||
+					command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand {
+					t.Errorf("unexpected moderator command: %+v", command)
+				}
+			}
 			if command.Name == "advent" {
 				if len(command.Options) != 2 || command.Options[0].Name != "view" || command.Options[1].Name != "open" ||
 					command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand ||
@@ -57,8 +64,8 @@ func TestRegisterCommands(t *testing.T) {
 	if err := (bot{guildID: "200"}).registerCommands(t.Context(), session); err != nil {
 		t.Fatal(err)
 	}
-	want := "GET /api/v9/users/@me\nPOST /api/v9/applications/100/guilds/200/commands\nPOST /api/v9/applications/100/guilds/200/commands\nPOST /api/v9/applications/100/guilds/200/commands"
-	if got := strings.Join(commands, ","); got != "hello,daily,advent" {
+	want := "GET /api/v9/users/@me\nPOST /api/v9/applications/100/guilds/200/commands\nPOST /api/v9/applications/100/guilds/200/commands\nPOST /api/v9/applications/100/guilds/200/commands\nPOST /api/v9/applications/100/guilds/200/commands"
+	if got := strings.Join(commands, ","); got != "hello,daily,advent,grinch" {
 		t.Errorf("registered commands = %q", got)
 	}
 	if got := strings.Join(requests, "\n"); got != want {

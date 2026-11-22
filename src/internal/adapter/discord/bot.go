@@ -15,15 +15,21 @@ import (
 type bot struct {
 	guildID string
 	service app.Service
+	grinch  *grinchBot
 }
 
-func Run(ctx context.Context, token, guildID string, service app.Service) error {
+func Run(ctx context.Context, token, guildID string, service app.Service, grinchChannel string, encounter *app.GrinchEncounter) error {
 	b := bot{guildID: guildID, service: service}
 	session, err := discordgo.New("Bot " + token)
 	if err != nil {
 		return fmt.Errorf("create Discord session: %w", err)
 	}
 	session.Identify.Intents = discordgo.IntentGuilds
+	if grinchChannel != "" {
+		b.grinch = &grinchBot{guild: guildID, channel: grinchChannel, encounter: encounter}
+		session.Identify.Intents |= discordgo.IntentsGuildMessages
+		session.AddHandler(b.grinch.observe)
+	}
 	session.AddHandler(b.handleInteraction)
 
 	if err := session.Open(); err != nil {
@@ -36,7 +42,12 @@ func Run(ctx context.Context, token, guildID string, service app.Service) error 
 	}
 	log.Printf("Discord bot ready with /hello, /daily claim, and /advent in server %s", guildID)
 
-	<-ctx.Done()
+	if b.grinch != nil {
+		log.Printf("Grinch encounter enabled in channel %s", grinchChannel)
+		b.grinch.run(ctx, session)
+	} else {
+		<-ctx.Done()
+	}
 	return nil
 }
 
@@ -49,7 +60,7 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 	if err != nil {
 		return fmt.Errorf("look up Discord bot user: %w", err)
 	}
-	for _, command := range []*discordgo.ApplicationCommand{
+	commands := []*discordgo.ApplicationCommand{
 		{
 			Type:        discordgo.ChatApplicationCommand,
 			Name:        app.HelloCommand,
@@ -57,7 +68,9 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 		},
 		dailyCommand(),
 		adventCommand(),
-	} {
+		grinchCommand(),
+	}
+	for _, command := range commands {
 		if _, err := session.ApplicationCommandCreate(user.ID, b.guildID, command, discordgo.WithContext(ctx)); err != nil {
 			return fmt.Errorf("register /%s in Discord server %s: %w", command.Name, b.guildID, err)
 		}
@@ -66,7 +79,14 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 }
 
 func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.InteractionCreate) {
-	if event.Type != discordgo.InteractionApplicationCommand || event.GuildID != b.guildID {
+	if event.GuildID != b.guildID {
+		return
+	}
+	if event.Type == discordgo.InteractionMessageComponent && b.grinch != nil {
+		b.grinch.button(session, event.Interaction)
+		return
+	}
+	if event.Type != discordgo.InteractionApplicationCommand {
 		return
 	}
 	data, ok := event.Data.(discordgo.ApplicationCommandInteractionData)
@@ -75,6 +95,9 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 	}
 
 	switch data.Name {
+	case "grinch":
+		b.summonGrinch(session, event.Interaction, data.Options)
+		return
 	case adventCommandName:
 		b.handleAdvent(session, event.Interaction, data.Options)
 		return
