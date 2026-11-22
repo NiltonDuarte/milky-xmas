@@ -1,0 +1,18 @@
+schema: spec-driven
+
+context: |
+  Milky Xmas is a Go bot for the Milky community Christmas event. Discord is
+  the production interface. A local browser chat is the development and
+  acceptance adapter. Both use the same functional core and shared application
+  shell for use cases, authorization, persistence, and effect orchestration.
+  Browser acceptance defaults to fixtures. Live Discord messaging is opt-in
+  and scoped to a test channel. Follow Functional Core, Imperative Shell as
+  described in AGENTS.md.
+
+rules:
+  specs:
+    - Describe observable behavior with Given/When/Then scenarios. Separate shared behavior from Discord-specific interaction details where relevant.
+  design:
+    - For changes crossing boundaries, describe where decisions, effect orchestration, and adapter translation live.
+  tasks:
+    - Include automated verification of changed scenarios and reproducible acceptance steps for any changed interface behavior.
