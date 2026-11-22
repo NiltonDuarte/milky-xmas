@@ -11,12 +11,13 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-func TestRegisterHello(t *testing.T) {
+func TestRegisterCommands(t *testing.T) {
 	session, err := discordgo.New("Bot fake-token")
 	if err != nil {
 		t.Fatal(err)
 	}
 	var requests []string
+	var commands []string
 	session.Client.Transport = transportFunc(func(request *http.Request) (*http.Response, error) {
 		requests = append(requests, request.Method+" "+request.URL.Path)
 		switch request.URL.Path {
@@ -27,8 +28,24 @@ func TestRegisterHello(t *testing.T) {
 			if err := json.NewDecoder(request.Body).Decode(&command); err != nil {
 				t.Fatal(err)
 			}
-			if command.Name != "hello" || command.Type != discordgo.ChatApplicationCommand || len(command.Options) != 0 {
+			commands = append(commands, command.Name)
+			if command.Type != discordgo.ChatApplicationCommand ||
+				(command.Name == "hello" && len(command.Options) != 0) ||
+				(command.Name == "daily" && (len(command.Options) != 1 || command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand || command.Options[0].Name != "claim")) {
 				t.Errorf("unexpected registered command: %+v", command)
+			}
+			if command.Name == "advent" {
+				if len(command.Options) != 2 || command.Options[0].Name != "view" || command.Options[1].Name != "open" ||
+					command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand ||
+					command.Options[1].Type != discordgo.ApplicationCommandOptionSubCommand ||
+					len(command.Options[1].Options) != 1 {
+					t.Fatalf("unexpected Advent subcommands: %+v", command.Options)
+				}
+				day := command.Options[1].Options[0]
+				if day.Name != "day" || day.Type != discordgo.ApplicationCommandOptionInteger || !day.Required ||
+					day.MinValue == nil || *day.MinValue != 1 || day.MaxValue != 24 {
+					t.Errorf("unexpected day option: %+v", day)
+				}
 			}
 			return fakeResponse(http.StatusCreated, `{"id":"300","name":"hello"}`), nil
 		default:
@@ -37,10 +54,13 @@ func TestRegisterHello(t *testing.T) {
 		}
 	})
 
-	if err := (bot{guildID: "200"}).registerHello(t.Context(), session); err != nil {
+	if err := (bot{guildID: "200"}).registerCommands(t.Context(), session); err != nil {
 		t.Fatal(err)
 	}
-	want := "GET /api/v9/users/@me\nPOST /api/v9/applications/100/guilds/200/commands"
+	want := "GET /api/v9/users/@me\nPOST /api/v9/applications/100/guilds/200/commands\nPOST /api/v9/applications/100/guilds/200/commands\nPOST /api/v9/applications/100/guilds/200/commands"
+	if got := strings.Join(commands, ","); got != "hello,daily,advent" {
+		t.Errorf("registered commands = %q", got)
+	}
 	if got := strings.Join(requests, "\n"); got != want {
 		t.Errorf("registration requests = %q, want %q", got, want)
 	}

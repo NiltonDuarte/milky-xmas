@@ -6,7 +6,9 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/giftfixture"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/web"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 )
@@ -32,8 +34,8 @@ func TestChatCommands(t *testing.T) {
 		status                     int
 	}{
 		{name: "hello", input: "/hello", status: http.StatusOK, reply: "Hello, world!"},
-		{name: "unknown", input: "/unknown", status: http.StatusBadRequest, reply: "Unknown command. Try /hello."},
-		{name: "missing slash", input: "hello", status: http.StatusBadRequest, reply: "Unknown command. Try /hello."},
+		{name: "unknown", input: "/unknown", status: http.StatusBadRequest, reply: "Unknown command. Try /hello or /daily claim."},
+		{name: "missing slash", input: "hello", status: http.StatusBadRequest, reply: "Unknown command. Try /hello or /daily claim."},
 		{name: "hello after error", input: "/hello", status: http.StatusOK, reply: "Hello, world!"},
 		{name: "foreign origin", input: "/hello", origin: "https://example.org", status: http.StatusForbidden},
 	} {
@@ -56,5 +58,29 @@ func TestChatCommands(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestDailyClaimInChat(t *testing.T) {
+	first := time.Date(2026, 12, 1, 18, 0, 0, 0, time.UTC)
+	now := first
+	handler := web.NewHandler(app.NewService(&giftfixture.Store{}, func() time.Time { return now }))
+	for _, step := range []struct {
+		elapsed time.Duration
+		reply   string
+	}{
+		{0, "🎁 You collected one gift! Total gifts: 1."},
+		{time.Second, "Your next gift is available 2026-12-02 18:00:00 UTC."},
+		{24 * time.Hour, "🎁 You collected one gift! Total gifts: 2."},
+	} {
+		now = first.Add(step.elapsed)
+		form := url.Values{"command": {"/daily claim"}}
+		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(form.Encode()))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		if response.Code != http.StatusOK || response.Body.String() != step.reply {
+			t.Errorf("claim at %v got %d %q, want %q", now, response.Code, response.Body, step.reply)
+		}
 	}
 }

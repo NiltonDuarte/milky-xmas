@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"time"
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
@@ -10,7 +11,11 @@ const HelloCommand = "hello"
 
 var ErrUnknownCommand = errors.New("unknown command")
 
-type Service struct{}
+type Service struct {
+	gifts  GiftStore
+	advent AdventStore
+	now    func() time.Time
+}
 
 func (Service) Reply(command string) (string, error) {
 	if command != HelloCommand {

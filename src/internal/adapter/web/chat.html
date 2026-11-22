@@ -38,6 +38,7 @@
       padding: .65rem .85rem;
       background: #263b36;
       overflow-wrap: anywhere;
+      white-space: pre-wrap;
     }
     .you { align-self: flex-end; background: #31534a; }
     .error { background: #493134; }
@@ -72,7 +73,7 @@
     <section aria-label="Chat">
       <div id="transcript" role="log" aria-label="Chat transcript" tabindex="0"></div>
       <form action="/chat" method="post">
-        <input name="command" aria-label="Command" placeholder="/hello" maxlength="256" required autocomplete="off" spellcheck="false">
+        <input name="command" aria-label="Command" placeholder="/hello, /daily claim, or /advent view" maxlength="256" required autocomplete="off" spellcheck="false">
         <button type="submit">Send</button>
       </form>
     </section>

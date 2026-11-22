@@ -31,31 +31,36 @@ func Run(ctx context.Context, token, guildID string, service app.Service) error 
 	}
 	defer session.Close()
 
-	if err := b.registerHello(ctx, session); err != nil {
+	if err := b.registerCommands(ctx, session); err != nil {
 		return err
 	}
-	log.Printf("Discord bot ready with /%s in server %s", app.HelloCommand, guildID)
+	log.Printf("Discord bot ready with /hello, /daily claim, and /advent in server %s", guildID)
 
 	<-ctx.Done()
 	return nil
 }
 
-func (b bot) registerHello(ctx context.Context, session *discordgo.Session) error {
+func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) error {
 	if b.guildID == "" {
-		return fmt.Errorf("a Discord server ID is required to register /%s", app.HelloCommand)
+		return fmt.Errorf("a Discord server ID is required to register commands")
 	}
 
 	user, err := session.User("@me", discordgo.WithContext(ctx))
 	if err != nil {
 		return fmt.Errorf("look up Discord bot user: %w", err)
 	}
-	_, err = session.ApplicationCommandCreate(user.ID, b.guildID, &discordgo.ApplicationCommand{
-		Type:        discordgo.ChatApplicationCommand,
-		Name:        app.HelloCommand,
-		Description: "Get a greeting from Milky Xmas",
-	}, discordgo.WithContext(ctx))
-	if err != nil {
-		return fmt.Errorf("register /%s in Discord server %s: %w", app.HelloCommand, b.guildID, err)
+	for _, command := range []*discordgo.ApplicationCommand{
+		{
+			Type:        discordgo.ChatApplicationCommand,
+			Name:        app.HelloCommand,
+			Description: "Get a greeting from Milky Xmas",
+		},
+		dailyCommand(),
+		adventCommand(),
+	} {
+		if _, err := session.ApplicationCommandCreate(user.ID, b.guildID, command, discordgo.WithContext(ctx)); err != nil {
+			return fmt.Errorf("register /%s in Discord server %s: %w", command.Name, b.guildID, err)
+		}
 	}
 	return nil
 }
@@ -66,6 +71,15 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 	}
 	data, ok := event.Data.(discordgo.ApplicationCommandInteractionData)
 	if !ok || data.CommandType != discordgo.ChatApplicationCommand {
+		return
+	}
+
+	switch data.Name {
+	case adventCommandName:
+		b.handleAdvent(session, event.Interaction, data.Options)
+		return
+	case dailyCommandName:
+		b.handleDailyClaim(session, event.Interaction, data.Options)
 		return
 	}
 
@@ -81,11 +95,15 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 		Data: &discordgo.InteractionResponseData{Content: reply},
 	}, discordgo.WithContext(ctx))
 	if err != nil {
-		var urlErr *url.Error
-		if errors.As(err, &urlErr) {
-			// The callback URL contains the interaction token.
-			err = urlErr.Err
-		}
-		log.Printf("Discord /%s acknowledgement failed for interaction %s: %v", data.Name, event.ID, err)
+		logInteractionError(event.ID, "acknowledge /"+data.Name, err)
 	}
+}
+
+func logInteractionError(id, action string, err error) {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		// The callback and webhook URLs contain the interaction token.
+		err = urlErr.Err
+	}
+	log.Printf("Discord interaction %s could not %s: %v", id, action, err)
 }
