@@ -1,0 +1,107 @@
+package discord
+
+import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"strings"
+	"testing"
+
+	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
+	"github.com/bwmarrin/discordgo"
+)
+
+func TestRegisterHello(t *testing.T) {
+	session, err := discordgo.New("Bot fake-token")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var requests []string
+	session.Client.Transport = transportFunc(func(request *http.Request) (*http.Response, error) {
+		requests = append(requests, request.Method+" "+request.URL.Path)
+		switch request.URL.Path {
+		case "/api/v9/users/@me":
+			return fakeResponse(http.StatusOK, `{"id":"100"}`), nil
+		case "/api/v9/applications/100/guilds/200/commands":
+			var command discordgo.ApplicationCommand
+			if err := json.NewDecoder(request.Body).Decode(&command); err != nil {
+				t.Fatal(err)
+			}
+			if command.Name != "hello" || command.Type != discordgo.ChatApplicationCommand || len(command.Options) != 0 {
+				t.Errorf("unexpected registered command: %+v", command)
+			}
+			return fakeResponse(http.StatusCreated, `{"id":"300","name":"hello"}`), nil
+		default:
+			t.Fatalf("unexpected request to %s", request.URL)
+			return nil, nil
+		}
+	})
+
+	if err := (bot{guildID: "200"}).registerHello(t.Context(), session); err != nil {
+		t.Fatal(err)
+	}
+	want := "GET /api/v9/users/@me\nPOST /api/v9/applications/100/guilds/200/commands"
+	if got := strings.Join(requests, "\n"); got != want {
+		t.Errorf("registration requests = %q, want %q", got, want)
+	}
+}
+
+func TestHandleInteraction(t *testing.T) {
+	for _, tt := range []struct {
+		name, guild, command string
+		interactionType      discordgo.InteractionType
+		commandType          discordgo.ApplicationCommandType
+		wantCalls            int
+	}{
+		{"hello", "200", "hello", discordgo.InteractionApplicationCommand, discordgo.ChatApplicationCommand, 1},
+		{"other guild", "201", "hello", discordgo.InteractionApplicationCommand, discordgo.ChatApplicationCommand, 0},
+		{"unknown command", "200", "unknown", discordgo.InteractionApplicationCommand, discordgo.ChatApplicationCommand, 0},
+		{"non-slash command", "200", "hello", discordgo.InteractionApplicationCommand, discordgo.UserApplicationCommand, 0},
+		{"non-command", "200", "hello", discordgo.InteractionMessageComponent, discordgo.ChatApplicationCommand, 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			session, err := discordgo.New("Bot fake-token")
+			if err != nil {
+				t.Fatal(err)
+			}
+			calls := 0
+			session.Client.Transport = transportFunc(func(request *http.Request) (*http.Response, error) {
+				calls++
+				if request.Method != http.MethodPost || request.URL.Path != "/api/v9/interactions/300/interaction-token/callback" {
+					t.Errorf("unexpected acknowledgement request: %s %s", request.Method, request.URL.Path)
+				}
+				var response discordgo.InteractionResponse
+				if err := json.NewDecoder(request.Body).Decode(&response); err != nil {
+					t.Fatal(err)
+				}
+				if response.Type != discordgo.InteractionResponseChannelMessageWithSource ||
+					response.Data == nil || response.Data.Content != "Hello, world!" || response.Data.Flags != 0 {
+					t.Errorf("unexpected acknowledgement type %v and data %+v", response.Type, response.Data)
+				}
+				return fakeResponse(http.StatusNoContent, ""), nil
+			})
+
+			b := bot{guildID: "200", service: app.Service{}}
+			b.handleInteraction(session, &discordgo.InteractionCreate{Interaction: &discordgo.Interaction{
+				ID:      "300",
+				Token:   "interaction-token",
+				GuildID: tt.guild,
+				Type:    tt.interactionType,
+				Data:    discordgo.ApplicationCommandInteractionData{Name: tt.command, CommandType: tt.commandType},
+			}})
+			if calls != tt.wantCalls {
+				t.Errorf("acknowledgements = %d, want %d", calls, tt.wantCalls)
+			}
+		})
+	}
+}
+
+type transportFunc func(*http.Request) (*http.Response, error)
+
+func (f transportFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
+}
+
+func fakeResponse(status int, body string) *http.Response {
+	return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}
+}

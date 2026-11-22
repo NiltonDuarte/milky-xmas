@@ -36,8 +36,8 @@ func TestFCISDependencies(t *testing.T) {
 
 		modulePrefix := pkg.Module.Path + "/"
 		packagePath := strings.TrimPrefix(pkg.ImportPath, modulePrefix)
-		isCore := inPackageTree(packagePath, "internal/core")
-		isApp := inPackageTree(packagePath, "internal/app")
+		isCore := inPackageTree(packagePath, "src/internal/core")
+		isApp := inPackageTree(packagePath, "src/internal/app")
 		if !isCore && !isApp {
 			continue
 		}
@@ -48,9 +48,9 @@ func TestFCISDependencies(t *testing.T) {
 				continue
 			}
 			switch {
-			case isCore && !inPackageTree(dependencyPath, "internal/core"):
+			case isCore && !inPackageTree(dependencyPath, "src/internal/core"):
 				t.Errorf("%s depends on %s outside the functional core", pkg.ImportPath, dep)
-			case isApp && (inPackageTree(dependencyPath, "cmd") || inPackageTree(dependencyPath, "internal/adapter")):
+			case isApp && (inPackageTree(dependencyPath, "src/cmd") || inPackageTree(dependencyPath, "src/internal/adapter")):
 				t.Errorf("%s depends on %s outside the shared application layer", pkg.ImportPath, dep)
 			}
 		}

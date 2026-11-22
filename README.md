@@ -16,13 +16,30 @@ openspec validate --all --strict --no-interactive
 openspec validate --archived --no-interactive
 ```
 
-The starter suite checks dependency direction across the FCIS layers. Add scenario tests alongside the first bot behavior.
+The test suite checks FCIS dependency direction, the greeting rule, and command handling through both adapters.
 
 ## Local acceptance testing
 
-The proposed test interface is a small chat page served by Go on localhost, with a transcript and a composer. The web and Discord adapters translate their inputs into the same application requests and render the results for their respective interfaces. The shared Go service runs authorization, loads state, calls the functional core, and performs writes or sends messages.
+Start the local chat from the repository root.
 
-- **Fixture mode by default.** Wire fixture identities, state, and message delivery into the shared service. Run an event action from the chat and show the result or error in the transcript. Use this mode for repeatable acceptance without Discord credentials.
-- **Opt-in Discord mode.** The Go shell can use the test bot to fetch recent messages from a configured test channel and display them in the transcript, or post a message there as the bot. Use Discord channel permissions to scope access. Keep the token server-side, bind the web server to loopback, and check that browser writes originate from the local app. [Discord message endpoints](https://docs.discord.com/developers/resources/message#get-channel-messages)
+```sh
+go run ./src/cmd/web
+```
 
-Start with fixture mode alongside the first feature that needs browser acceptance. Use the Discord client in a test server for native slash commands, permissions, acknowledgements, and message presentation. Sending a bot message and invoking a Discord slash command are separate API operations. [Discord application commands](https://docs.discord.com/developers/docs/interactions/slash-commands)
+Open [http://127.0.0.1:8080](http://127.0.0.1:8080) and send `/hello`. The transcript should show your command and the bot's reply, `Hello, world!`. Send `/unknown` to see an error that points to `/hello`, then send `/hello` again to verify recovery.
+
+The chat binds to loopback and works with fixture behavior. It requires no Discord credentials. The transcript lives in the current page.
+
+The planned opt-in Discord mode for the local chat can read or post bot messages in a configured test channel. That mode keeps the token server-side and uses Discord channel permissions to scope access. [Discord message endpoints](https://docs.discord.com/developers/resources/message#get-channel-messages)
+
+## Discord test server
+
+Create a bot in the [Discord Developer Portal](https://discord.com/developers/applications) and install it in a test server with the bot and application commands scopes. Use a channel where your account can send messages and use application commands. Leave the application's Interactions Endpoint URL blank so it receives interactions through the Gateway. [Discord interaction delivery](https://docs.discord.com/developers/interactions/receiving-and-responding)
+
+Set `DISCORD_BOT_TOKEN` to the bot token in your local environment and set `DISCORD_TEST_GUILD_ID` to the test server ID. Then start the bot.
+
+```sh
+go run ./src/cmd/discord
+```
+
+Wait for the startup log to report that `/hello` is ready in the test server. In Discord, choose the Milky Xmas `/hello` command and send it. The expected result is one public reply, `Hello, world!`. Check that the command is available in the configured server and can be used by a member with application command permissions.
