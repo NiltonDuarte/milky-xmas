@@ -10,6 +10,8 @@
 - [ ] 2.1 Wire the configured Discord channel, message activity, scheduler, and snowball, defense, phase-three grid, and final attack button interactions. Test transport mapping and document channel permissions and acceptance in the real server.
 - [ ] 2.2 Add local fixture combat and test HP, the transition at 75%, the shared phase deadline, and defense damage, the final attack, and the encounter deadline without Discord credentials.
 
+- [ ] 2.3 Register `/grinch summon` and verify moderator permission checks, channel restrictions, automatic eligibility overrides, and competing manual and automatic summons. Include a moderator acceptance step in the Discord test server.
+
 ## 3. Verification
 
 - [ ] 3.1 Run Go formatting, vet, race tests, and strict OpenSpec validation. Record local and Discord acceptance evidence.

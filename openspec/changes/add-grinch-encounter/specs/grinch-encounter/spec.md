@@ -26,6 +26,25 @@ With a Grinch channel configured, the bot SHALL check once per minute and roll a
 - **WHEN** the bot checks for a spawn
 - **THEN** no new fight is announced
 
+### Requirement: Moderator summon
+
+The bot SHALL register `/grinch summon` in the configured Discord server. A member with effective Manage Messages permission in the encounter channel SHALL be able to summon the Grinch from that channel, independent of activity, spawn odds, and the automatic spawn cooldown. Manual and automatic appearances SHALL share the same single-encounter limit.
+
+#### Scenario: Moderator summons the Grinch
+- **GIVEN** a moderator can manage messages in the configured encounter channel and no fight is active
+- **WHEN** the moderator uses `/grinch summon` in that channel
+- **THEN** the bot announces a normal encounter with 100 HP and the snowball button
+
+#### Scenario: Summon is unavailable
+- **GIVEN** the caller lacks permission, uses another channel, or no encounter channel is configured
+- **WHEN** the caller attempts `/grinch summon`
+- **THEN** the request creates no encounter and any bot response is private
+
+#### Scenario: An encounter already exists or is being announced
+- **GIVEN** an active encounter exists or another summon or automatic appearance has reserved the channel
+- **WHEN** a moderator uses `/grinch summon`
+- **THEN** the bot replies privately that an encounter is already in progress and creates no duplicate announcement
+
 ### Requirement: Snowball phase
 
 The first phase SHALL start when the Grinch appears and use one 10-second attack window for all members. The announcement SHALL show an Attack button with a snowball icon. Each distinct accepted attack during the phase SHALL remove 1 HP from the shared total. Members SHALL be able to attack repeatedly within the window. Snowball damage SHALL keep shared health at or above 75% of maximum HP, regardless of how many attacks arrive together.
