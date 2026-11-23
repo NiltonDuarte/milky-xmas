@@ -6,7 +6,6 @@ import (
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/gifttext"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
-	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -18,21 +17,22 @@ func sendCommand() *discordgo.ApplicationCommand {
 	return &discordgo.ApplicationCommand{
 		Type:        discordgo.ChatApplicationCommand,
 		Name:        sendCommandName,
-		Description: "Send Christmas gifts",
+		Description: "Send gifts or Coal",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
-				Type: discordgo.ApplicationCommandOptionSubCommand, Name: "gift", Description: "Send gifts to another player",
+				Type: discordgo.ApplicationCommandOptionSubCommand, Name: "gift", Description: "Send a gift or Coal to another player",
 				Options: []*discordgo.ApplicationCommandOption{
-					{Type: discordgo.ApplicationCommandOptionUser, Name: "recipient", Description: "Player receiving the gifts", Required: true},
+					{Type: discordgo.ApplicationCommandOptionUser, Name: "recipient", Description: "Player receiving the items", Required: true},
 					{
-						Type: discordgo.ApplicationCommandOptionString, Name: "rarity", Description: "Gift rarity", Required: true,
+						Type: discordgo.ApplicationCommandOptionString, Name: "item", Description: "Gift rarity or Coal", Required: true,
 						Choices: []*discordgo.ApplicationCommandOptionChoice{
-							{Name: "Normal", Value: string(core.NormalGift)},
-							{Name: "Rare", Value: string(core.RareGift)},
-							{Name: "Epic", Value: string(core.EpicGift)},
+							{Name: "Normal", Value: "normal"},
+							{Name: "Rare", Value: "rare"},
+							{Name: "Epic", Value: "epic"},
+							{Name: "Coal", Value: app.CoalItem},
 						},
 					},
-					{Type: discordgo.ApplicationCommandOptionInteger, Name: "quantity", Description: "Number of gifts", Required: true, MinValue: &minQuantity},
+					{Type: discordgo.ApplicationCommandOptionInteger, Name: "quantity", Description: "Number of items", Required: true, MinValue: &minQuantity},
 				},
 			},
 		},
@@ -56,8 +56,8 @@ func (b bot) handleSendGift(session *discordgo.Session, interaction *discordgo.I
 		return
 	}
 	respondPrivately(session, interaction, func(ctx context.Context, member app.Member) string {
-		recipient, name, rarity, quantity := giftOptions(member.ServerID, sub.Options, data.Resolved)
-		goodIncrease, err := b.service.SendGift(ctx, member, recipient, rarity, quantity)
+		recipient, name, item, quantity := giftOptions(member.ServerID, sub.Options, data.Resolved)
+		auraIncrease, err := b.service.SendItem(ctx, member, recipient, item, quantity)
 		if err != nil {
 			if reply := gifttext.TransferRejection(err); reply != "" {
 				return reply
@@ -65,7 +65,7 @@ func (b bot) handleSendGift(session *discordgo.Session, interaction *discordgo.I
 			logInteractionError(interaction.ID, "send gift", err)
 			return "Could not send your gifts. Try again."
 		}
-		return gifttext.Transfer(rarity, quantity, name, goodIncrease)
+		return gifttext.Transfer(item, quantity, name, auraIncrease)
 	})
 }
 
@@ -91,10 +91,10 @@ func commandSubcommand(options []*discordgo.ApplicationCommandInteractionDataOpt
 	return options[0]
 }
 
-func giftOptions(serverID string, options []*discordgo.ApplicationCommandInteractionDataOption, resolved *discordgo.ApplicationCommandInteractionDataResolved) (app.Recipient, string, core.GiftRarity, int64) {
+func giftOptions(serverID string, options []*discordgo.ApplicationCommandInteractionDataOption, resolved *discordgo.ApplicationCommandInteractionDataResolved) (app.Recipient, string, string, int64) {
 	var recipient app.Recipient
 	var name string
-	var rarity core.GiftRarity
+	var item string
 	var quantity int64
 	for _, option := range options {
 		if option == nil {
@@ -103,9 +103,8 @@ func giftOptions(serverID string, options []*discordgo.ApplicationCommandInterac
 		switch {
 		case option.Name == "recipient" && option.Type == discordgo.ApplicationCommandOptionUser:
 			recipient, name = resolveRecipient(serverID, option, resolved)
-		case option.Name == "rarity" && option.Type == discordgo.ApplicationCommandOptionString:
-			value, _ := option.Value.(string)
-			rarity = core.GiftRarity(value)
+		case (option.Name == "item" || option.Name == "rarity") && option.Type == discordgo.ApplicationCommandOptionString:
+			item, _ = option.Value.(string)
 		case option.Name == "quantity" && option.Type == discordgo.ApplicationCommandOptionInteger:
 			// DiscordGo decodes numeric options as float64.
 			value, ok := option.Value.(float64)
@@ -114,7 +113,7 @@ func giftOptions(serverID string, options []*discordgo.ApplicationCommandInterac
 			}
 		}
 	}
-	return recipient, name, rarity, quantity
+	return recipient, name, item, quantity
 }
 
 func resolveRecipient(serverID string, option *discordgo.ApplicationCommandInteractionDataOption, resolved *discordgo.ApplicationCommandInteractionDataResolved) (app.Recipient, string) {

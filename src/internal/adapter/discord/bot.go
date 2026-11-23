@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
@@ -13,49 +14,52 @@ import (
 )
 
 type bot struct {
-	guildID string
-	service app.Service
-	grinch  *grinchBot
+	guildID  string
+	service  app.Service
+	setup    *app.GuildSetup
+	grinches *grinchChannels
 }
 
-func Run(ctx context.Context, token, guildID string, service app.Service, grinchChannel string, encounter *app.GrinchEncounter) error {
-	b := bot{guildID: guildID, service: service}
+func Run(ctx context.Context, token, guildID string, service app.Service, setup *app.GuildSetup, encounter func(string, string) *app.GrinchEncounter) error {
+	runCtx, stop := context.WithCancel(ctx)
+	channels := &grinchChannels{ctx: runCtx, setup: setup, build: encounter, workers: make(map[grinchChannel]grinchWorker)}
+	defer func() {
+		stop()
+		channels.wait()
+	}()
+	b := bot{guildID: guildID, service: service, setup: setup, grinches: channels}
 	session, err := discordgo.New("Bot " + token)
 	if err != nil {
 		return fmt.Errorf("create Discord session: %w", err)
 	}
-	session.Identify.Intents = discordgo.IntentGuilds
-	if grinchChannel != "" {
-		b.grinch = &grinchBot{guild: guildID, channel: grinchChannel, encounter: encounter}
-		session.Identify.Intents |= discordgo.IntentsGuildMessages
-		session.AddHandler(b.grinch.observe)
-	}
+	session.Identify.Intents = discordgo.IntentGuilds | discordgo.IntentGuildMessages
+	session.AddHandler(func(s *discordgo.Session, event *discordgo.GuildCreate) {
+		b.guildAvailable(runCtx, s, event.Guild)
+	})
+	session.AddHandler(func(_ *discordgo.Session, event *discordgo.GuildDelete) {
+		if event.Guild != nil {
+			channels.remove(event.ID)
+		}
+	})
+	session.AddHandler(func(s *discordgo.Session, event *discordgo.MessageCreate) {
+		if worker := channels.get(event.GuildID, event.ChannelID); worker != nil {
+			worker.observe(s, event)
+		}
+	})
 	session.AddHandler(b.handleInteraction)
-
 	if err := session.Open(); err != nil {
 		return fmt.Errorf("open Discord gateway: %w", err)
 	}
 	defer session.Close()
-
 	if err := b.registerCommands(ctx, session); err != nil {
 		return err
 	}
-	log.Printf("Discord bot ready with /hello, /daily claim, /advent, /send gift, /aura check, /socks, and /thrown snowball in server %s", guildID)
-
-	if b.grinch != nil {
-		log.Printf("Grinch encounter enabled in channel %s", grinchChannel)
-		b.grinch.run(ctx, session)
-	} else {
-		<-ctx.Done()
-	}
+	log.Printf("Discord bot ready with /setup and gameplay commands (configured test guild %q)", guildID)
+	<-ctx.Done()
 	return nil
 }
 
 func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) error {
-	if b.guildID == "" {
-		return fmt.Errorf("a Discord server ID is required to register commands")
-	}
-
 	user, err := session.User("@me", discordgo.WithContext(ctx))
 	if err != nil {
 		return fmt.Errorf("look up Discord bot user: %w", err)
@@ -77,8 +81,12 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 		adventCommand(),
 		grinchCommand(),
 		thrownCommand(),
+		setupCommand(),
 	}
 	for _, command := range commands {
+		if b.guildID == "" {
+			command.Contexts = &[]discordgo.InteractionContextType{discordgo.InteractionContextGuild}
+		}
 		if _, err := session.ApplicationCommandCreate(user.ID, b.guildID, command, discordgo.WithContext(ctx)); err != nil {
 			return fmt.Errorf("register /%s in Discord server %s: %w", command.Name, b.guildID, err)
 		}
@@ -87,19 +95,53 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 }
 
 func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.InteractionCreate) {
-	if event.GuildID != b.guildID {
+	if !b.permitsGuild(event.GuildID) {
 		return
 	}
-	if event.Type == discordgo.InteractionMessageComponent && b.grinch != nil {
-		b.grinch.button(session, event.Interaction)
+	if event.Type == discordgo.InteractionMessageComponent {
+		data, ok := event.Data.(discordgo.MessageComponentInteractionData)
+		if ok && strings.HasPrefix(data.CustomID, "grinch:") {
+			if worker := b.grinches.get(event.GuildID, event.ChannelID); worker != nil {
+				worker.button(session, event.Interaction)
+			} else {
+				replyChannelDenied(session, event.Interaction, "The Grinch is disabled in this channel.")
+			}
+		}
 		return
 	}
-	if event.Type != discordgo.InteractionApplicationCommand {
+
+	if event.Type != discordgo.InteractionApplicationCommand && event.Type != discordgo.InteractionApplicationCommandAutocomplete {
 		return
 	}
 	data, ok := event.Data.(discordgo.ApplicationCommandInteractionData)
 	if !ok || data.CommandType != discordgo.ChatApplicationCommand {
 		return
+	}
+
+	if event.Type == discordgo.InteractionApplicationCommandAutocomplete {
+		if data.Name == thrownCommandName && b.setup != nil {
+			b.autocompleteSnowball(session, event.Interaction, data)
+		}
+		return
+	}
+
+	if b.setup != nil {
+		if data.Name == setupCommandName {
+			b.handleSetup(session, event.Interaction, data.Options)
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		settings, err := b.setup.Settings(ctx, event.GuildID)
+		cancel()
+		if err != nil {
+			logInteractionError(event.ID, "load channel permissions", err)
+			replyChannelDenied(session, event.Interaction, "Could not check which channels are enabled.")
+			return
+		}
+		if !settings.Channels[event.ChannelID].Commands {
+			replyChannelDenied(session, event.Interaction, "Commands are disabled in this channel. Ask a moderator to use /setup channel.")
+			return
+		}
 	}
 
 	switch data.Name {
@@ -151,4 +193,15 @@ func logInteractionError(id, action string, err error) {
 		err = urlErr.Err
 	}
 	log.Printf("Discord interaction %s could not %s: %v", id, action, err)
+}
+
+func replyChannelDenied(session *discordgo.Session, interaction *discordgo.Interaction, text string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1750*time.Millisecond)
+	defer cancel()
+	if err := session.InteractionRespond(interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{Content: text, Flags: discordgo.MessageFlagsEphemeral},
+	}, discordgo.WithContext(ctx)); err != nil {
+		logInteractionError(interaction.ID, "show channel restriction", err)
+	}
 }

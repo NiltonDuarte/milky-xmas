@@ -25,7 +25,7 @@ func TestSocksInChat(t *testing.T) {
 	store := &giftfixture.Store{}
 	update := app.GiftUpdate{
 		Member: app.Member{ServerID: "local", UserID: "fixture"},
-		Next:   core.GiftRecord{Inventory: core.Inventory{Normal: 1, Rare: 2, Epic: 3, Snowballs: 4, Coal: 5}},
+		Next:   core.GiftRecord{Inventory: core.Inventory{Normal: 1, Rare: 2, Epic: 3, Snowballs: 4, YellowSnowballs: 6, Coal: 5}},
 	}
 	if saved, err := store.Save(t.Context(), update); err != nil || !saved {
 		t.Fatalf("seed inventory = %v, %v", saved, err)
@@ -36,12 +36,12 @@ func TestSocksInChat(t *testing.T) {
 		code  int
 		reply string
 	}{
-		{"filled", store, http.StatusOK, "🧦 Your inventory\nNormal gifts: 1\nRare gifts: 2\nEpic gifts: 3\nSnowballs: 4\nCoal: 5"},
-		{"empty", &giftfixture.Store{}, http.StatusOK, "🧦 Your inventory\nNormal gifts: 0\nRare gifts: 0\nEpic gifts: 0\nSnowballs: 0\nCoal: 0"},
+		{"filled", store, http.StatusOK, "🧦 Your inventory\nNormal gifts: 1\nRare gifts: 2\nEpic gifts: 3\nSnowballs: 4\nYellow Snowballs: 6\nCoal: 5"},
+		{"empty", &giftfixture.Store{}, http.StatusOK, "🧦 Your inventory\nNormal gifts: 0\nRare gifts: 0\nEpic gifts: 0\nSnowballs: 0\nYellow Snowballs: 0\nCoal: 0"},
 		{"read failure", &unavailableInventory{}, http.StatusInternalServerError, "Could not load your inventory. Try again."},
 	} {
 		t.Run(step.name, func(t *testing.T) {
-			handler := web.NewHandler(app.NewService(step.store, time.Now, func(int) int { return 0 }))
+			handler := web.NewHandler(app.NewService(step.store, time.Now, func(int) int { return 0 }), nil)
 			request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader("command=%2Fsocks"))
 			request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			recorder := httptest.NewRecorder()

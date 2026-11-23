@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/giftfixture"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
@@ -20,9 +19,9 @@ type grinchFixture struct {
 	sequence  *atomic.Uint64
 }
 
-func newGrinchFixture(now func() time.Time) grinchFixture {
+func newGrinchFixture(now func() time.Time, store app.GrinchStore) grinchFixture {
 	return grinchFixture{
-		encounter: app.NewGrinchEncounter(&giftfixture.GrinchStore{}, "local", now, func(n int) int { return n / 3 }),
+		encounter: app.NewGrinchEncounter(store, fixtureServerID, fixtureServerID, now, func(n int) int { return n / 3 }),
 		now:       now,
 		sequence:  new(atomic.Uint64),
 	}
@@ -58,7 +57,7 @@ func (fixture grinchFixture) reply(w http.ResponseWriter, r *http.Request, args 
 		// The state above already includes deadline transitions.
 	case len(args) == 1 && args[0] == "join":
 		state, result, err = fixture.encounter.Play(ctx, state.ID, state.MessageID, core.GrinchMove{
-			Phase: core.GrinchLobby, At: now, Member: "fixture", RequestID: strconv.FormatUint(fixture.sequence.Add(1), 10),
+			Phase: core.GrinchLobby, At: now, Member: fixtureUserID, RequestID: strconv.FormatUint(fixture.sequence.Add(1), 10),
 		})
 	case len(args) == 2 && args[0] == "hit":
 		slot, parseErr := strconv.Atoi(args[1])
@@ -67,7 +66,7 @@ func (fixture grinchFixture) reply(w http.ResponseWriter, r *http.Request, args 
 			return
 		}
 		state, result, err = fixture.encounter.Play(ctx, state.ID, state.MessageID, core.GrinchMove{
-			Phase: state.Phase, Slot: slot - 1, DefenseRound: state.DefenseRound, FinalRound: state.FinalRound, At: now, Member: "fixture",
+			Phase: state.Phase, Slot: slot - 1, DefenseRound: state.DefenseRound, FinalRound: state.FinalRound, At: now, Member: fixtureUserID,
 			RequestID: strconv.FormatUint(fixture.sequence.Add(1), 10),
 		})
 	default:
@@ -105,7 +104,7 @@ func fixtureSummary(state core.Grinch) string {
 			}
 			fmt.Fprintf(&message, "%d %s  ", slot+1, emoji)
 		}
-		fmt.Fprint(&message, "\n/grinch hit <tile>")
+		fmt.Fprintf(&message, "%d ❄️\n/grinch hit <tile>", core.GrinchSnowballSlot+1)
 	case core.GrinchDefense, core.GrinchAttack:
 		on, off := "🎄", "❄️"
 		if state.Phase == core.GrinchAttack {

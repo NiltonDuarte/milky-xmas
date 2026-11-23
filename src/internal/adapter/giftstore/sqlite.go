@@ -61,7 +61,8 @@ func initSchema(ctx context.Context, db *sql.DB) error {
 			day INTEGER NOT NULL CHECK (day BETWEEN 1 AND 24),
 			PRIMARY KEY (server_id, user_id, year, day)
 		);
-		CREATE TABLE IF NOT EXISTS grinch_encounters (scope TEXT PRIMARY KEY, revision INTEGER NOT NULL, payload BLOB NOT NULL)`)
+		CREATE TABLE IF NOT EXISTS grinch_encounters (scope TEXT PRIMARY KEY, revision INTEGER NOT NULL, payload BLOB NOT NULL);
+		CREATE TABLE IF NOT EXISTS guild_settings (guild_id TEXT PRIMARY KEY, payload BLOB NOT NULL)`)
 	if err != nil {
 		return err
 	}
@@ -94,6 +95,21 @@ func initSchema(ctx context.Context, db *sql.DB) error {
 		_, err = tx.ExecContext(ctx, `
 			ALTER TABLE gift_players ADD COLUMN snowballs INTEGER NOT NULL DEFAULT 0 CHECK (snowballs >= 0);
 			ALTER TABLE gift_players ADD COLUMN coal INTEGER NOT NULL DEFAULT 0 CHECK (coal >= 0);
+		`)
+		if err != nil {
+			return err
+		}
+	}
+	var hasYellowSnowballs bool
+	err = tx.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM pragma_table_info('gift_players') WHERE name = 'yellow_snowballs')
+	`).Scan(&hasYellowSnowballs)
+	if err != nil {
+		return err
+	}
+	if !hasYellowSnowballs {
+		_, err = tx.ExecContext(ctx, `
+			ALTER TABLE gift_players ADD COLUMN yellow_snowballs INTEGER NOT NULL DEFAULT 0 CHECK (yellow_snowballs >= 0)
 		`)
 		if err != nil {
 			return err

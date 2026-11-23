@@ -2,8 +2,8 @@ package giftfixture
 
 import (
 	"context"
+	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 	"maps"
-	"sync"
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
@@ -13,31 +13,32 @@ type grinchRecord struct {
 	version int64
 }
 
-type GrinchStore struct {
-	mu      sync.Mutex
-	records map[string]grinchRecord
-}
-
-func (store *GrinchStore) LoadGrinch(_ context.Context, scope string) (core.Grinch, int64, error) {
+func (store *Store) LoadGrinch(_ context.Context, scope string) (core.Grinch, int64, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
-	record := store.records[scope]
+	record := store.grinch[scope]
 	return cloneGrinch(record.state), record.version, nil
 }
 
-func (store *GrinchStore) SaveGrinch(ctx context.Context, scope string, version int64, state core.Grinch) (bool, error) {
+func (store *Store) SaveGrinch(ctx context.Context, scope string, version int64, state core.Grinch, server string, rewards map[string]core.GrinchReward) (bool, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if err := ctx.Err(); err != nil {
 		return false, err
 	}
-	if store.records[scope].version != version {
+	if store.grinch[scope].version != version {
 		return false, nil
 	}
-	if store.records == nil {
-		store.records = make(map[string]grinchRecord)
+	if store.grinch == nil {
+		store.grinch = make(map[string]grinchRecord)
 	}
-	store.records[scope] = grinchRecord{state: cloneGrinch(state), version: version + 1}
+	for user, reward := range rewards {
+		member := app.Member{ServerID: server, UserID: user}
+		record := store.records[member]
+		record.Inventory = record.Inventory.AddGrinchReward(reward)
+		store.save(app.GiftUpdate{Member: member, Next: record})
+	}
+	store.grinch[scope] = grinchRecord{state: cloneGrinch(state), version: version + 1}
 	return true, nil
 }
 

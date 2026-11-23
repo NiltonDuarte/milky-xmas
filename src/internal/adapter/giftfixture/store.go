@@ -13,6 +13,7 @@ type Store struct {
 	mu      sync.Mutex
 	records map[app.Member]core.GiftRecord
 	advent  map[adventMember]uint32
+	grinch  map[string]grinchRecord
 }
 
 func (store *Store) Load(_ context.Context, member app.Member) (core.GiftRecord, error) {

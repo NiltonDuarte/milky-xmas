@@ -6,9 +6,11 @@ import (
 )
 
 const (
-	GrinchJoinDuration = time.Minute
-	GrinchDuration     = time.Minute
-	GrinchSnowflakeHit = "Snowflake! You lost 10% of your maximum HP."
+	GrinchJoinDuration   = time.Minute
+	GrinchDuration       = time.Minute
+	GrinchSnowballSlot   = 4
+	GrinchSnowballEarned = "❄️ You earned 1 Snowball!"
+	GrinchSnowflakeHit   = "Snowflake! You lost 10% of your maximum HP."
 )
 
 type GrinchPhase string
@@ -257,10 +259,12 @@ func (g *Grinch) Move(move GrinchMove) string {
 		if move.FinalRound != g.FinalRound {
 			return "This row changed. Choose a button on the current row."
 		}
-		if move.Slot < 0 || move.Slot >= 4 || (g.FinalRound == 0 && move.Slot != 0) {
+		if move.Slot < 0 || move.Slot > GrinchSnowballSlot || (g.FinalRound == 0 && move.Slot != 0 && move.Slot != GrinchSnowballSlot) {
 			return "Choose a button on the final row."
 		}
-		if g.FinalBoard&(1<<move.Slot) != 0 {
+		if move.Slot == GrinchSnowballSlot {
+			reply = GrinchSnowballEarned
+		} else if g.FinalBoard&(1<<move.Slot) != 0 {
 			if move.GiftPoints < 1 || move.GiftPoints > 5 {
 				return "Could not award gift points."
 			}

@@ -9,6 +9,6 @@ import (
 const InventoryUnavailable = "Could not load your inventory. Try again."
 
 func Inventory(items core.Inventory) string {
-	return fmt.Sprintf("🧦 Your inventory\nNormal gifts: %d\nRare gifts: %d\nEpic gifts: %d\nSnowballs: %d\nCoal: %d",
-		items.Normal, items.Rare, items.Epic, items.Snowballs, items.Coal)
+	return fmt.Sprintf("🧦 Your inventory\nNormal gifts: %d\nRare gifts: %d\nEpic gifts: %d\nSnowballs: %d\nYellow Snowballs: %d\nCoal: %d",
+		items.Normal, items.Rare, items.Epic, items.Snowballs, items.YellowSnowballs, items.Coal)
 }

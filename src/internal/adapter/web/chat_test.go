@@ -15,7 +15,7 @@ import (
 
 func TestChatPage(t *testing.T) {
 	response := httptest.NewRecorder()
-	web.NewHandler(app.Service{}).ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/", nil))
+	web.NewHandler(app.Service{}, nil).ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/", nil))
 
 	if response.Code != http.StatusOK {
 		t.Fatalf("GET / returned %d", response.Code)
@@ -28,7 +28,7 @@ func TestChatPage(t *testing.T) {
 }
 
 func TestChatCommands(t *testing.T) {
-	handler := web.NewHandler(app.Service{})
+	handler := web.NewHandler(app.Service{}, nil)
 	for _, tt := range []struct {
 		name, input, origin, reply string
 		status                     int
@@ -65,7 +65,7 @@ func TestDailyClaimInChat(t *testing.T) {
 	first := time.Date(2026, 12, 1, 18, 0, 0, 0, time.UTC)
 	now := first
 	roll := 0
-	handler := web.NewHandler(app.NewService(&giftfixture.Store{}, func() time.Time { return now }, func(int) int { return roll }))
+	handler := web.NewHandler(app.NewService(&giftfixture.Store{}, func() time.Time { return now }, func(int) int { return roll }), nil)
 	for _, step := range []struct {
 		elapsed time.Duration
 		roll    int

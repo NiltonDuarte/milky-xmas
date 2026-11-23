@@ -11,7 +11,8 @@ import (
 
 type GrinchStore interface {
 	LoadGrinch(context.Context, string) (core.Grinch, int64, error)
-	SaveGrinch(context.Context, string, int64, core.Grinch) (bool, error)
+	// SaveGrinch commits the new encounter revision and its inventory grants together.
+	SaveGrinch(context.Context, string, int64, core.Grinch, string, map[string]core.GrinchReward) (bool, error)
 }
 
 type GrinchDisplay interface {
@@ -22,25 +23,37 @@ type GrinchDisplay interface {
 type GrinchEncounter struct {
 	store     GrinchStore
 	scope     string
+	server    string
 	now       func() time.Time
 	random    func(int) int
 	displayMu sync.Mutex
 }
 
-func NewGrinchEncounter(store GrinchStore, scope string, now func() time.Time, random func(int) int) *GrinchEncounter {
-	return &GrinchEncounter{store: store, scope: scope, now: now, random: random}
+func NewGrinchEncounter(store GrinchStore, server, scope string, now func() time.Time, random func(int) int) *GrinchEncounter {
+	return &GrinchEncounter{store: store, server: server, scope: scope, now: now, random: random}
 }
 
 func (e *GrinchEncounter) change(ctx context.Context, update func(*core.Grinch) bool) (core.Grinch, bool, error) {
+	return e.changeWithRewards(ctx, func(state *core.Grinch) (bool, map[string]core.GrinchReward) {
+		return update(state), nil
+	})
+}
+
+func (e *GrinchEncounter) changeWithRewards(ctx context.Context, update func(*core.Grinch) (bool, map[string]core.GrinchReward)) (core.Grinch, bool, error) {
 	for ctx.Err() == nil {
 		state, version, err := e.store.LoadGrinch(ctx, e.scope)
 		if err != nil {
 			return core.Grinch{}, false, err
 		}
-		if !update(&state) {
+		wasActive := state.EndedAt.IsZero()
+		changed, rewards := update(&state)
+		if !changed {
 			return state, false, nil
 		}
-		saved, err := e.store.SaveGrinch(ctx, e.scope, version, state)
+		if wasActive && !state.EndedAt.IsZero() {
+			rewards = state.LossRewards()
+		}
+		saved, err := e.store.SaveGrinch(ctx, e.scope, version, state, e.server, rewards)
 		if err != nil || saved {
 			return state, saved, err
 		}
@@ -86,7 +99,7 @@ func (e *GrinchEncounter) Spawn(ctx context.Context, activity time.Time, manual 
 }
 
 func (e *GrinchEncounter) Play(ctx context.Context, id, message string, move core.GrinchMove) (core.Grinch, string, error) {
-	reply := "This fight is no longer active."
+	var reply string
 	next := uint8(e.random(254) + 1) // Both emoji types appear.
 	if move.Phase == core.GrinchAttack || move.Phase == core.GrinchFinalAttack {
 		move.FinalBoard = uint8(e.random(14) + 1) // Both attack and gift tiles.
@@ -94,19 +107,24 @@ func (e *GrinchEncounter) Play(ctx context.Context, id, message string, move cor
 	if move.Phase == core.GrinchFinalAttack {
 		move.GiftPoints = e.random(5) + 1
 	}
-	state, _, err := e.change(ctx, func(g *core.Grinch) bool {
+	state, _, err := e.changeWithRewards(ctx, func(g *core.Grinch) (bool, map[string]core.GrinchReward) {
 		if g.ID != id || g.MessageID == "" || g.MessageID != message {
-			return false
+			reply = "This fight is no longer active."
+			return false, nil
 		}
 		advanced := g.Advance(move.At)
 		if advanced && move.Phase != core.GrinchLobby {
 			reply = "This part of the fight has ended."
-			return true
+			return true, nil
 		}
 		move.NextBoard = next
 		count := len(g.Accepted)
 		reply = g.Move(move)
-		return advanced || len(g.Accepted) != count
+		accepted := len(g.Accepted) != count
+		if accepted && move.Phase == core.GrinchFinalAttack && move.Slot == core.GrinchSnowballSlot {
+			return true, map[string]core.GrinchReward{move.Member: {Snowballs: 1}}
+		}
+		return advanced || accepted, nil
 	})
 	return state, reply, err
 }

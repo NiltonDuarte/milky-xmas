@@ -12,9 +12,10 @@ import (
 )
 
 func main() {
+	store := &giftfixture.Store{}
 	server := &http.Server{
 		Addr:         "127.0.0.1:8080",
-		Handler:      web.NewHandler(app.NewService(&giftfixture.Store{}, time.Now, rand.IntN)),
+		Handler:      web.NewHandler(app.NewService(store, time.Now, rand.IntN), store),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
 	}

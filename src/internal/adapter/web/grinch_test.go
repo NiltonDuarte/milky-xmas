@@ -8,12 +8,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/giftfixture"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 )
 
 func TestLocalGrinch(t *testing.T) {
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
-	handler := newHandler(app.Service{}, newGrinchFixture(func() time.Time { return now }))
+	store := &giftfixture.Store{}
+	service := app.NewService(store, func() time.Time { return now }, func(int) int { return 0 })
+	handler := newHandler(service, newGrinchFixture(func() time.Time { return now }, store))
 	send := func(command, want string) {
 		t.Helper()
 		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(url.Values{"command": {command}}.Encode()))
@@ -41,10 +44,15 @@ func TestLocalGrinch(t *testing.T) {
 	}
 	send("/grinch hit 1", "5.00/100 HP · final")
 	send("/grinch hit 1", "You earned 2 gift points!")
+	send("/grinch view", "5 ❄️")
+	send("/grinch hit 5", "You earned 1 Snowball!")
+	send("/grinch hit 5", "You earned 1 Snowball!")
+	send("/socks", "Snowballs: 2\nYellow Snowballs: 0\nCoal: 0")
 	for range 4 {
 		send("/grinch hit 2", "Final attack hit!")
 	}
 	send("/grinch hit 2", "Damage leaderboard\n1. fixture — 105.00 pts\n\nGift leaderboard\n1. fixture — 2 pts")
+	send("/socks", "Snowballs: 2\nYellow Snowballs: 0\nCoal: 0")
 	now = now.Add(time.Second)
 	send("/grinch summon", "🎅 0 joined")
 	send("/grinch join", "🎅 1 joined")
@@ -59,4 +67,5 @@ func TestLocalGrinch(t *testing.T) {
 	send("/grinch view", "75.00/100 HP · defense")
 	now = now.Add(time.Minute)
 	send("/grinch view", "75.00/100 HP · escaped")
+	send("/socks", "Snowballs: 2\nYellow Snowballs: 1\nCoal: 1")
 }

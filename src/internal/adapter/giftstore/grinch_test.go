@@ -45,7 +45,7 @@ func TestGrinchSQLite(t *testing.T) {
 	}
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
 	newEncounter := func(store *giftstore.SQLite) *app.GrinchEncounter {
-		return app.NewGrinchEncounter(store, "guild:channel", func() time.Time { return now }, func(int) int { return 0 })
+		return app.NewGrinchEncounter(store, "guild", "guild:channel", func() time.Time { return now }, func(int) int { return 0 })
 	}
 	store, other := open(), open()
 	first, second := newEncounter(store), newEncounter(other)
@@ -139,7 +139,7 @@ func TestGrinchUncertainAnnouncement(t *testing.T) {
 	}
 	defer store.Close()
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
-	encounter := app.NewGrinchEncounter(store, "guild:channel", func() time.Time { return now }, func(int) int { return 0 })
+	encounter := app.NewGrinchEncounter(store, "guild", "guild:channel", func() time.Time { return now }, func(int) int { return 0 })
 	display := &grinchDisplayFixture{now: now, sendError: errors.New("send uncertain")}
 	if ok, err := encounter.Spawn(t.Context(), now, false, display); ok || !errors.Is(err, display.sendError) {
 		t.Fatalf("first spawn = %v, %v", ok, err)

@@ -15,7 +15,7 @@ import (
 
 func TestAdventInChat(t *testing.T) {
 	now := time.Date(2026, 12, 4, 0, 0, 0, 0, time.UTC)
-	handler := web.NewHandler(app.NewService(&giftfixture.Store{}, func() time.Time { return now }, func(int) int { return 4 }))
+	handler := web.NewHandler(app.NewService(&giftfixture.Store{}, func() time.Time { return now }, func(int) int { return 4 }), nil)
 	for _, step := range []struct{ command, reply string }{
 		{"/advent view", "04 · available\n05 · locked"},
 		{"/advent open 5", "Door 5 unlocks on December 5"},

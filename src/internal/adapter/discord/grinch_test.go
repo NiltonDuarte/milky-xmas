@@ -17,9 +17,10 @@ import (
 func TestGrinchSummon(t *testing.T) {
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
 	channel := "400"
-	b := bot{guildID: "200", grinch: &grinchBot{guild: "200", channel: channel,
-		encounter: app.NewGrinchEncounter(&giftfixture.GrinchStore{}, channel, func() time.Time { return now }, func(n int) int { return n - 1 }),
-	}}
+	worker := &grinchBot{guild: "200", channel: channel,
+		encounter: app.NewGrinchEncounter(&giftfixture.Store{}, "200", channel, func() time.Time { return now }, func(n int) int { return n - 1 }),
+	}
+	b := bot{guildID: "200", grinches: &grinchChannels{workers: map[grinchChannel]grinchWorker{{"200", channel}: {bot: worker}}}}
 	for _, step := range []struct {
 		channel      string
 		permission   int64
@@ -27,7 +28,7 @@ func TestGrinchSummon(t *testing.T) {
 		reply        string
 	}{
 		{channel, 0, false, "You need Manage Messages permission"},
-		{"other", discordgo.PermissionManageMessages, false, "Use this command in the configured Grinch channel"},
+		{"other", discordgo.PermissionManageMessages, false, "Use this command in a configured Grinch channel"},
 		{channel, discordgo.PermissionManageMessages, true, "The Grinch is coming!"},
 		{channel, discordgo.PermissionAdministrator, false, "A Grinch encounter is already in progress."},
 	} {
@@ -127,7 +128,7 @@ func TestGrinchButtonAcknowledgement(t *testing.T) {
 		t.Fatal(err)
 	}
 	b := &grinchBot{guild: "200", channel: "400",
-		encounter: app.NewGrinchEncounter(&giftfixture.GrinchStore{}, "scope", func() time.Time { return now }, func(int) int { return 0 }),
+		encounter: app.NewGrinchEncounter(&giftfixture.Store{}, "200", "scope", func() time.Time { return now }, func(int) int { return 0 }),
 	}
 	display := grinchDisplay{s, b.channel}
 	s.Client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
@@ -221,5 +222,20 @@ func TestGrinchLeaderboardRendering(t *testing.T) {
 	if len(content) > 2000 || !strings.Contains(content, "Full standings are attached.") ||
 		!strings.Contains(extra, "102. Discord user 000000000000000199 — 1.00 pts") {
 		t.Fatalf("unexpected leaderboard overflow: %d bytes, %d-byte attachment", len(content), len(extra))
+	}
+}
+
+func TestGrinchFinalBoardSnowballButton(t *testing.T) {
+	for _, round := range []int{0, 7} {
+		content, rows := grinchMessage(core.Grinch{ID: "fight", Phase: core.GrinchFinalAttack, HP: 500, FinalRound: round})
+		buttons := rows[0].(discordgo.ActionsRow).Components
+		button := buttons[len(buttons)-1].(discordgo.Button)
+		want := "grinch:fight:final:4"
+		if round != 0 {
+			want += ":7"
+		}
+		if button.CustomID != want || button.Emoji == nil || button.Emoji.Name != "❄️" || len(buttons) > 5 || !strings.Contains(content, "1 Snowball") {
+			t.Errorf("round %d: snowball button = %+v; items = %d; content = %q", round, button, len(buttons), content)
+		}
 	}
 }

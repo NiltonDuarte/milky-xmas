@@ -32,11 +32,12 @@ func DailyGiftRarity(roll int) GiftRarity {
 }
 
 type Inventory struct {
-	Normal    int64
-	Rare      int64
-	Epic      int64
-	Snowballs int64
-	Coal      int64
+	Normal          int64
+	Rare            int64
+	Epic            int64
+	Snowballs       int64
+	YellowSnowballs int64
+	Coal            int64
 }
 
 func (inventory Inventory) GiftTotal() int64 {

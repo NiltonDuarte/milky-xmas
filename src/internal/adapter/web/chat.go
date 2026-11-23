@@ -17,8 +17,8 @@ const fixtureUserID = "fixture"
 //go:embed chat.html
 var chatPage string
 
-func NewHandler(service app.Service) http.Handler {
-	return newHandler(service, newGrinchFixture(time.Now))
+func NewHandler(service app.Service, grinchStore app.GrinchStore) http.Handler {
+	return newHandler(service, newGrinchFixture(time.Now, grinchStore))
 }
 
 func newHandler(service app.Service, grinch grinchFixture) http.Handler {

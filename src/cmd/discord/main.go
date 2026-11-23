@@ -24,35 +24,33 @@ func main() {
 	}
 
 	guildID := strings.TrimSpace(os.Getenv("DISCORD_TEST_GUILD_ID"))
-	if id, err := strconv.ParseUint(guildID, 10, 64); err != nil || id == 0 {
-		log.Fatal("DISCORD_TEST_GUILD_ID must be a valid Discord server ID")
+	if guildID != "" {
+		if id, err := strconv.ParseUint(guildID, 10, 64); err != nil || id == 0 {
+			log.Fatal("DISCORD_TEST_GUILD_ID must be a valid Discord server ID")
+		}
 	}
 
 	path := strings.TrimSpace(os.Getenv("MILKY_GIFT_DB"))
 	if path == "" {
 		log.Fatal("MILKY_GIFT_DB is required")
 	}
-	channel := strings.TrimSpace(os.Getenv("MILKY_GRINCH_CHANNEL_ID"))
-	if channel != "" {
-		if id, err := strconv.ParseUint(channel, 10, 64); err != nil || id == 0 {
-			log.Fatal("MILKY_GRINCH_CHANNEL_ID must be a valid Discord channel ID")
-		}
-	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := run(ctx, token, guildID, path, channel); err != nil {
+	if err := run(ctx, token, guildID, path); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(ctx context.Context, token, guildID, path, channel string) error {
+func run(ctx context.Context, token, guildID, path string) error {
 	store, err := giftstore.OpenSQLite(ctx, path)
 	if err != nil {
 		return fmt.Errorf("open gift database: %w", err)
 	}
 	defer store.Close()
 
-	encounter := app.NewGrinchEncounter(store, guildID+":"+channel, time.Now, rand.IntN)
-	return discord.Run(ctx, token, guildID, app.NewService(store, time.Now, rand.IntN), channel, encounter)
+	return discord.Run(ctx, token, guildID, app.NewService(store, time.Now, rand.IntN), app.NewGuildSetup(store),
+		func(server, scope string) *app.GrinchEncounter {
+			return app.NewGrinchEncounter(store, server, scope, time.Now, rand.IntN)
+		})
 }

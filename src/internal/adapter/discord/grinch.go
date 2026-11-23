@@ -42,17 +42,15 @@ func (b bot) summonGrinch(s *discordgo.Session, i *discordgo.Interaction, option
 		if i.Member.Permissions&(discordgo.PermissionManageMessages|discordgo.PermissionAdministrator) == 0 {
 			return "You need Manage Messages permission to summon the Grinch."
 		}
-		if b.grinch == nil {
-			return "The Grinch encounter channel has not been configured."
+		grinch := b.grinches.get(i.GuildID, i.ChannelID)
+		if grinch == nil {
+			return "Use this command in a configured Grinch channel."
 		}
-		if i.ChannelID != b.grinch.channel {
-			return "Use this command in the configured Grinch channel."
-		}
-		display := grinchDisplay{s, b.grinch.channel}
-		if _, err := b.grinch.encounter.Sync(ctx, display); err != nil {
+		display := grinchDisplay{s, grinch.channel}
+		if _, err := grinch.encounter.Sync(ctx, display); err != nil {
 			logInteractionError(i.ID, "reconcile Grinch encounter", err)
 		}
-		spawned, err := b.grinch.encounter.Spawn(ctx, time.Time{}, true, display)
+		spawned, err := grinch.encounter.Spawn(ctx, time.Time{}, true, display)
 		if err != nil {
 			logInteractionError(i.ID, "summon the Grinch", err)
 			return "Could not confirm the Grinch announcement."
@@ -143,7 +141,7 @@ func (b *grinchBot) button(s *discordgo.Session, i *discordgo.Interaction) {
 	stopPlay()
 	response := &discordgo.InteractionResponse{Type: discordgo.InteractionResponseDeferredMessageUpdate}
 	snowflake := reply == core.GrinchSnowflakeHit
-	if err != nil || !state.Accepted[i.ID] || snowflake || strings.HasPrefix(reply, "🎁") || parts[2] == string(core.GrinchLobby) {
+	if err != nil || !state.Accepted[i.ID] || snowflake || reply == core.GrinchSnowballEarned || strings.HasPrefix(reply, "🎁") || parts[2] == string(core.GrinchLobby) {
 		if err != nil {
 			logInteractionError(i.ID, "play Grinch action", err)
 			reply = "Could not record your action. Try again."
@@ -312,21 +310,24 @@ func grinchMessage(state core.Grinch) (string, []discordgo.MessageComponent) {
 			rows = append(rows, discordgo.ActionsRow{Components: columns})
 		}
 	case core.GrinchFinalAttack:
-		content += "\n⚔️ Attack for 2 damage points or pick 🎁 for 1–5 gift points."
+		content += "\n⚔️ Attack for 2 damage points, pick 🎁 for 1–5 gift points, or pick ❄️ for 1 Snowball."
 		if state.FinalRound == 0 {
-			rows = []discordgo.MessageComponent{discordgo.ActionsRow{Components: []discordgo.MessageComponent{button(0, "⚔️", "Attack")}}}
+			rows = []discordgo.MessageComponent{discordgo.ActionsRow{Components: []discordgo.MessageComponent{button(0, "⚔️", "Attack"), button(core.GrinchSnowballSlot, "❄️", "Snowball")}}}
 			break
 		}
-		tiles := make([]discordgo.MessageComponent, 4)
-		for slot := range tiles {
+		tiles := make([]discordgo.MessageComponent, 0, core.GrinchSnowballSlot+1)
+		for slot := range core.GrinchSnowballSlot {
 			emoji := "⚔️"
 			if state.FinalBoard&(1<<slot) != 0 {
 				emoji = "🎁"
 			}
 			tile := button(slot, emoji, "")
 			tile.CustomID += ":" + strconv.Itoa(state.FinalRound)
-			tiles[slot] = tile
+			tiles = append(tiles, tile)
 		}
+		snowball := button(core.GrinchSnowballSlot, "❄️", "")
+		snowball.CustomID += ":" + strconv.Itoa(state.FinalRound)
+		tiles = append(tiles, snowball)
 		rows = []discordgo.MessageComponent{discordgo.ActionsRow{Components: tiles}}
 	default:
 		content += "\nThe snowball phase ended."

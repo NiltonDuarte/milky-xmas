@@ -1,5 +1,10 @@
 package core
 
+import (
+	"errors"
+	"math"
+)
+
 func TransferGift(sender, recipient GiftRecord, rarity GiftRarity, quantity int64) (GiftRecord, GiftRecord, error) {
 	from := sender.Inventory.balance(rarity)
 	switch {
@@ -24,7 +29,31 @@ func TransferGift(sender, recipient GiftRecord, rarity GiftRarity, quantity int6
 	case EpicGift:
 		points = 30
 	}
-	// Beyond 20 gifts the award already reaches the cap at any rarity.
-	sender.Aura.Good = min(100, sender.Aura.Good+int(min(quantity, 20))*points)
+	sender.Aura.Good = increaseAura(sender.Aura.Good, quantity, points)
 	return sender, recipient, nil
+}
+
+var (
+	ErrInsufficientCoal = errors.New("insufficient coal")
+	ErrCoalCapacity     = errors.New("coal inventory is full")
+)
+
+func TransferCoal(sender, recipient GiftRecord, quantity int64) (GiftRecord, GiftRecord, error) {
+	switch {
+	case quantity <= 0:
+		return sender, recipient, ErrGiftQuantity
+	case sender.Inventory.Coal < quantity:
+		return sender, recipient, ErrInsufficientCoal
+	case quantity > math.MaxInt64-recipient.Inventory.Coal:
+		return sender, recipient, ErrCoalCapacity
+	}
+	sender.Inventory.Coal -= quantity
+	recipient.Inventory.Coal += quantity
+	sender.Aura.Bad = increaseAura(sender.Aura.Bad, quantity, 5)
+	return sender, recipient, nil
+}
+
+func increaseAura(value int, quantity int64, points int) int {
+	// At five points or more per item, 20 items already reach the cap.
+	return min(100, value+int(min(quantity, 20))*points)
 }
