@@ -15,37 +15,38 @@ type GiftRecipient struct {
 	IsBot  bool
 }
 
-func (service Service) SendGift(ctx context.Context, sender Member, recipient GiftRecipient, rarity core.GiftRarity, quantity int64) (core.Aura, error) {
+// SendGift returns the Good deeds increase from the committed transfer.
+func (service Service) SendGift(ctx context.Context, sender Member, recipient GiftRecipient, rarity core.GiftRarity, quantity int64) (int, error) {
 	target := recipient.Member
 	if sender.ServerID == "" || sender.UserID == "" || target.ServerID != sender.ServerID ||
 		target.UserID == "" || target == sender || recipient.IsBot {
-		return core.Aura{}, ErrGiftRecipient
+		return 0, ErrGiftRecipient
 	}
 
 	for ctx.Err() == nil {
 		from, err := service.gifts.Load(ctx, sender)
 		if err != nil {
-			return core.Aura{}, fmt.Errorf("load sender inventory: %w", err)
+			return 0, fmt.Errorf("load sender inventory: %w", err)
 		}
 		to, err := service.gifts.Load(ctx, target)
 		if err != nil {
-			return core.Aura{}, fmt.Errorf("load recipient inventory: %w", err)
+			return 0, fmt.Errorf("load recipient inventory: %w", err)
 		}
 		nextFrom, nextTo, err := core.TransferGift(from, to, rarity, quantity)
 		if err != nil {
-			return core.Aura{}, err
+			return 0, err
 		}
 		saved, err := service.gifts.SaveTransfer(ctx,
 			GiftUpdate{Member: sender, Previous: from, Next: nextFrom},
 			GiftUpdate{Member: target, Previous: to, Next: nextTo})
 		if err != nil {
-			return core.Aura{}, fmt.Errorf("save gift transfer: %w", err)
+			return 0, fmt.Errorf("save gift transfer: %w", err)
 		}
 		if saved {
-			return nextFrom.Aura, nil
+			return nextFrom.Aura.Good - from.Aura.Good, nil
 		}
 	}
-	return core.Aura{}, ctx.Err()
+	return 0, ctx.Err()
 }
 
 func (service Service) CheckAura(ctx context.Context, member Member) (core.Aura, error) {

@@ -29,9 +29,9 @@ func TestGiftTransferAfterLegacyMigration(t *testing.T) {
 
 	store := openGiftPlayers(t, path)
 	service := app.NewService(store, func() time.Time { return now }, func(int) int { return 0 })
-	aura, err := service.SendGift(ctx, alice, app.GiftRecipient{Member: bob}, core.NormalGift, 2)
-	if err != nil || aura != (core.Aura{Good: 10}) {
-		t.Fatalf("send migrated gifts = %+v, %v", aura, err)
+	goodIncrease, err := service.SendGift(ctx, alice, app.GiftRecipient{Member: bob}, core.NormalGift, 2)
+	if err != nil || goodIncrease != 10 {
+		t.Fatalf("send migrated gifts = %d, %v", goodIncrease, err)
 	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
@@ -40,7 +40,7 @@ func TestGiftTransferAfterLegacyMigration(t *testing.T) {
 	store = openGiftPlayers(t, path)
 	service = app.NewService(store, func() time.Time { return now }, func(int) int { return 0 })
 	got, err := service.CheckAura(ctx, alice)
-	if err != nil || got != aura {
+	if err != nil || got != (core.Aura{Good: 10}) {
 		t.Fatalf("sender aura after restart = %+v, %v", got, err)
 	}
 	got, err = service.CheckAura(ctx, bob)
@@ -102,7 +102,7 @@ func TestGiftTransfersCompeteForLastGift(t *testing.T) {
 		}
 	}
 	record, err := stores[0].Load(ctx, sender)
-	if err != nil || success != 1 || record.Inventory.Total() != 0 || record.Aura.Good != 30 {
+	if err != nil || success != 1 || record.Inventory.GiftTotal() != 0 || record.Aura.Good != 30 {
 		t.Errorf("sender = %+v, err = %v, successful transfers = %d", record, err, success)
 	}
 	var received int64
@@ -144,8 +144,8 @@ func TestGiftTransferRollsBackSenderWhenRecipientWriteFails(t *testing.T) {
 		t.Errorf("recipient after rollback = %+v, %v", recipient, err)
 	}
 	execGiftSQL(t, path, "DROP TRIGGER reject_recipient")
-	if aura, err := service.SendGift(ctx, from, app.GiftRecipient{Member: to}, core.NormalGift, 1); err != nil || aura.Good != 5 {
-		t.Errorf("send after storage recovered = %+v, %v", aura, err)
+	if goodIncrease, err := service.SendGift(ctx, from, app.GiftRecipient{Member: to}, core.NormalGift, 1); err != nil || goodIncrease != 5 {
+		t.Errorf("send after storage recovered = %d, %v", goodIncrease, err)
 	}
 }
 
@@ -169,4 +169,52 @@ func execGiftSQL(t *testing.T, path, statement string) {
 	if _, err := db.ExecContext(t.Context(), statement); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestInventoryUpgradeAndTransfer(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "gifts.sqlite")
+	execGiftSQL(t, path, `
+		CREATE TABLE gift_players (
+			server_id TEXT NOT NULL, user_id TEXT NOT NULL,
+			normal INTEGER NOT NULL DEFAULT 0, rare INTEGER NOT NULL DEFAULT 0, epic INTEGER NOT NULL DEFAULT 0,
+			bad INTEGER NOT NULL DEFAULT 0, good INTEGER NOT NULL DEFAULT 0, last_claim TEXT NOT NULL DEFAULT '',
+			PRIMARY KEY (server_id, user_id)
+		);
+		INSERT INTO gift_players VALUES ('guild', 'alice', 1, 2, 3, 4, 5, '2026-12-01T18:00:00Z');
+	`)
+	ctx := t.Context()
+	store := openGiftPlayers(t, path)
+	alice := app.Member{ServerID: "guild", UserID: "alice"}
+	bob := app.Member{ServerID: "guild", UserID: "bob"}
+	now := time.Date(2026, 12, 1, 19, 0, 0, 0, time.UTC)
+	service := app.NewService(store, func() time.Time { return now }, func(int) int { return 0 })
+	check := func(service app.Service, member app.Member, want core.Inventory) {
+		t.Helper()
+		if got, err := service.ViewInventory(ctx, member); err != nil || got != want {
+			t.Fatalf("inventory for %s = %+v, %v; want %+v", member.UserID, got, err, want)
+		}
+	}
+	check(service, alice, core.Inventory{Normal: 1, Rare: 2, Epic: 3})
+	check(service, bob, core.Inventory{})
+
+	previous, err := store.Load(ctx, alice)
+	if err != nil || previous.Aura != (core.Aura{Bad: 4, Good: 5}) || !previous.LastClaim.Equal(now.Add(-time.Hour)) {
+		t.Fatalf("migrated record = %+v, %v", previous, err)
+	}
+	next := previous
+	next.Inventory.Snowballs = 6
+	next.Inventory.Coal = 7
+	if saved, err := store.Save(ctx, app.GiftUpdate{Member: alice, Previous: previous, Next: next}); err != nil || !saved {
+		t.Fatalf("save inventory = %v, %v", saved, err)
+	}
+	if _, err := service.SendGift(ctx, alice, app.GiftRecipient{Member: bob}, core.RareGift, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	service = app.NewService(openGiftPlayers(t, path), func() time.Time { return now }, func(int) int { return 0 })
+	check(service, alice, core.Inventory{Normal: 1, Rare: 1, Epic: 3, Snowballs: 6, Coal: 7})
+	check(service, bob, core.Inventory{Rare: 1})
 }

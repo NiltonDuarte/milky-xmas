@@ -40,7 +40,7 @@ func checkSendRegistration(t *testing.T, command discordgo.ApplicationCommand) {
 	}
 }
 
-func TestGiftTransferAndAuraInteractions(t *testing.T) {
+func TestGiftTransferAuraAndSocksInteractions(t *testing.T) {
 	store := &giftfixture.Store{}
 	b := bot{guildID: "200", service: app.NewService(store, time.Now, func(n int) int {
 		if n == core.GiftRarityRolls {
@@ -64,8 +64,8 @@ func TestGiftTransferAndAuraInteractions(t *testing.T) {
 				}},
 			},
 			Resolved: &discordgo.ApplicationCommandInteractionDataResolved{
-				Users:   map[string]*discordgo.User{id: {ID: id, Bot: isBot}},
-				Members: map[string]*discordgo.Member{id: {}},
+				Users:   map[string]*discordgo.User{id: {ID: id, Username: "bob_account", Bot: isBot}},
+				Members: map[string]*discordgo.Member{id: {Nick: "Bob"}},
 			},
 		}
 	}
@@ -75,17 +75,22 @@ func TestGiftTransferAndAuraInteractions(t *testing.T) {
 			{Type: discordgo.ApplicationCommandOptionSubCommand, Name: "check"},
 		},
 	}
+	socks := discordgo.ApplicationCommandInteractionData{CommandType: discordgo.ChatApplicationCommand, Name: "socks"}
 	for _, step := range []struct {
 		user    string
 		data    discordgo.ApplicationCommandInteractionData
 		content string
 	}{
-		{alice.UserID, aura, "Bad deeds 0%  |  Good deeds 0%"},
+		{alice.UserID, aura, "😈 Bad 0%  |  😇 Good 0%"},
+		{alice.UserID, socks, "🧦 Your inventory\nNormal gifts: 0\nRare gifts: 2\nEpic gifts: 0\nSnowballs: 0\nCoal: 0"},
 		{alice.UserID, send("600", true, 1), "Choose another player in this server."},
 		{alice.UserID, send(bob.UserID, false, 1.5), "Enter a positive whole number of gifts."},
-		{alice.UserID, send(bob.UserID, false, 2), "Sent 2 rare gifts. Good deeds 20%."},
-		{alice.UserID, aura, "Bad deeds 0%  |  Good deeds 20%"},
-		{bob.UserID, aura, "Bad deeds 0%  |  Good deeds 0%"},
+		{alice.UserID, send(bob.UserID, false, 1), "Sent 1 🎁rare gift to Bob. Your 😇 good deeds is 10% more high."},
+		{alice.UserID, send(bob.UserID, false, 1), "Sent 1 🎁rare gift to Bob. Your 😇 good deeds is 10% more high."},
+		{alice.UserID, aura, "😈 Bad 0%  |  😇 Good 20%"},
+		{bob.UserID, aura, "😈 Bad 0%  |  😇 Good 0%"},
+		{alice.UserID, socks, "🧦 Your inventory\nNormal gifts: 0\nRare gifts: 0\nEpic gifts: 0\nSnowballs: 0\nCoal: 0"},
+		{bob.UserID, socks, "🧦 Your inventory\nNormal gifts: 0\nRare gifts: 2\nEpic gifts: 0\nSnowballs: 0\nCoal: 0"},
 	} {
 		session, err := discordgo.New("Bot fixture")
 		if err != nil {

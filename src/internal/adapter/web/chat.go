@@ -39,6 +39,13 @@ func newHandler(service app.Service, grinch grinchFixture) http.Handler {
 		if len(fields) > 0 {
 			args := fields[1:]
 			switch fields[0] {
+			case "/" + app.SocksCommand:
+				if len(args) != 0 {
+					http.Error(w, "Use /socks.", http.StatusBadRequest)
+					return
+				}
+				replyInventory(w, r, service)
+				return
 			case "/grinch":
 				grinch.reply(w, r, args)
 				return
@@ -65,7 +72,7 @@ func newHandler(service app.Service, grinch grinchFixture) http.Handler {
 		}
 		reply, err := service.Reply(command)
 		if err != nil {
-			http.Error(w, "Unknown command. Try /"+app.HelloCommand+", /daily claim, /advent view, /grinch view, /send gift, or /aura check.", http.StatusBadRequest)
+			http.Error(w, "Unknown command. Try /"+app.HelloCommand+", /daily claim, /advent view, /grinch view, /send gift, /aura check, or /socks.", http.StatusBadRequest)
 			return
 		}
 
@@ -83,4 +90,15 @@ func replyDailyClaim(w http.ResponseWriter, r *http.Request, service app.Service
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	io.WriteString(w, gifttext.Claim(claim))
+}
+
+func replyInventory(w http.ResponseWriter, r *http.Request, service app.Service) {
+	member := app.Member{ServerID: fixtureServerID, UserID: fixtureUserID}
+	items, err := service.ViewInventory(r.Context(), member)
+	if err != nil {
+		http.Error(w, gifttext.InventoryUnavailable, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	io.WriteString(w, gifttext.Inventory(items))
 }

@@ -6,8 +6,8 @@ Players can collect Christmas gifts but cannot give them to each other. Gift tra
 
 ## What Changes
 
-- Add `/send gift` with recipient, rarity, and quantity.
-- Add `/aura check` with Bad deeds on the left and Good deeds on the right.
+- Add `/send gift` with recipient, rarity, and quantity, and name the recipient and aura gain in the confirmation.
+- Add `/aura check` with 😈 Bad on the left and 😇 Good on the right.
 - Give daily claim rewards a rarity and preserve existing gifts as normal gifts.
 
 ## Capabilities

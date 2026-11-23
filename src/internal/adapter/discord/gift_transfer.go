@@ -2,6 +2,7 @@ package discord
 
 import (
 	"context"
+	"strings"
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/gifttext"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
@@ -55,8 +56,8 @@ func (b bot) handleSendGift(session *discordgo.Session, interaction *discordgo.I
 		return
 	}
 	respondPrivately(session, interaction, func(ctx context.Context, member app.Member) string {
-		recipient, rarity, quantity := giftOptions(member.ServerID, sub.Options, data.Resolved)
-		aura, err := b.service.SendGift(ctx, member, recipient, rarity, quantity)
+		recipient, name, rarity, quantity := giftOptions(member.ServerID, sub.Options, data.Resolved)
+		goodIncrease, err := b.service.SendGift(ctx, member, recipient, rarity, quantity)
 		if err != nil {
 			if reply := gifttext.TransferRejection(err); reply != "" {
 				return reply
@@ -64,7 +65,7 @@ func (b bot) handleSendGift(session *discordgo.Session, interaction *discordgo.I
 			logInteractionError(interaction.ID, "send gift", err)
 			return "Could not send your gifts. Try again."
 		}
-		return gifttext.Transfer(rarity, quantity, aura)
+		return gifttext.Transfer(rarity, quantity, name, goodIncrease)
 	})
 }
 
@@ -90,8 +91,9 @@ func giftSubcommand(options []*discordgo.ApplicationCommandInteractionDataOption
 	return options[0]
 }
 
-func giftOptions(serverID string, options []*discordgo.ApplicationCommandInteractionDataOption, resolved *discordgo.ApplicationCommandInteractionDataResolved) (app.GiftRecipient, core.GiftRarity, int64) {
+func giftOptions(serverID string, options []*discordgo.ApplicationCommandInteractionDataOption, resolved *discordgo.ApplicationCommandInteractionDataResolved) (app.GiftRecipient, string, core.GiftRarity, int64) {
 	var recipient app.GiftRecipient
+	var name string
 	var rarity core.GiftRarity
 	var quantity int64
 	for _, option := range options {
@@ -106,6 +108,7 @@ func giftOptions(serverID string, options []*discordgo.ApplicationCommandInterac
 					Member: app.Member{ServerID: serverID, UserID: id},
 					IsBot:  resolved.Users[id].Bot,
 				}
+				name = giftRecipientName(resolved.Members[id], resolved.Users[id])
 			}
 		case option.Name == "rarity" && option.Type == discordgo.ApplicationCommandOptionString:
 			value, _ := option.Value.(string)
@@ -118,5 +121,21 @@ func giftOptions(serverID string, options []*discordgo.ApplicationCommandInterac
 			}
 		}
 	}
-	return recipient, rarity, quantity
+	return recipient, name, rarity, quantity
+}
+
+var escapeRecipientName = strings.NewReplacer(
+	"\\", "\\\\", "*", "\\*", "_", "\\_", "~", "\\~", "`", "\\`", "|", "\\|",
+	"<", "\\<", "[", "\\[", "]", "\\]", "\r", " ", "\n", " ",
+)
+
+func giftRecipientName(member *discordgo.Member, user *discordgo.User) string {
+	name := member.Nick
+	if name == "" {
+		name = user.DisplayName()
+	}
+	if name == "" {
+		name = user.ID
+	}
+	return escapeRecipientName.Replace(name)
 }

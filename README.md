@@ -58,6 +58,14 @@ In the local chat, run `/aura check`, then `/daily claim`. Use the rarity shown 
 
 In the Discord test server, use two human accounts with application command permissions. With the first account, run `/aura check`, claim gifts, then select the second account, the awarded rarity, and quantity 1 under `/send gift`. Check that both command results are private. The first account's Good deeds increases and the second account's aura stays neutral. With the second account, send the same gift back to verify it was credited. Try selecting yourself or a bot to check that the transfer is rejected. Restart the bot with the same SQLite database and confirm that both accounts keep their aura and current balances.
 
+## Socks inventory
+
+Run `/socks` to see your normal, rare, and epic gifts, Snowballs, and Coal, including items with zero balance. Snowballs and Coal start at zero. Advent gifts appear in the Advent calendar.
+
+In a fresh local chat, run `/socks` to check all five balances are zero. Run `/daily claim`, then `/socks` and check the quantity for the awarded rarity. Send one gift to `friend` and use `/socks` to check that balance decreased by one.
+
+In the Discord test server, invoke `/socks` and check that only your account can see the reply. Send a gift to a second account and confirm each account sees its updated balance when it runs `/socks`.
+
 ## Advent calendar
 
 Use `/advent view` to see the 24 doors and your Advent gift total. Use `/advent open 1` to open door 1 in the local chat. In Discord, select the `open` subcommand and enter the door number in the `day` field.

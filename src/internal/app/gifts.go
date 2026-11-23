@@ -54,7 +54,7 @@ func (service Service) ClaimGift(ctx context.Context, member Member) (GiftClaim,
 			return GiftClaim{}, err
 		}
 		if !collected {
-			return GiftClaim{Total: record.Inventory.Total(), NextClaim: next, Remaining: next.Sub(now)}, nil
+			return GiftClaim{Total: record.Inventory.GiftTotal(), NextClaim: next, Remaining: next.Sub(now)}, nil
 		}
 		saved, err := service.gifts.Save(ctx, GiftUpdate{Member: member, Previous: record, Next: updated})
 		if err != nil {
@@ -65,7 +65,7 @@ func (service Service) ClaimGift(ctx context.Context, member Member) (GiftClaim,
 				Collected: true,
 				Rarity:    rarity,
 				Amount:    int64(roll) + 1,
-				Total:     updated.Inventory.Total(),
+				Total:     updated.Inventory.GiftTotal(),
 				NextClaim: next,
 			}, nil
 		}

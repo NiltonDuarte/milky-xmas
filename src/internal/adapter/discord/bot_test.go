@@ -30,7 +30,7 @@ func TestRegisterCommands(t *testing.T) {
 			}
 			commands = append(commands, command.Name)
 			if command.Type != discordgo.ChatApplicationCommand ||
-				(command.Name == "hello" && len(command.Options) != 0) ||
+				((command.Name == "hello" || command.Name == "socks") && len(command.Options) != 0) ||
 				(command.Name == "daily" && (len(command.Options) != 1 || command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand || command.Options[0].Name != "claim")) {
 				t.Errorf("unexpected registered command: %+v", command)
 			}
@@ -73,7 +73,7 @@ func TestRegisterCommands(t *testing.T) {
 	if err := (bot{guildID: "200"}).registerCommands(t.Context(), session); err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(commands, ","); got != "hello,daily,send,aura,advent,grinch" {
+	if got := strings.Join(commands, ","); got != "hello,daily,send,aura,socks,advent,grinch" {
 		t.Errorf("registered commands = %q", got)
 	}
 	want := "GET /api/v9/users/@me" + strings.Repeat("\nPOST /api/v9/applications/100/guilds/200/commands", len(commands))

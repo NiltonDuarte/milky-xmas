@@ -83,6 +83,22 @@ func initSchema(ctx context.Context, db *sql.DB) error {
 			return err
 		}
 	}
+	var hasItems bool
+	err = tx.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM pragma_table_info('gift_players') WHERE name = 'snowballs')
+	`).Scan(&hasItems)
+	if err != nil {
+		return err
+	}
+	if !hasItems {
+		_, err = tx.ExecContext(ctx, `
+			ALTER TABLE gift_players ADD COLUMN snowballs INTEGER NOT NULL DEFAULT 0 CHECK (snowballs >= 0);
+			ALTER TABLE gift_players ADD COLUMN coal INTEGER NOT NULL DEFAULT 0 CHECK (coal >= 0);
+		`)
+		if err != nil {
+			return err
+		}
+	}
 	return tx.Commit()
 }
 

@@ -9,15 +9,15 @@ import (
 )
 
 func Aura(aura core.Aura) string {
-	return fmt.Sprintf("Bad deeds %d%%  |  Good deeds %d%%", aura.Bad, aura.Good)
+	return fmt.Sprintf("😈 Bad %d%%  |  😇 Good %d%%", aura.Bad, aura.Good)
 }
 
-func Transfer(rarity core.GiftRarity, quantity int64, aura core.Aura) string {
+func Transfer(rarity core.GiftRarity, quantity int64, recipient string, goodIncrease int) string {
 	gift := "gifts"
 	if quantity == 1 {
 		gift = "gift"
 	}
-	return fmt.Sprintf("Sent %d %s %s. Good deeds %d%%.", quantity, rarity, gift, aura.Good)
+	return fmt.Sprintf("Sent %d 🎁%s %s to %s. Your 😇 good deeds is %d%% more high.", quantity, rarity, gift, recipient, goodIncrease)
 }
 
 func TransferRejection(err error) string {

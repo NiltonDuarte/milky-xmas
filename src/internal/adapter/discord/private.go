@@ -31,7 +31,8 @@ func respondPrivately(session *discordgo.Session, interaction *discordgo.Interac
 	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if _, err := session.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-		Content: &content,
+		Content:         &content,
+		AllowedMentions: &discordgo.MessageAllowedMentions{},
 	}, discordgo.WithContext(ctx)); err != nil {
 		logInteractionError(interaction.ID, "show command result", err)
 	}

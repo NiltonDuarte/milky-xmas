@@ -19,7 +19,7 @@ func TestCollect(t *testing.T) {
 		t.Fatalf("early claim after giving everything away = %+v, %v, %v, %v", refused, retry, collected, err)
 	}
 	second, retry, collected, err := record.Collect(next, 9, EpicGift)
-	if err != nil || !collected || second.Inventory != (GiftInventory{Normal: 1, Epic: 10}) || second.LastClaim != next || retry != next.Add(24*time.Hour) {
+	if err != nil || !collected || second.Inventory != (Inventory{Normal: 1, Epic: 10}) || second.LastClaim != next || retry != next.Add(24*time.Hour) {
 		t.Fatalf("claim at boundary = %+v, %v, %v, %v", second, retry, collected, err)
 	}
 }
@@ -35,17 +35,17 @@ func TestDailyGiftRarity(t *testing.T) {
 }
 
 func TestTransferGift(t *testing.T) {
-	sender := GiftRecord{Inventory: GiftInventory{Normal: 2, Rare: 2, Epic: 2}, Aura: Aura{Bad: 15}}
-	recipient := GiftRecord{Inventory: GiftInventory{Normal: 1}, Aura: Aura{Good: 30}}
+	sender := GiftRecord{Inventory: Inventory{Normal: 2, Rare: 2, Epic: 2}, Aura: Aura{Bad: 15}}
+	recipient := GiftRecord{Inventory: Inventory{Normal: 1}, Aura: Aura{Good: 30}}
 	for _, tt := range []struct {
 		rarity GiftRarity
-		from   GiftInventory
-		to     GiftInventory
+		from   Inventory
+		to     Inventory
 		good   int
 	}{
-		{NormalGift, GiftInventory{Rare: 2, Epic: 2}, GiftInventory{Normal: 3}, 10},
-		{RareGift, GiftInventory{Normal: 2, Epic: 2}, GiftInventory{Normal: 1, Rare: 2}, 20},
-		{EpicGift, GiftInventory{Normal: 2, Rare: 2}, GiftInventory{Normal: 1, Epic: 2}, 60},
+		{NormalGift, Inventory{Rare: 2, Epic: 2}, Inventory{Normal: 3}, 10},
+		{RareGift, Inventory{Normal: 2, Epic: 2}, Inventory{Normal: 1, Rare: 2}, 20},
+		{EpicGift, Inventory{Normal: 2, Rare: 2}, Inventory{Normal: 1, Epic: 2}, 60},
 	} {
 		t.Run(string(tt.rarity), func(t *testing.T) {
 			from, to, err := TransferGift(sender, recipient, tt.rarity, 2)
@@ -59,7 +59,7 @@ func TestTransferGift(t *testing.T) {
 	if err != nil || from.Aura != (Aura{Bad: 15, Good: 100}) {
 		t.Fatalf("capped transfer = %+v, %v", from, err)
 	}
-	recipients := GiftRecord{Inventory: GiftInventory{Normal: math.MaxInt64}}
+	recipients := GiftRecord{Inventory: Inventory{Normal: math.MaxInt64}}
 	for _, tt := range []struct {
 		rarity   GiftRarity
 		quantity int64

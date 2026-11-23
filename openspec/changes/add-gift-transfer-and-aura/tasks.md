@@ -10,6 +10,8 @@
 - [x] 2.1 Register and handle both Discord commands and verify options, private replies, and bot rejection with simulated interactions.
 - [x] 2.2 Route both commands through the browser chat. Verify the fixture flow using HTTP and document reproducible acceptance for both interfaces.
 
+- [x] 2.3 Verify the revised aura labels, named transfer confirmation, and gain at the aura cap through the adapters.
+
 ## 3. Integration
 
 - [x] 3.1 Run formatting, vet, race tests, and strict OpenSpec validation. Review the changed command paths and record observed and pending acceptance.
@@ -21,3 +23,9 @@
 - Simulated Discord interactions verified the registered options, bot rejection, a private deferred acknowledgement followed by a private result, and independent aura for the sender and recipient.
 - Live Discord acceptance remains pending because this environment has no test server credentials. The README lists the two-account steps for checking command permissions, presentation, and sending a received gift back.
 - Formatting, vet, strict OpenSpec validation, and the full race suite passed. The race suite used a temporary Zig C compiler with CGO enabled.
+
+### Revised messages
+
+- Loopback HTTP returned `😈 Bad 0%  |  😇 Good 0%` for a new player. Sending one normal gift to Bob named the recipient and reported a 5 percentage point gain. The next aura check showed 5% Good.
+- A simulated Discord interaction verified the server nickname in the confirmation. The web adapter test verified that an epic transfer from 90% reports a 10 percentage point gain at the cap. Live Discord verification of the revised copy is pending.
+- Formatting, vet, the full race suite, and strict OpenSpec validation passed for the revised messages.

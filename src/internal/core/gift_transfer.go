@@ -11,7 +11,7 @@ func TransferGift(sender, recipient GiftRecord, rarity GiftRarity, quantity int6
 		return sender, recipient, ErrInsufficientGift
 	}
 
-	if quantity > recipient.Inventory.remainingCapacity() {
+	if quantity > recipient.Inventory.remainingGiftCapacity() {
 		return sender, recipient, ErrGiftCapacity
 	}
 	*from -= quantity

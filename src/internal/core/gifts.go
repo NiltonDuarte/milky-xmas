@@ -31,21 +31,23 @@ func DailyGiftRarity(roll int) GiftRarity {
 	}
 }
 
-type GiftInventory struct {
-	Normal int64
-	Rare   int64
-	Epic   int64
+type Inventory struct {
+	Normal    int64
+	Rare      int64
+	Epic      int64
+	Snowballs int64
+	Coal      int64
 }
 
-func (inventory GiftInventory) Total() int64 {
+func (inventory Inventory) GiftTotal() int64 {
 	return inventory.Normal + inventory.Rare + inventory.Epic
 }
 
-func (inventory GiftInventory) remainingCapacity() int64 {
-	return math.MaxInt64 - inventory.Total()
+func (inventory Inventory) remainingGiftCapacity() int64 {
+	return math.MaxInt64 - inventory.GiftTotal()
 }
 
-func (inventory *GiftInventory) balance(rarity GiftRarity) *int64 {
+func (inventory *Inventory) balance(rarity GiftRarity) *int64 {
 	switch rarity {
 	case NormalGift:
 		return &inventory.Normal
@@ -64,7 +66,7 @@ type Aura struct {
 }
 
 type GiftRecord struct {
-	Inventory GiftInventory
+	Inventory Inventory
 	LastClaim time.Time
 	Aura      Aura
 }
@@ -89,7 +91,7 @@ func (record GiftRecord) Collect(now time.Time, roll int, rarity GiftRarity) (Gi
 		return record, time.Time{}, false, ErrGiftRarity
 	}
 	amount := int64(roll) + 1
-	if amount > record.Inventory.remainingCapacity() {
+	if amount > record.Inventory.remainingGiftCapacity() {
 		return record, time.Time{}, false, ErrGiftCapacity
 	}
 	*balance += amount

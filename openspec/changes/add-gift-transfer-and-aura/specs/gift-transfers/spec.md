@@ -36,13 +36,13 @@ The transferable inventory SHALL track normal, rare, and epic gifts per player a
 
 ### Requirement: Send a gift
 
-Both interfaces SHALL support `/send gift` with a different recipient in the same server, one of the three rarities, and a positive integer quantity. A successful send SHALL debit and credit the same rarity and quantity and increase the sender's Good deeds by 5, 10, or 30 percentage points per normal, rare, or epic gift, capped at 100%. The reply SHALL confirm the transfer.
+Both interfaces SHALL support `/send gift` with a different recipient in the same server, one of the three rarities, and a positive integer quantity. A successful send SHALL debit and credit the same rarity and quantity and increase the sender's Good deeds by 5, 10, or 30 percentage points per normal, rare, or epic gift, capped at 100%. The reply SHALL show the recipient and the actual Good deeds increase.
 
 #### Scenario: Transfer multiple gifts
 
 - **GIVEN** a player has at least two rare gifts and both players have neutral aura
 - **WHEN** the player sends two rare gifts to the other player
-- **THEN** two rare gifts move between their inventories and the sender sees a confirmation
+- **THEN** two rare gifts move between their inventories and the sender sees `Sent 2 🎁rare gifts to Bob. Your 😇 good deeds is 20% more high.` for a recipient named Bob
 - **AND** the sender has 20% Good deeds and the recipient remains neutral
 
 #### Scenario: Reject an invalid transfer
@@ -65,19 +65,19 @@ Both interfaces SHALL support `/send gift` with a different recipient in the sam
 
 ### Requirement: Personal aura
 
-Both interfaces SHALL support `/aura check` and show the player's Bad deeds percentage on the left and Good deeds percentage on the right. Both percentages SHALL start at 0%. A successful gift SHALL affect only the sender's Good deeds. Discord transfers and aura SHALL persist across restarts.
+Both interfaces SHALL support `/aura check` and show `😈 Bad <bad>%  |  😇 Good <good>%`. Both percentages SHALL start at 0%. A successful gift SHALL affect only the sender's Good deeds. Discord transfers and aura SHALL persist across restarts.
 
 #### Scenario: Check neutral aura
 
 - **GIVEN** a player has no recorded deeds
 - **WHEN** they check their aura
-- **THEN** they see Bad deeds 0% on the left and Good deeds 0% on the right
+- **THEN** they see `😈 Bad 0%  |  😇 Good 0%`
 
 #### Scenario: Aura reaches its limit
 
 - **GIVEN** a player has 90% Good deeds and owns an epic gift
 - **WHEN** they send that gift and check their aura
-- **THEN** they see 100% Good deeds and their Bad deeds value stays the same
+- **THEN** the transfer confirmation reports a 10 percentage point increase and the aura check shows 100% Good
 
 #### Scenario: Check aura after a restart
 

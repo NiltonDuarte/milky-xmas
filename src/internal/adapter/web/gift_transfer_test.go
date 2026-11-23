@@ -17,6 +17,13 @@ import (
 func TestGiftTransferAndAuraInChat(t *testing.T) {
 	store := &giftfixture.Store{}
 	now := time.Date(2026, 12, 1, 18, 0, 0, 0, time.UTC)
+	seed := app.GiftUpdate{
+		Member: app.Member{ServerID: "local", UserID: "fixture"},
+		Next:   core.GiftRecord{Aura: core.Aura{Good: 90}},
+	}
+	if saved, err := store.Save(t.Context(), seed); err != nil || !saved {
+		t.Fatalf("seed aura = %v, %v", saved, err)
+	}
 	handler := web.NewHandler(app.NewService(store, func() time.Time { return now }, func(n int) int {
 		if n == core.GiftRarityRolls {
 			return 95
@@ -28,16 +35,16 @@ func TestGiftTransferAndAuraInChat(t *testing.T) {
 		status  int
 		reply   string
 	}{
-		{"/aura check", http.StatusOK, "Bad deeds 0%  |  Good deeds 0%"},
+		{"/aura check", http.StatusOK, "😈 Bad 0%  |  😇 Good 90%"},
 		{"/daily claim", http.StatusOK, "🎅🏻 Christmas won’t be Christmas without any presents. You collected 2 gifts 🎁.\nGift rarity · epic."},
 		{"/send gift friend normal 1", http.StatusBadRequest, "You don't have enough gifts of that rarity."},
 		{"/send gift fixture epic 1", http.StatusBadRequest, "Choose another player in this server."},
 		{"/send gift friend epic -1", http.StatusBadRequest, "Enter a positive whole number of gifts."},
 		{"/send gift friend epic 1.5", http.StatusBadRequest, "Enter a positive whole number of gifts."},
 		{"/send gift friend mystery 1", http.StatusBadRequest, "Choose a gift rarity: normal, rare, or epic."},
-		{"/send gift friend epic 2", http.StatusOK, "Sent 2 epic gifts. Good deeds 60%."},
+		{"/send gift friend epic 2", http.StatusOK, "Sent 2 🎁epic gifts to friend. Your 😇 good deeds is 10% more high."},
 		{"/send gift friend epic 1", http.StatusBadRequest, "You don't have enough gifts of that rarity."},
-		{"/aura check", http.StatusOK, "Bad deeds 0%  |  Good deeds 60%"},
+		{"/aura check", http.StatusOK, "😈 Bad 0%  |  😇 Good 100%"},
 		{"/daily claim", http.StatusOK, "🎅 you already got the gift for today, the next gift 🎁 is in 24 hours."},
 	} {
 		form := url.Values{"command": {step.command}}
