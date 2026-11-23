@@ -22,7 +22,7 @@ func Transfer(rarity core.GiftRarity, quantity int64, recipient string, goodIncr
 
 func TransferRejection(err error) string {
 	switch {
-	case errors.Is(err, app.ErrGiftRecipient):
+	case errors.Is(err, app.ErrInvalidRecipient):
 		return "Choose another player in this server."
 	case errors.Is(err, core.ErrGiftRarity):
 		return "Choose a gift rarity: normal, rare, or epic."

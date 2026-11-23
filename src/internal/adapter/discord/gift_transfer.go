@@ -51,7 +51,7 @@ func auraCommand() *discordgo.ApplicationCommand {
 }
 
 func (b bot) handleSendGift(session *discordgo.Session, interaction *discordgo.Interaction, data discordgo.ApplicationCommandInteractionData) {
-	sub := giftSubcommand(data.Options, "gift")
+	sub := commandSubcommand(data.Options, "gift")
 	if sub == nil {
 		return
 	}
@@ -70,7 +70,7 @@ func (b bot) handleSendGift(session *discordgo.Session, interaction *discordgo.I
 }
 
 func (b bot) handleAura(session *discordgo.Session, interaction *discordgo.Interaction, options []*discordgo.ApplicationCommandInteractionDataOption) {
-	sub := giftSubcommand(options, "check")
+	sub := commandSubcommand(options, "check")
 	if sub == nil || len(sub.Options) != 0 {
 		return
 	}
@@ -84,15 +84,15 @@ func (b bot) handleAura(session *discordgo.Session, interaction *discordgo.Inter
 	})
 }
 
-func giftSubcommand(options []*discordgo.ApplicationCommandInteractionDataOption, name string) *discordgo.ApplicationCommandInteractionDataOption {
+func commandSubcommand(options []*discordgo.ApplicationCommandInteractionDataOption, name string) *discordgo.ApplicationCommandInteractionDataOption {
 	if len(options) != 1 || options[0] == nil || options[0].Name != name || options[0].Type != discordgo.ApplicationCommandOptionSubCommand {
 		return nil
 	}
 	return options[0]
 }
 
-func giftOptions(serverID string, options []*discordgo.ApplicationCommandInteractionDataOption, resolved *discordgo.ApplicationCommandInteractionDataResolved) (app.GiftRecipient, string, core.GiftRarity, int64) {
-	var recipient app.GiftRecipient
+func giftOptions(serverID string, options []*discordgo.ApplicationCommandInteractionDataOption, resolved *discordgo.ApplicationCommandInteractionDataResolved) (app.Recipient, string, core.GiftRarity, int64) {
+	var recipient app.Recipient
 	var name string
 	var rarity core.GiftRarity
 	var quantity int64
@@ -102,14 +102,7 @@ func giftOptions(serverID string, options []*discordgo.ApplicationCommandInterac
 		}
 		switch {
 		case option.Name == "recipient" && option.Type == discordgo.ApplicationCommandOptionUser:
-			id, _ := option.Value.(string)
-			if resolved != nil && resolved.Users[id] != nil && resolved.Members[id] != nil {
-				recipient = app.GiftRecipient{
-					Member: app.Member{ServerID: serverID, UserID: id},
-					IsBot:  resolved.Users[id].Bot,
-				}
-				name = giftRecipientName(resolved.Members[id], resolved.Users[id])
-			}
+			recipient, name = resolveRecipient(serverID, option, resolved)
 		case option.Name == "rarity" && option.Type == discordgo.ApplicationCommandOptionString:
 			value, _ := option.Value.(string)
 			rarity = core.GiftRarity(value)
@@ -124,12 +117,24 @@ func giftOptions(serverID string, options []*discordgo.ApplicationCommandInterac
 	return recipient, name, rarity, quantity
 }
 
-var escapeRecipientName = strings.NewReplacer(
+func resolveRecipient(serverID string, option *discordgo.ApplicationCommandInteractionDataOption, resolved *discordgo.ApplicationCommandInteractionDataResolved) (app.Recipient, string) {
+	if option == nil || option.Name != "recipient" || option.Type != discordgo.ApplicationCommandOptionUser || resolved == nil {
+		return app.Recipient{}, ""
+	}
+	id, _ := option.Value.(string)
+	user, member := resolved.Users[id], resolved.Members[id]
+	if id == "" || user == nil || member == nil {
+		return app.Recipient{}, ""
+	}
+	return app.Recipient{Member: app.Member{ServerID: serverID, UserID: id}, IsBot: user.Bot}, memberDisplayName(member, user)
+}
+
+var escapeDisplayName = strings.NewReplacer(
 	"\\", "\\\\", "*", "\\*", "_", "\\_", "~", "\\~", "`", "\\`", "|", "\\|",
 	"<", "\\<", "[", "\\[", "]", "\\]", "\r", " ", "\n", " ",
 )
 
-func giftRecipientName(member *discordgo.Member, user *discordgo.User) string {
+func memberDisplayName(member *discordgo.Member, user *discordgo.User) string {
 	name := member.Nick
 	if name == "" {
 		name = user.DisplayName()
@@ -137,5 +142,5 @@ func giftRecipientName(member *discordgo.Member, user *discordgo.User) string {
 	if name == "" {
 		name = user.ID
 	}
-	return escapeRecipientName.Replace(name)
+	return escapeDisplayName.Replace(name)
 }

@@ -57,6 +57,15 @@ func TestRegisterCommands(t *testing.T) {
 			switch command.Name {
 			case "send":
 				checkSendRegistration(t, command)
+			case "thrown":
+				if len(command.Options) != 1 || command.Options[0].Name != "snowball" ||
+					command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand || len(command.Options[0].Options) != 1 {
+					t.Fatalf("unexpected snowball subcommand: %+v", command)
+				}
+				recipient := command.Options[0].Options[0]
+				if recipient.Name != "recipient" || recipient.Type != discordgo.ApplicationCommandOptionUser || !recipient.Required {
+					t.Errorf("unexpected snowball recipient option: %+v", recipient)
+				}
 			case "aura":
 				if len(command.Options) != 1 || command.Options[0].Name != "check" ||
 					command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand || len(command.Options[0].Options) != 0 {
@@ -73,7 +82,7 @@ func TestRegisterCommands(t *testing.T) {
 	if err := (bot{guildID: "200"}).registerCommands(t.Context(), session); err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(commands, ","); got != "hello,daily,send,aura,socks,advent,grinch" {
+	if got := strings.Join(commands, ","); got != "hello,daily,send,aura,socks,advent,grinch,thrown" {
 		t.Errorf("registered commands = %q", got)
 	}
 	want := "GET /api/v9/users/@me" + strings.Repeat("\nPOST /api/v9/applications/100/guilds/200/commands", len(commands))

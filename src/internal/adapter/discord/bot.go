@@ -40,7 +40,7 @@ func Run(ctx context.Context, token, guildID string, service app.Service, grinch
 	if err := b.registerCommands(ctx, session); err != nil {
 		return err
 	}
-	log.Printf("Discord bot ready with /hello, /daily claim, /advent, /send gift, /aura check, and /socks in server %s", guildID)
+	log.Printf("Discord bot ready with /hello, /daily claim, /advent, /send gift, /aura check, /socks, and /thrown snowball in server %s", guildID)
 
 	if b.grinch != nil {
 		log.Printf("Grinch encounter enabled in channel %s", grinchChannel)
@@ -76,6 +76,7 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 		},
 		adventCommand(),
 		grinchCommand(),
+		thrownCommand(),
 	}
 	for _, command := range commands {
 		if _, err := session.ApplicationCommandCreate(user.ID, b.guildID, command, discordgo.WithContext(ctx)); err != nil {
@@ -102,6 +103,9 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 	}
 
 	switch data.Name {
+	case thrownCommandName:
+		b.handleThrownSnowball(session, event.Interaction, data)
+		return
 	case app.SocksCommand:
 		if len(data.Options) == 0 {
 			b.handleSocks(session, event.Interaction)

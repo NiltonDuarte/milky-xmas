@@ -39,6 +39,9 @@ func newHandler(service app.Service, grinch grinchFixture) http.Handler {
 		if len(fields) > 0 {
 			args := fields[1:]
 			switch fields[0] {
+			case "/thrown":
+				replyThrownSnowball(w, r, service, args)
+				return
 			case "/" + app.SocksCommand:
 				if len(args) != 0 {
 					http.Error(w, "Use /socks.", http.StatusBadRequest)

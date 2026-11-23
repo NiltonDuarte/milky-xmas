@@ -29,7 +29,7 @@ func TestGiftTransferAfterLegacyMigration(t *testing.T) {
 
 	store := openGiftPlayers(t, path)
 	service := app.NewService(store, func() time.Time { return now }, func(int) int { return 0 })
-	goodIncrease, err := service.SendGift(ctx, alice, app.GiftRecipient{Member: bob}, core.NormalGift, 2)
+	goodIncrease, err := service.SendGift(ctx, alice, app.Recipient{Member: bob}, core.NormalGift, 2)
 	if err != nil || goodIncrease != 10 {
 		t.Fatalf("send migrated gifts = %d, %v", goodIncrease, err)
 	}
@@ -87,7 +87,7 @@ func TestGiftTransfersCompeteForLastGift(t *testing.T) {
 	for i, target := range targets {
 		go func() {
 			<-start
-			_, err := newService(stores[i]).SendGift(ctx, sender, app.GiftRecipient{Member: target}, core.EpicGift, 1)
+			_, err := newService(stores[i]).SendGift(ctx, sender, app.Recipient{Member: target}, core.EpicGift, 1)
 			results <- err
 		}()
 	}
@@ -132,7 +132,7 @@ func TestGiftTransferRollsBackSenderWhenRecipientWriteFails(t *testing.T) {
 	if _, err := service.ClaimGift(ctx, from); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.SendGift(ctx, from, app.GiftRecipient{Member: to}, core.NormalGift, 1); err == nil {
+	if _, err := service.SendGift(ctx, from, app.Recipient{Member: to}, core.NormalGift, 1); err == nil {
 		t.Fatal("send succeeded despite storage failure")
 	}
 	sender, err := store.Load(ctx, from)
@@ -144,7 +144,7 @@ func TestGiftTransferRollsBackSenderWhenRecipientWriteFails(t *testing.T) {
 		t.Errorf("recipient after rollback = %+v, %v", recipient, err)
 	}
 	execGiftSQL(t, path, "DROP TRIGGER reject_recipient")
-	if goodIncrease, err := service.SendGift(ctx, from, app.GiftRecipient{Member: to}, core.NormalGift, 1); err != nil || goodIncrease != 5 {
+	if goodIncrease, err := service.SendGift(ctx, from, app.Recipient{Member: to}, core.NormalGift, 1); err != nil || goodIncrease != 5 {
 		t.Errorf("send after storage recovered = %d, %v", goodIncrease, err)
 	}
 }
@@ -207,7 +207,7 @@ func TestInventoryUpgradeAndTransfer(t *testing.T) {
 	if saved, err := store.Save(ctx, app.GiftUpdate{Member: alice, Previous: previous, Next: next}); err != nil || !saved {
 		t.Fatalf("save inventory = %v, %v", saved, err)
 	}
-	if _, err := service.SendGift(ctx, alice, app.GiftRecipient{Member: bob}, core.RareGift, 1); err != nil {
+	if _, err := service.SendGift(ctx, alice, app.Recipient{Member: bob}, core.RareGift, 1); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Close(); err != nil {

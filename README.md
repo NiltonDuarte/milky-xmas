@@ -66,6 +66,12 @@ In a fresh local chat, run `/socks` to check all five balances are zero. Run `/d
 
 In the Discord test server, invoke `/socks` and check that only your account can see the reply. Send a gift to a second account and confirm each account sees its updated balance when it runs `/socks`.
 
+## Throw a snowball
+
+In the Discord test server, use `/thrown snowball` and select another player. The sender sees a private confirmation and the bot mentions the recipient in the same channel with their new Snowball total. The recipient can run `/socks` to check the balance. If the bot cannot post in that channel, the inventory still increases and the sender sees a delivery warning.
+
+In the local chat, run `/thrown snowball friend` twice. The transcript shows the confirmation and simulated notification. The notification reports one Snowball on the first throw and two on the second.
+
 ## Advent calendar
 
 Use `/advent view` to see the 24 doors and your Advent gift total. Use `/advent open 1` to open door 1 in the local chat. In Discord, select the `open` subcommand and enter the door number in the `day` field.

@@ -21,7 +21,7 @@ func replyGiftTransfer(w http.ResponseWriter, r *http.Request, service app.Servi
 	}
 	rarity := core.GiftRarity(args[2])
 	sender := app.Member{ServerID: fixtureServerID, UserID: fixtureUserID}
-	recipient := app.GiftRecipient{Member: app.Member{ServerID: fixtureServerID, UserID: args[1]}}
+	recipient := app.Recipient{Member: app.Member{ServerID: fixtureServerID, UserID: args[1]}}
 	goodIncrease, err := service.SendGift(r.Context(), sender, recipient, rarity, quantity)
 	if err != nil {
 		if reply := gifttext.TransferRejection(err); reply != "" {

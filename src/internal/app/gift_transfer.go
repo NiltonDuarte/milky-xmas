@@ -8,20 +8,25 @@ import (
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
 
-var ErrGiftRecipient = errors.New("choose another player in this server")
+var ErrInvalidRecipient = errors.New("choose another player in this server")
 
-type GiftRecipient struct {
+type Recipient struct {
 	Member Member
 	IsBot  bool
 }
 
-// SendGift returns the Good deeds increase from the committed transfer.
-func (service Service) SendGift(ctx context.Context, sender Member, recipient GiftRecipient, rarity core.GiftRarity, quantity int64) (int, error) {
+func (recipient Recipient) canReceiveFrom(sender Member) bool {
 	target := recipient.Member
-	if sender.ServerID == "" || sender.UserID == "" || target.ServerID != sender.ServerID ||
-		target.UserID == "" || target == sender || recipient.IsBot {
-		return 0, ErrGiftRecipient
+	return sender.ServerID != "" && sender.UserID != "" && target.ServerID == sender.ServerID &&
+		target.UserID != "" && target != sender && !recipient.IsBot
+}
+
+// SendGift returns the Good deeds increase from the committed transfer.
+func (service Service) SendGift(ctx context.Context, sender Member, recipient Recipient, rarity core.GiftRarity, quantity int64) (int, error) {
+	if !recipient.canReceiveFrom(sender) {
+		return 0, ErrInvalidRecipient
 	}
+	target := recipient.Member
 
 	for ctx.Err() == nil {
 		from, err := service.gifts.Load(ctx, sender)
