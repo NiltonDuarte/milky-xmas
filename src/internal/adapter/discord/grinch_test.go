@@ -147,12 +147,28 @@ func TestGrinchButtonAcknowledgement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, reply, err := b.encounter.Play(t.Context(), fight.ID, fight.MessageID, core.GrinchMove{
-		Phase: core.GrinchLobby, Member: "50", RequestID: "join", At: now,
-	})
-	if err != nil || reply != "You joined the Grinch fight!" {
-		t.Fatalf("join = %q, %v", reply, err)
+	for index, want := range []string{"✅ You joined the Grinch fight!", "✅ You already joined this fight."} {
+		s.Client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
+			var response discordgo.InteractionResponse
+			if err := json.NewDecoder(r.Body).Decode(&response); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.HasSuffix(r.URL.Path, "/callback") || response.Type != discordgo.InteractionResponseChannelMessageWithSource ||
+				response.Data == nil || response.Data.Flags != discordgo.MessageFlagsEphemeral || !strings.HasPrefix(response.Data.Content, want) {
+				t.Errorf("expected private confirmation %q, got %+v", want, response)
+			}
+			return fakeResponse(http.StatusNoContent, ""), nil
+		})
+		eventID := fmt.Sprint(((now.UnixMilli() - 1420070400000) << 22) + int64(index))
+		b.button(s, &discordgo.Interaction{
+			ID: eventID, ChannelID: "400", Message: &discordgo.Message{ID: "999"},
+			Member: &discordgo.Member{User: &discordgo.User{ID: "50"}},
+			Data:   discordgo.MessageComponentInteractionData{CustomID: "grinch:" + fight.ID + ":lobby:0"},
+		})
 	}
+	s.Client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
+		return fakeResponse(http.StatusOK, `{"id":"999"}`), nil
+	})
 	now = now.Add(core.GrinchJoinDuration)
 	if _, err := b.encounter.Sync(t.Context(), display); err != nil {
 		t.Fatal(err)
@@ -180,5 +196,30 @@ func TestGrinchButtonAcknowledgement(t *testing.T) {
 	state, err := b.encounter.Sync(t.Context(), display)
 	if err != nil || state.Health() != 99 {
 		t.Fatalf("health after click: %v, %v", state.Health(), err)
+	}
+}
+
+func TestGrinchAttackBoardEmojis(t *testing.T) {
+	_, rows := grinchMessage(core.Grinch{Phase: core.GrinchAttack, Board: 1})
+	buttons := rows[0].(discordgo.ActionsRow).Components
+	ice, base := buttons[0].(discordgo.Button), buttons[1].(discordgo.Button)
+	if ice.Emoji == nil || ice.Emoji.Name != "🧊" || base.Emoji == nil || base.Emoji.Name != "☃️" {
+		t.Fatalf("invalid attack buttons: %+v %+v", ice, base)
+	}
+}
+
+func TestGrinchLeaderboardRendering(t *testing.T) {
+	scores := []core.GrinchScore{{Member: "123", Points: 12.5}, {Member: "456"}}
+	content, extra := grinchLeaderboards("The Grinch escaped!", scores, []core.GrinchScore{{Member: "123", Points: 4}})
+	if extra != "" || !strings.Contains(content, "1. <@123> — 12.50 pts\n2. <@456> — 0.00 pts") {
+		t.Fatalf("unexpected leaderboard: %q, %q", content, extra)
+	}
+	for i := range 100 {
+		scores = append(scores, core.GrinchScore{Member: fmt.Sprintf("%018d", i+100), Points: 1})
+	}
+	content, extra = grinchLeaderboards("The Grinch escaped!", scores, []core.GrinchScore{{Member: "123", Points: 4}})
+	if len(content) > 2000 || !strings.Contains(content, "Full standings are attached.") ||
+		!strings.Contains(extra, "102. Discord user 000000000000000199 — 1.00 pts") {
+		t.Fatalf("unexpected leaderboard overflow: %d bytes, %d-byte attachment", len(content), len(extra))
 	}
 }

@@ -45,6 +45,8 @@ func cloneGrinch(state core.Grinch) core.Grinch {
 	state.Joined = maps.Clone(state.Joined)
 	state.Participants = maps.Clone(state.Participants)
 	state.PlayerDamage = maps.Clone(state.PlayerDamage)
+	state.DamageDealt = maps.Clone(state.DamageDealt)
+	state.Gifts = maps.Clone(state.Gifts)
 	state.Accepted = maps.Clone(state.Accepted)
 	return state
 }

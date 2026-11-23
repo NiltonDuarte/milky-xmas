@@ -67,7 +67,7 @@ func (fixture grinchFixture) reply(w http.ResponseWriter, r *http.Request, args 
 			return
 		}
 		state, result, err = fixture.encounter.Play(ctx, state.ID, state.MessageID, core.GrinchMove{
-			Phase: state.Phase, Slot: slot - 1, At: now, Member: "fixture",
+			Phase: state.Phase, Slot: slot - 1, DefenseRound: state.DefenseRound, FinalRound: state.FinalRound, At: now, Member: "fixture",
 			RequestID: strconv.FormatUint(fixture.sequence.Add(1), 10),
 		})
 	default:
@@ -94,12 +94,22 @@ func fixtureSummary(state core.Grinch) string {
 	switch state.Phase {
 	case core.GrinchLobby:
 		fmt.Fprintf(&message, "\n🎅 %d joined · /grinch join", len(state.Joined))
-	case core.GrinchSnowballs, core.GrinchFinalAttack:
+	case core.GrinchSnowballs:
 		fmt.Fprint(&message, "\n/grinch hit 1")
+	case core.GrinchFinalAttack:
+		fmt.Fprintln(&message)
+		for slot := range 4 {
+			emoji := "⚔️"
+			if state.FinalBoard&(1<<slot) != 0 {
+				emoji = "🎁"
+			}
+			fmt.Fprintf(&message, "%d %s  ", slot+1, emoji)
+		}
+		fmt.Fprint(&message, "\n/grinch hit <tile>")
 	case core.GrinchDefense, core.GrinchAttack:
 		on, off := "🎄", "❄️"
 		if state.Phase == core.GrinchAttack {
-			on, off = "🧊", "🫯"
+			on, off = "🧊", "☃️"
 		}
 		for slot := range 8 {
 			if slot%4 == 0 {
@@ -112,6 +122,23 @@ func fixtureSummary(state core.Grinch) string {
 			fmt.Fprintf(&message, "%d %s  ", slot+1, emoji)
 		}
 		fmt.Fprint(&message, "\n/grinch hit <tile>")
+	}
+	if state.EndedAt.IsZero() && state.Phase != core.GrinchLobby && state.Joined != nil {
+		fmt.Fprintf(&message, "\n🎅 %d joined · /grinch join", len(state.Joined))
+	}
+	if !state.EndedAt.IsZero() && state.Phase != core.GrinchCancelled {
+		if scores := state.Leaderboard(); len(scores) > 0 {
+			fmt.Fprint(&message, "\n\nDamage leaderboard")
+			for index, score := range scores {
+				fmt.Fprintf(&message, "\n%d. %s — %.2f pts", index+1, score.Member, score.Points)
+			}
+		}
+		if scores := state.GiftLeaderboard(); len(scores) > 0 {
+			fmt.Fprint(&message, "\n\nGift leaderboard")
+			for index, score := range scores {
+				fmt.Fprintf(&message, "\n%d. %s — %.0f pts", index+1, score.Member, score.Points)
+			}
+		}
 	}
 	return message.String()
 }

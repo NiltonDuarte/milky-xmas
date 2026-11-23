@@ -14,6 +14,14 @@
 
 - [x] 2.4 Add the 🎅 registration phase in Discord and equivalent local chat commands. Test repeated joins, the deadline, an empty roster, and rejection of unregistered attacks.
 
+- [x] 2.5 Display a final damage leaderboard. Verify ordering, zero-damage players, clipped attacks, duplicate protection, and exact defense damage.
+
+- [x] 2.6 Randomize the final attack and gift row and show both rankings. Test gift rolls, final attack scoring, row rerolls, and stale button rejection.
+
+- [x] 2.7 Start combat at three distinct joins and keep registration open through all active phases. Verify the early start, late-entry attacks, unchanged defense damage after a late join, and rejection after the fight.
+
+- [x] 2.8 Reroll the defense board after each accepted choice and reject stale clicks. Verify safe and unsafe choices, a forced board change, and concurrent clicks on the same revision.
+
 ## 3. Verification
 
 - [x] 3.1 Run Go formatting, vet, race tests, and strict OpenSpec validation. Record local and Discord acceptance evidence.
@@ -27,3 +35,5 @@
 - Registration update passed vet, race tests, and strict OpenSpec validation. The live local chat confirmed a single registration after repeated joins and accepted a snowball after the countdown. The Discord bot restarted in the configured channel. Clicking 🎅 on a real Discord announcement remains to be verified.
 - The roster-based defense update passed vet, race tests, and strict validation. Core tests use 3, 6, and 7 registered members with only one snowball attacker and verify that all registered members count.
 - The countdown update passed core and HTTP tests. A single registered player can advance after more than one minute in phase one, and the fight expires 60 seconds after reaching 75 HP.
+- The one-minute registration update passed core and HTTP tests for joining before the cutoff and entering combat at 60 seconds.
+- Leaderboard tests verified actual damage, clipped hits, repeated request protection, zero-damage entries, fractional defense, and SQLite restart persistence. Discord rendering and local HTTP victory were tested.

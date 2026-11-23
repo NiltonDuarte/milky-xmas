@@ -115,12 +115,19 @@ func (b *grinchBot) button(s *discordgo.Session, i *discordgo.Interaction) {
 		return
 	}
 	parts := strings.Split(data.CustomID, ":")
-	if len(parts) != 4 || parts[0] != "grinch" {
+	if (len(parts) != 4 && len(parts) != 5) || parts[0] != "grinch" {
 		return
 	}
 	slot, err := strconv.Atoi(parts[3])
 	if err != nil {
 		return
+	}
+	var round int
+	if len(parts) == 5 {
+		round, err = strconv.Atoi(parts[4])
+		if err != nil {
+			return
+		}
 	}
 	at, err := discordgo.SnowflakeTimestamp(i.ID)
 	if err != nil {
@@ -131,13 +138,12 @@ func (b *grinchBot) button(s *discordgo.Session, i *discordgo.Interaction) {
 	}
 	playContext, stopPlay := context.WithTimeout(context.Background(), time.Second)
 	state, reply, err := b.encounter.Play(playContext, parts[1], i.Message.ID, core.GrinchMove{
-		Phase: core.GrinchPhase(parts[2]), Slot: slot, Member: i.Member.User.ID, RequestID: i.ID, At: at,
+		Phase: core.GrinchPhase(parts[2]), Slot: slot, DefenseRound: round, FinalRound: round, Member: i.Member.User.ID, RequestID: i.ID, At: at,
 	})
 	stopPlay()
 	response := &discordgo.InteractionResponse{Type: discordgo.InteractionResponseDeferredMessageUpdate}
-	snowflake := state.Phase == core.GrinchDefense && parts[2] == string(core.GrinchDefense) &&
-		slot >= 0 && slot < 8 && state.Board&(1<<slot) == 0
-	if err != nil || !state.Accepted[i.ID] || snowflake || parts[2] == string(core.GrinchLobby) {
+	snowflake := reply == core.GrinchSnowflakeHit
+	if err != nil || !state.Accepted[i.ID] || snowflake || strings.HasPrefix(reply, "🎁") || parts[2] == string(core.GrinchLobby) {
 		if err != nil {
 			logInteractionError(i.ID, "play Grinch action", err)
 			reply = "Could not record your action. Try again."
@@ -147,7 +153,7 @@ func (b *grinchBot) button(s *discordgo.Session, i *discordgo.Interaction) {
 			Data: &discordgo.InteractionResponseData{Flags: discordgo.MessageFlagsEphemeral, Content: reply},
 		}
 	}
-	ackContext, stopAck := context.WithTimeout(context.Background(), time.Second)
+	ackContext, stopAck := context.WithTimeout(context.Background(), 1750*time.Millisecond)
 	defer stopAck()
 	if err := s.InteractionRespond(i, response, discordgo.WithContext(ackContext)); err != nil {
 		logInteractionError(i.ID, "acknowledge Grinch action", err)
@@ -178,9 +184,27 @@ func (display grinchDisplay) Announce(ctx context.Context, state core.Grinch) (s
 
 func (display grinchDisplay) Update(ctx context.Context, state core.Grinch) error {
 	content, components := grinchMessage(state)
-	_, err := display.session.ChannelMessageEditComplex(&discordgo.MessageEdit{
+	edit := &discordgo.MessageEdit{
 		ID: state.MessageID, Channel: display.channel, Content: &content, Components: &components,
-	}, discordgo.WithContext(ctx))
+		AllowedMentions: &discordgo.MessageAllowedMentions{Parse: []discordgo.AllowedMentionType{}},
+	}
+	var overflow bool
+	if !state.EndedAt.IsZero() && state.Phase != core.GrinchCancelled {
+		var extra string
+		content, extra = grinchLeaderboards(content, state.Leaderboard(), state.GiftLeaderboard())
+		overflow = extra != ""
+		if overflow {
+			edit.Attachments = &[]*discordgo.MessageAttachment{}
+			edit.Files = []*discordgo.File{{Name: "grinch-leaderboard.txt", Reader: strings.NewReader(extra)}}
+		}
+	}
+	_, err := display.session.ChannelMessageEditComplex(edit, discordgo.WithContext(ctx))
+	var denied *discordgo.RESTError
+	if overflow && errors.As(err, &denied) && denied.Message != nil && denied.Message.Code == 50013 {
+		content = strings.TrimSuffix(content, "\nFull standings are attached.") + "\nFull standings require permission to attach files."
+		edit.Attachments, edit.Files = nil, nil
+		_, err = display.session.ChannelMessageEditComplex(edit, discordgo.WithContext(ctx))
+	}
 	var rest *discordgo.RESTError
 	if errors.As(err, &rest) && rest.Message != nil && rest.Message.Code == 10008 {
 		return nil // The original message was deleted.
@@ -188,27 +212,64 @@ func (display grinchDisplay) Update(ctx context.Context, state core.Grinch) erro
 	return err
 }
 
+func grinchLeaderboards(content string, damage, gifts []core.GrinchScore) (string, string) {
+	if len(damage) == 0 && len(gifts) == 0 {
+		return content, ""
+	}
+	var standings strings.Builder
+	overflow := false
+	for _, section := range []struct {
+		title  string
+		format string
+		scores []core.GrinchScore
+	}{
+		{"Damage leaderboard", "%.2f", damage},
+		{"Gift leaderboard", "%.0f", gifts},
+	} {
+		if len(section.scores) == 0 {
+			continue
+		}
+		content += "\n\n**" + section.title + "**"
+		fmt.Fprintf(&standings, "%s\n", section.title)
+		limit := min(len(content)+820, 1900)
+		for index, score := range section.scores {
+			points := fmt.Sprintf(section.format, score.Points)
+			line := fmt.Sprintf("\n%d. <@%s> — %s pts", index+1, score.Member, points)
+			fmt.Fprintf(&standings, "%d. Discord user %s — %s pts\n", index+1, score.Member, points)
+			if len(content)+len(line) <= limit {
+				content += line
+			} else {
+				overflow = true
+			}
+		}
+		fmt.Fprintln(&standings)
+	}
+	if overflow {
+		return content + "\nFull standings are attached.", standings.String()
+	}
+	return content, ""
+}
+
 func grinchMessage(state core.Grinch) (string, []discordgo.MessageComponent) {
 	content := fmt.Sprintf("🎄 **Grinch** · **%.2f/100 HP**", state.Health())
 	if state.Phase == core.GrinchCancelled {
 		return "The Grinch encounter was cancelled because no one joined.", []discordgo.MessageComponent{}
 	}
+	join := discordgo.ActionsRow{Components: []discordgo.MessageComponent{
+		discordgo.Button{Label: "Join", Emoji: &discordgo.ComponentEmoji{Name: "🎅"}, Style: discordgo.SuccessButton,
+			CustomID: "grinch:" + state.ID + ":lobby:0"},
+	}}
 	if state.Phase == core.GrinchLobby {
-		return fmt.Sprintf("🎄 **The Grinch is coming!**\nJoin with 🎅 before <t:%d:R>. **%d joined**.",
+		return fmt.Sprintf("🎄 **The Grinch is coming!**\nJoin with 🎅 before <t:%d:R>. **%d/3 to start early**.",
 				state.StartedAt.Add(core.GrinchJoinDuration).Unix(), len(state.Joined)),
-			[]discordgo.MessageComponent{discordgo.ActionsRow{Components: []discordgo.MessageComponent{
-				discordgo.Button{Label: "Join", Emoji: &discordgo.ComponentEmoji{Name: "🎅"}, Style: discordgo.SuccessButton,
-					CustomID: "grinch:" + state.ID + ":lobby:0"},
-			}}}
+			[]discordgo.MessageComponent{join}
 	}
 	if !state.EndedAt.IsZero() {
 		if state.Phase == core.GrinchWon {
-			return content + "\n🎉 The group defeated the Grinch!", []discordgo.MessageComponent{
-				discordgo.ActionsRow{Components: []discordgo.MessageComponent{
-					discordgo.Button{Label: "Final attack", CustomID: "grinch:ended", Disabled: true, Style: discordgo.PrimaryButton,
-						Emoji: &discordgo.ComponentEmoji{Name: "⚔️"}},
-				}},
-			}
+			return content + "\n🎉 The group defeated the Grinch!", []discordgo.MessageComponent{}
+		}
+		if state.Phase == core.GrinchDefeat {
+			return content + "\n💥 The Grinch defeated all registered players!", []discordgo.MessageComponent{}
 		}
 		return content + "\n💨 The Grinch escaped!", []discordgo.MessageComponent{}
 	}
@@ -230,7 +291,7 @@ func grinchMessage(state core.Grinch) (string, []discordgo.MessageComponent) {
 		on, off := "🎄", "❄️"
 		content += "\nThe Grinch attacks! Choose a tree to defend."
 		if state.Phase == core.GrinchAttack {
-			on, off = "🧊", "🫯"
+			on, off = "🧊", "☃️"
 			content = fmt.Sprintf("🎄 **Grinch** · **%.2f/100 HP**\n“Something, something… ouch!”\nEscapes <t:%d:R>",
 				state.Health(), state.Deadline().Unix())
 		}
@@ -242,15 +303,38 @@ func grinchMessage(state core.Grinch) (string, []discordgo.MessageComponent) {
 				if state.Board&(1<<slot) != 0 {
 					emoji = on
 				}
-				columns[column] = button(slot, emoji, "")
+				tile := button(slot, emoji, "")
+				if state.Phase == core.GrinchDefense {
+					tile.CustomID += ":" + strconv.Itoa(state.DefenseRound)
+				}
+				columns[column] = tile
 			}
 			rows = append(rows, discordgo.ActionsRow{Components: columns})
 		}
 	case core.GrinchFinalAttack:
-		rows = []discordgo.MessageComponent{discordgo.ActionsRow{Components: []discordgo.MessageComponent{button(0, "⚔️", "Final attack")}}}
+		content += "\n⚔️ Attack for 2 damage points or pick 🎁 for 1–5 gift points."
+		if state.FinalRound == 0 {
+			rows = []discordgo.MessageComponent{discordgo.ActionsRow{Components: []discordgo.MessageComponent{button(0, "⚔️", "Attack")}}}
+			break
+		}
+		tiles := make([]discordgo.MessageComponent, 4)
+		for slot := range tiles {
+			emoji := "⚔️"
+			if state.FinalBoard&(1<<slot) != 0 {
+				emoji = "🎁"
+			}
+			tile := button(slot, emoji, "")
+			tile.CustomID += ":" + strconv.Itoa(state.FinalRound)
+			tiles[slot] = tile
+		}
+		rows = []discordgo.MessageComponent{discordgo.ActionsRow{Components: tiles}}
 	default:
 		content += "\nThe snowball phase ended."
 		rows = []discordgo.MessageComponent{}
+	}
+	if state.Joined != nil {
+		content += fmt.Sprintf("\n🎅 **%d joined**", len(state.Joined))
+		rows = append(rows, join)
 	}
 	return content, rows
 }

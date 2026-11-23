@@ -27,7 +27,7 @@ func TestLocalGrinch(t *testing.T) {
 	send("/grinch summon", "🎅 0 joined")
 	send("/grinch join", "🎅 1 joined")
 	send("/grinch join", "You already joined")
-	now = now.Add(10 * time.Second)
+	now = now.Add(time.Minute)
 	send("/grinch view", "100.00/100 HP · snowballs")
 	for range 24 {
 		send("/grinch hit 1", "Snowball hit for 1 HP.")
@@ -35,20 +35,21 @@ func TestLocalGrinch(t *testing.T) {
 	send("/grinch hit 1", "75.00/100 HP · defense")
 	// The deterministic board is 0b01010101. Slot 2 is an unsafe defense.
 	send("/grinch hit 2", "You lost 10%")
-	send("/grinch hit 1", "45.00/100 HP · attack")
+	send("/grinch hit 2", "45.00/100 HP · attack")
 	for range 7 {
 		send("/grinch hit 1", "Attack hit!")
 	}
 	send("/grinch hit 1", "5.00/100 HP · final")
+	send("/grinch hit 1", "You earned 2 gift points!")
 	for range 4 {
-		send("/grinch hit 1", "Final attack hit!")
+		send("/grinch hit 2", "Final attack hit!")
 	}
-	send("/grinch hit 1", "0.00/100 HP · won")
+	send("/grinch hit 2", "Damage leaderboard\n1. fixture — 105.00 pts\n\nGift leaderboard\n1. fixture — 2 pts")
 	now = now.Add(time.Second)
 	send("/grinch summon", "🎅 0 joined")
 	send("/grinch join", "🎅 1 joined")
 	send("/grinch join", "You already joined")
-	now = now.Add(10 * time.Second)
+	now = now.Add(time.Minute)
 	send("/grinch view", "100.00/100 HP · snowballs")
 	now = now.Add(2 * time.Minute)
 	send("/grinch hit 1", "99.00/100 HP · snowballs")

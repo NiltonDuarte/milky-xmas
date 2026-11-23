@@ -77,6 +77,7 @@ func (e *GrinchEncounter) Spawn(ctx context.Context, activity time.Time, manual 
 		g.Joined = make(map[string]bool)
 		g.Participants = make(map[string]bool)
 		g.PlayerDamage = make(map[string]int)
+		g.DamageDealt = make(map[string]core.GrinchDamage)
 		g.Accepted = make(map[string]bool)
 		g.Dirty = true
 		return true
@@ -87,18 +88,25 @@ func (e *GrinchEncounter) Spawn(ctx context.Context, activity time.Time, manual 
 func (e *GrinchEncounter) Play(ctx context.Context, id, message string, move core.GrinchMove) (core.Grinch, string, error) {
 	reply := "This fight is no longer active."
 	next := uint8(e.random(254) + 1) // Both emoji types appear.
+	if move.Phase == core.GrinchAttack || move.Phase == core.GrinchFinalAttack {
+		move.FinalBoard = uint8(e.random(14) + 1) // Both attack and gift tiles.
+	}
+	if move.Phase == core.GrinchFinalAttack {
+		move.GiftPoints = e.random(5) + 1
+	}
 	state, _, err := e.change(ctx, func(g *core.Grinch) bool {
 		if g.ID != id || g.MessageID == "" || g.MessageID != message {
 			return false
 		}
-		if g.Advance(move.At) {
+		advanced := g.Advance(move.At)
+		if advanced && move.Phase != core.GrinchLobby {
 			reply = "This part of the fight has ended."
 			return true
 		}
 		move.NextBoard = next
 		count := len(g.Accepted)
 		reply = g.Move(move)
-		return len(g.Accepted) != count
+		return advanced || len(g.Accepted) != count
 	})
 	return state, reply, err
 }

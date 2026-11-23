@@ -108,10 +108,17 @@ func TestGrinchSQLite(t *testing.T) {
 	if err != nil || recovered.ID != fight.ID || recovered.MessageID != fight.MessageID || recovered.Health() != 75 || display.updated != 4 {
 		t.Fatalf("recovered state = %+v, %v, %d edits", recovered, err, display.updated)
 	}
+	var total float64
+	for _, score := range recovered.Leaderboard() {
+		total += score.Points
+	}
+	if len(recovered.Leaderboard()) != 3 || total != 25 {
+		t.Fatalf("leaderboard after reopening SQLite = %+v", recovered.Leaderboard())
+	}
 	for i := range 5 {
 		group.Go(func() {
 			_, _, err := restarted.Play(t.Context(), fight.ID, fight.MessageID, core.GrinchMove{
-				Phase: core.GrinchDefense, Slot: 0, At: now.Add(2 * time.Second), Member: "1", RequestID: "defense" + strconv.Itoa(i),
+				Phase: core.GrinchDefense, Slot: 0, DefenseRound: recovered.DefenseRound, At: now.Add(2 * time.Second), Member: "1", RequestID: "defense" + strconv.Itoa(i),
 			})
 			if err != nil {
 				t.Error(err)
@@ -120,7 +127,7 @@ func TestGrinchSQLite(t *testing.T) {
 	}
 	group.Wait()
 	state, err = restarted.Sync(t.Context(), display)
-	if err != nil || state.Phase != core.GrinchAttack || state.Health() != 45 || state.Defenses != 3 {
+	if err != nil || state.Phase != core.GrinchDefense || state.Health() != 65 || state.Defenses != 1 {
 		t.Fatalf("state after concurrent defenses = %+v, %v", state, err)
 	}
 }
