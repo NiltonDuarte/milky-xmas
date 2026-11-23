@@ -34,8 +34,8 @@ func TestChatCommands(t *testing.T) {
 		status                     int
 	}{
 		{name: "hello", input: "/hello", status: http.StatusOK, reply: "Hello, world!"},
-		{name: "unknown", input: "/unknown", status: http.StatusBadRequest, reply: "Unknown command. Try /hello or /daily claim."},
-		{name: "missing slash", input: "hello", status: http.StatusBadRequest, reply: "Unknown command. Try /hello or /daily claim."},
+		{name: "unknown", input: "/unknown", status: http.StatusBadRequest, reply: "Unknown command. Try /hello, /daily claim, /advent view, /grinch view, /send gift, or /aura check."},
+		{name: "missing slash", input: "hello", status: http.StatusBadRequest, reply: "Unknown command. Try /hello, /daily claim, /advent view, /grinch view, /send gift, or /aura check."},
 		{name: "hello after error", input: "/hello", status: http.StatusOK, reply: "Hello, world!"},
 		{name: "foreign origin", input: "/hello", origin: "https://example.org", status: http.StatusForbidden},
 	} {
@@ -64,16 +64,20 @@ func TestChatCommands(t *testing.T) {
 func TestDailyClaimInChat(t *testing.T) {
 	first := time.Date(2026, 12, 1, 18, 0, 0, 0, time.UTC)
 	now := first
-	handler := web.NewHandler(app.NewService(&giftfixture.Store{}, func() time.Time { return now }))
+	roll := 0
+	handler := web.NewHandler(app.NewService(&giftfixture.Store{}, func() time.Time { return now }, func(int) int { return roll }))
 	for _, step := range []struct {
 		elapsed time.Duration
+		roll    int
 		reply   string
 	}{
-		{0, "🎁 You collected one gift! Total gifts: 1."},
-		{time.Second, "Your next gift is available 2026-12-02 18:00:00 UTC."},
-		{24 * time.Hour, "🎁 You collected one gift! Total gifts: 2."},
+		{0, 0, "🎅🏻 Christmas won’t be Christmas without any presents. You collected 1 gifts 🎁.\nGift rarity · normal."},
+		{30 * time.Minute, 3, "🎅 you already got the gift for today, the next gift 🎁 is in 23 hours 30 minutes."},
+		{24*time.Hour - time.Second, 6, "🎅 you already got the gift for today, the next gift 🎁 is in 1 minute."},
+		{24 * time.Hour, 9, "🎅🏻 Christmas won’t be Christmas without any presents. You collected 10 gifts 🎁.\nGift rarity · normal."},
 	} {
 		now = first.Add(step.elapsed)
+		roll = step.roll
 		form := url.Values{"command": {"/daily claim"}}
 		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(form.Encode()))
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")

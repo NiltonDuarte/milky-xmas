@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math/rand/v2"
 	"net/http"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 func main() {
 	server := &http.Server{
 		Addr:         "127.0.0.1:8080",
-		Handler:      web.NewHandler(app.NewService(&giftfixture.Store{}, time.Now)),
+		Handler:      web.NewHandler(app.NewService(&giftfixture.Store{}, time.Now, rand.IntN)),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
 	}

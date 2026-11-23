@@ -3,14 +3,10 @@ package giftstore
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"net/url"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
-	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 	_ "modernc.org/sqlite"
 )
 
@@ -27,18 +23,35 @@ func OpenSQLite(ctx context.Context, path string) (*SQLite, error) {
 	if !strings.HasPrefix(file, "/") {
 		file = "/" + file
 	}
-	dsn := url.URL{Scheme: "file", Path: file, RawQuery: "_busy_timeout=2000"}
+	dsn := url.URL{Scheme: "file", Path: file, RawQuery: "_busy_timeout=2000&_txlock=immediate"}
 	db, err := sql.Open("sqlite", dsn.String())
 	if err != nil {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	_, err = db.ExecContext(ctx, `
-		CREATE TABLE IF NOT EXISTS gift_claims (
+	if err := initSchema(ctx, db); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return &SQLite{db: db}, nil
+}
+
+func initSchema(ctx context.Context, db *sql.DB) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	_, err = tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS gift_players (
 			server_id TEXT NOT NULL,
 			user_id TEXT NOT NULL,
-			total INTEGER NOT NULL CHECK (total > 0),
-			last_claim TEXT NOT NULL,
+			normal INTEGER NOT NULL DEFAULT 0 CHECK (normal >= 0),
+			rare INTEGER NOT NULL DEFAULT 0 CHECK (rare >= 0),
+			epic INTEGER NOT NULL DEFAULT 0 CHECK (epic >= 0),
+			bad INTEGER NOT NULL DEFAULT 0 CHECK (bad BETWEEN 0 AND 100),
+			good INTEGER NOT NULL DEFAULT 0 CHECK (good BETWEEN 0 AND 100),
+			last_claim TEXT NOT NULL DEFAULT '',
 			PRIMARY KEY (server_id, user_id)
 		);
 		CREATE TABLE IF NOT EXISTS advent_openings (
@@ -50,50 +63,29 @@ func OpenSQLite(ctx context.Context, path string) (*SQLite, error) {
 		);
 		CREATE TABLE IF NOT EXISTS grinch_encounters (scope TEXT PRIMARY KEY, revision INTEGER NOT NULL, payload BLOB NOT NULL)`)
 	if err != nil {
-		db.Close()
-		return nil, err
+		return err
 	}
-	return &SQLite{db: db}, nil
+
+	var legacy bool
+	err = tx.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'gift_claims')
+	`).Scan(&legacy)
+	if err != nil {
+		return err
+	}
+	if legacy {
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO gift_players (server_id, user_id, normal, last_claim)
+			SELECT server_id, user_id, total, last_claim FROM gift_claims;
+			DROP TABLE gift_claims;
+		`)
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *SQLite) Close() error {
 	return s.db.Close()
-}
-
-func (s *SQLite) Load(ctx context.Context, member app.Member) (core.GiftRecord, error) {
-	var record core.GiftRecord
-	var lastClaim string
-	err := s.db.QueryRowContext(ctx, `
-		SELECT total, last_claim FROM gift_claims WHERE server_id = ? AND user_id = ?
-	`, member.ServerID, member.UserID).Scan(&record.Total, &lastClaim)
-	if errors.Is(err, sql.ErrNoRows) {
-		return core.GiftRecord{}, nil
-	}
-	if err != nil {
-		return core.GiftRecord{}, err
-	}
-	record.LastClaim, err = time.Parse(time.RFC3339Nano, lastClaim)
-	return record, err
-}
-
-func (s *SQLite) Save(ctx context.Context, member app.Member, total int64, record core.GiftRecord) (bool, error) {
-	lastClaim := record.LastClaim.Format(time.RFC3339Nano)
-	var result sql.Result
-	var err error
-	if total == 0 {
-		result, err = s.db.ExecContext(ctx, `
-			INSERT INTO gift_claims (server_id, user_id, total, last_claim)
-			VALUES (?, ?, ?, ?) ON CONFLICT (server_id, user_id) DO NOTHING
-		`, member.ServerID, member.UserID, record.Total, lastClaim)
-	} else {
-		result, err = s.db.ExecContext(ctx, `
-			UPDATE gift_claims SET total = ?, last_claim = ?
-			WHERE server_id = ? AND user_id = ? AND total = ?
-		`, record.Total, lastClaim, member.ServerID, member.UserID, total)
-	}
-	if err != nil {
-		return false, err
-	}
-	changed, err := result.RowsAffected()
-	return changed == 1, err
 }

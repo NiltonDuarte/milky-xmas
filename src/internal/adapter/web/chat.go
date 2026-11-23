@@ -2,14 +2,17 @@ package web
 
 import (
 	_ "embed"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/gifttext"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 )
+
+const fixtureServerID = "local"
+const fixtureUserID = "fixture"
 
 //go:embed chat.html
 var chatPage string
@@ -33,17 +36,27 @@ func newHandler(service app.Service, grinch grinchFixture) http.Handler {
 
 		text := r.PostForm.Get("command")
 		fields := strings.Fields(text)
-		if len(fields) > 0 && fields[0] == "/grinch" {
-			grinch.reply(w, r, fields[1:])
-			return
-		}
-		if len(fields) > 0 && fields[0] == "/advent" {
-			replyAdvent(w, r, service, fields[1:])
-			return
-		}
-		if len(fields) == 2 && fields[0] == "/daily" && fields[1] == "claim" {
-			replyDailyClaim(w, r, service)
-			return
+		if len(fields) > 0 {
+			args := fields[1:]
+			switch fields[0] {
+			case "/grinch":
+				grinch.reply(w, r, args)
+				return
+			case "/advent":
+				replyAdvent(w, r, service, args)
+				return
+			case "/send":
+				replyGiftTransfer(w, r, service, args)
+				return
+			case "/aura":
+				replyAura(w, r, service, args)
+				return
+			case "/daily":
+				if len(args) == 1 && args[0] == "claim" {
+					replyDailyClaim(w, r, service)
+					return
+				}
+			}
 		}
 
 		command, ok := strings.CutPrefix(text, "/")
@@ -52,7 +65,7 @@ func newHandler(service app.Service, grinch grinchFixture) http.Handler {
 		}
 		reply, err := service.Reply(command)
 		if err != nil {
-			http.Error(w, "Unknown command. Try /"+app.HelloCommand+" or /daily claim.", http.StatusBadRequest)
+			http.Error(w, "Unknown command. Try /"+app.HelloCommand+", /daily claim, /advent view, /grinch view, /send gift, or /aura check.", http.StatusBadRequest)
 			return
 		}
 
@@ -63,16 +76,11 @@ func newHandler(service app.Service, grinch grinchFixture) http.Handler {
 }
 
 func replyDailyClaim(w http.ResponseWriter, r *http.Request, service app.Service) {
-	claim, err := service.ClaimGift(r.Context(), app.Member{ServerID: "local", UserID: "fixture"})
+	claim, err := service.ClaimGift(r.Context(), app.Member{ServerID: fixtureServerID, UserID: fixtureUserID})
 	if err != nil {
 		http.Error(w, "Could not record your gift claim. Try again.", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	if claim.Collected {
-		fmt.Fprintf(w, "🎁 You collected one gift! Total gifts: %d.", claim.Total)
-		return
-	}
-	next := claim.NextClaim.Add(time.Second - time.Nanosecond).UTC().Format("2006-01-02 15:04:05 MST")
-	fmt.Fprintf(w, "Your next gift is available %s.", next)
+	io.WriteString(w, gifttext.Claim(claim))
 }

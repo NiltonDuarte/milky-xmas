@@ -28,7 +28,7 @@ go run ./src/cmd/web
 
 Open [http://127.0.0.1:8080](http://127.0.0.1:8080) and send `/hello`. The transcript should show your command and the bot's reply, `Hello, world!`. Send `/unknown` to see an error that lists the supported commands, then send `/hello` again to verify recovery.
 
-Send `/daily claim` to collect one gift and see the total. Send it again immediately to see the next eligible time in UTC. The local fixture shares one test identity across tabs and resets when the web process restarts.
+Send `/daily claim` to collect a random 1–10 gifts. The transcript shows “🎅🏻 Christmas won’t be Christmas without any presents. You collected X gifts 🎁.” with the amount awarded in place of X, followed by the rarity. Send it again immediately to see how long remains until the next claim. The local fixture shares one test identity across tabs and resets when the web process restarts.
 
 The chat binds to loopback and works with fixture behavior. It requires no Discord credentials. The transcript lives in the current page.
 
@@ -38,7 +38,7 @@ The planned opt-in Discord mode for the local chat can read or post bot messages
 
 Create a bot in the [Discord Developer Portal](https://discord.com/developers/applications) and install it in a test server with the bot and application commands scopes. Use a channel where your account can send messages and use application commands. Leave the application's Interactions Endpoint URL blank so it receives interactions through the Gateway. [Discord interaction delivery](https://docs.discord.com/developers/interactions/receiving-and-responding)
 
-Set `DISCORD_BOT_TOKEN` to the bot token in your local environment and set `DISCORD_TEST_GUILD_ID` to the test server ID. Set `MILKY_GIFT_DB` to a SQLite file on a persistent writable volume. The bot creates the file and schema on startup. Keep that file across restarts to retain gift totals and cooldowns.
+Set `DISCORD_BOT_TOKEN` to the bot token in your local environment and set `DISCORD_TEST_GUILD_ID` to the test server ID. Set `MILKY_GIFT_DB` to a SQLite file on a persistent writable volume. The bot creates the file and schema on startup. Keep that file across restarts to retain gift inventories, aura, and cooldowns.
 
 Start the bot:
 
@@ -48,7 +48,15 @@ go run ./src/cmd/discord
 
 Wait for the startup log to report that `/hello` is ready in the test server. In Discord, choose the Milky Xmas `/hello` command and send it. The expected result is one public reply, `Hello, world!`. Check that the command is available in the configured server and can be used by a member with application command permissions.
 
-In the test server, invoke `/daily claim`. The first claim should give one gift and show the total in a private reply. Invoke it again immediately and check that it shows the next eligible time. Restart the bot with the same database and try again to check that the original cooldown persists.
+In the test server, invoke `/daily claim`. Check that you see the same success message as in the local chat with an amount from 1 to 10 in a private reply. Invoke it again immediately and check that it shows the remaining cooldown. Restart the bot with the same database and try again to check that the original cooldown persists.
+
+## Gift transfers and aura
+
+Daily claims award one rarity per claim with a 70% chance of normal, 25% rare, and 5% epic. Daily gifts saved before this update become normal gifts. Each gift sent adds 5, 10, or 30 percentage points to the sender's Good deeds, respectively, up to 100%. Bad deeds appears on the left and Good deeds on the right. Both start at 0%.
+
+In the local chat, run `/aura check`, then `/daily claim`. Use the rarity shown in the reply to send one gift, for example `/send gift friend normal 1`. Check that the confirmation and a new `/aura check` show the expected Good deeds value. Try sending more than you claimed and check that the aura stays the same. The browser plays as `fixture`, and `friend` is a simulated recipient. A claim after giving away your last gift still shows the original cooldown.
+
+In the Discord test server, use two human accounts with application command permissions. With the first account, run `/aura check`, claim gifts, then select the second account, the awarded rarity, and quantity 1 under `/send gift`. Check that both command results are private. The first account's Good deeds increases and the second account's aura stays neutral. With the second account, send the same gift back to verify it was credited. Try selecting yourself or a bot to check that the transfer is rejected. Restart the bot with the same SQLite database and confirm that both accounts keep their aura and current balances.
 
 ## Advent calendar
 

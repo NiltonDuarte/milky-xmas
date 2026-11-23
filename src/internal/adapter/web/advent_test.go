@@ -15,7 +15,7 @@ import (
 
 func TestAdventInChat(t *testing.T) {
 	now := time.Date(2026, 12, 4, 0, 0, 0, 0, time.UTC)
-	handler := web.NewHandler(app.NewService(&giftfixture.Store{}, func() time.Time { return now }))
+	handler := web.NewHandler(app.NewService(&giftfixture.Store{}, func() time.Time { return now }, func(int) int { return 4 }))
 	for _, step := range []struct{ command, reply string }{
 		{"/advent view", "04 · available\n05 · locked"},
 		{"/advent open 5", "Door 5 unlocks on December 5"},
@@ -23,7 +23,7 @@ func TestAdventInChat(t *testing.T) {
 		{"/advent open 1", "Door 1 is already open."},
 		{"/advent view", "01 · opened\n02 · available"},
 		{"/advent open 25", "Choose an Advent door from 1 to 24."},
-		{"/daily claim", "You collected one gift! Total gifts: 1."},
+		{"/daily claim", "You collected 5 gifts 🎁."},
 	} {
 		form := url.Values{"command": {step.command}}
 		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(form.Encode()))

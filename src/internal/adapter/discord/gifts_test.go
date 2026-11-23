@@ -2,7 +2,6 @@ package discord
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -15,12 +14,17 @@ import (
 func TestDailyClaimInteraction(t *testing.T) {
 	now := time.Date(2026, 12, 1, 18, 0, 0, 0, time.UTC)
 	store := &giftfixture.Store{}
-	b := bot{guildID: "200", service: app.NewService(store, func() time.Time { return now })}
-	for _, step := range []struct{ user, reply string }{
-		{"alice", "🎁 You collected one gift! Total gifts: 1."},
-		{"alice", fmt.Sprintf("Your next gift is available <t:%d:F> (<t:%d:R>).", now.Add(24*time.Hour).Unix(), now.Add(24*time.Hour).Unix())},
-		{"bob", "🎁 You collected one gift! Total gifts: 1."},
+	roll := 0
+	b := bot{guildID: "200", service: app.NewService(store, func() time.Time { return now }, func(int) int { return roll })}
+	for _, step := range []struct {
+		user, reply string
+		roll        int
+	}{
+		{"alice", "🎅🏻 Christmas won’t be Christmas without any presents. You collected 1 gifts 🎁.\nGift rarity · normal.", 0},
+		{"alice", "🎅 you already got the gift for today, the next gift 🎁 is in 24 hours.", 5},
+		{"bob", "🎅🏻 Christmas won’t be Christmas without any presents. You collected 10 gifts 🎁.\nGift rarity · normal.", 9},
 	} {
+		roll = step.roll
 		session, err := discordgo.New("Bot fixture")
 		if err != nil {
 			t.Fatal(err)
@@ -70,7 +74,7 @@ func TestDailyClaimInteraction(t *testing.T) {
 		}
 	}
 	record, err := store.Load(t.Context(), app.Member{ServerID: "200", UserID: "alice"})
-	if err != nil || record.Total != 1 {
+	if err != nil || record.Inventory.Normal != 1 {
 		t.Fatalf("stored record = %+v, %v", record, err)
 	}
 }

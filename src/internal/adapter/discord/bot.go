@@ -40,7 +40,7 @@ func Run(ctx context.Context, token, guildID string, service app.Service, grinch
 	if err := b.registerCommands(ctx, session); err != nil {
 		return err
 	}
-	log.Printf("Discord bot ready with /hello, /daily claim, and /advent in server %s", guildID)
+	log.Printf("Discord bot ready with /hello, /daily claim, /advent, /send gift, and /aura check in server %s", guildID)
 
 	if b.grinch != nil {
 		log.Printf("Grinch encounter enabled in channel %s", grinchChannel)
@@ -67,6 +67,8 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 			Description: "Get a greeting from Milky Xmas",
 		},
 		dailyCommand(),
+		sendCommand(),
+		auraCommand(),
 		adventCommand(),
 		grinchCommand(),
 	}
@@ -95,6 +97,12 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 	}
 
 	switch data.Name {
+	case sendCommandName:
+		b.handleSendGift(session, event.Interaction, data)
+		return
+	case auraCommandName:
+		b.handleAura(session, event.Interaction, data.Options)
+		return
 	case "grinch":
 		b.summonGrinch(session, event.Interaction, data.Options)
 		return

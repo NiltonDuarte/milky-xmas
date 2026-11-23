@@ -14,10 +14,18 @@
 
 - [x] 3.1 Run formatting, vet, race tests, and strict OpenSpec validation. Record observed acceptance results and any Discord server checks that still need to run.
 
+## 4. Random daily rewards
+
+- [x] 4.1 Award 1–10 gifts using injected randomness, persist the award with the cooldown, and render the requested success reply in both interfaces. Verify the endpoints, accumulated totals, retries, and the exact reply with deterministic tests. Update local and Discord acceptance steps.
+
 ## Verification
 
-- In headless Chrome, `/daily claim` awarded one gift and displayed a total of one. Two immediate retries showed the same next eligible time in UTC. The local server was restarted afterward to reset the fixture.
+- The original fixed-reward flow passed a headless Chrome check for a successful claim and two immediate retries.
 - Core and HTTP tests used a controlled clock to award the next gift at exactly 24 hours. SQLite tests used two connections to verify one award per round and reopened the database to verify retained totals and cooldown.
 - Discord transport tests verified guild registration, member identity, private deferral, and the final reply. The executable reported missing or invalid database configuration at startup.
 - Formatting, vet, race tests, and strict OpenSpec validation passed.
 - Live Discord acceptance remains pending. Use the configured test server to verify registration, permissions, private replies, and cooldown after restart.
+
+- The cooldown copy update passed Discord and HTTP adapter tests for hours, partial hours, and the last minute before eligibility.
+- For random rewards, deterministic tests confirmed awards of 1 and 10, the accumulated total, the 24-hour boundary, recovery after a failed save, concurrent claims, and restart persistence. HTTP and mocked Discord tests checked the exact success reply for both endpoints of the reward range.
+- In a fresh local chat in headless Chrome, `/daily claim` showed “🎅🏻 Christmas won’t be Christmas without any presents. You collected 2 gifts 🎁.” An immediate retry reported 24 hours until the next claim.

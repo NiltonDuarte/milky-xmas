@@ -7,8 +7,8 @@ The Milky Christmas event needs a reward that members can return to collect. A d
 ## What Changes
 
 - Add `/daily claim` to Discord and the local test chat.
-- Award one gift per successful claim and report the member's accumulated total.
-- Make the next gift available 24 hours after the last successful claim. Early attempts show when the next gift is available.
+- Award a random 1–10 gifts per successful claim and show how many gifts that claim awarded.
+- Make the next gift available 24 hours after the last successful claim. Early attempts show the time remaining until the next gift.
 - Keep production claims and totals across bot restarts.
 
 ## Capabilities

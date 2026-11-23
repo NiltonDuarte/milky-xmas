@@ -2,9 +2,8 @@ package discord
 
 import (
 	"context"
-	"fmt"
-	"time"
 
+	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/gifttext"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 	"github.com/bwmarrin/discordgo"
 )
@@ -35,11 +34,6 @@ func (b bot) handleDailyClaim(session *discordgo.Session, interaction *discordgo
 			logInteractionError(interaction.ID, "record gift claim", err)
 			return "Could not record your gift claim. Try again."
 		}
-		if claim.Collected {
-			return fmt.Sprintf("🎁 You collected one gift! Total gifts: %d.", claim.Total)
-		}
-		// Discord timestamps use whole seconds. Round up to avoid showing an early retry time.
-		next := claim.NextClaim.Add(time.Second - time.Nanosecond).Unix()
-		return fmt.Sprintf("Your next gift is available <t:%d:F> (<t:%d:R>).", next, next)
+		return gifttext.Claim(claim)
 	})
 }

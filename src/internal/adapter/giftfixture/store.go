@@ -21,20 +21,38 @@ func (store *Store) Load(_ context.Context, member app.Member) (core.GiftRecord,
 	return store.records[member], nil
 }
 
-func (store *Store) Save(ctx context.Context, member app.Member, total int64, record core.GiftRecord) (bool, error) {
+func (store *Store) Save(ctx context.Context, update app.GiftUpdate) (bool, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if err := ctx.Err(); err != nil {
 		return false, err
 	}
-	if store.records[member].Total != total {
+	if store.records[update.Member] != update.Previous {
 		return false, nil
 	}
+	store.save(update)
+	return true, nil
+}
+
+func (store *Store) SaveTransfer(ctx context.Context, sender, recipient app.GiftUpdate) (bool, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	if store.records[sender.Member] != sender.Previous || store.records[recipient.Member] != recipient.Previous {
+		return false, nil
+	}
+	store.save(sender)
+	store.save(recipient)
+	return true, nil
+}
+
+func (store *Store) save(update app.GiftUpdate) {
 	if store.records == nil {
 		store.records = make(map[app.Member]core.GiftRecord)
 	}
-	store.records[member] = record
-	return true, nil
+	store.records[update.Member] = update.Next
 }
 
 type adventMember struct {

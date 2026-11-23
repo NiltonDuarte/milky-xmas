@@ -15,7 +15,7 @@ import (
 func TestAdventInteractions(t *testing.T) {
 	now := time.Date(2026, 12, 4, 0, 0, 0, 0, time.UTC)
 	store := &giftfixture.Store{}
-	b := bot{guildID: "200", service: app.NewService(store, func() time.Time { return now })}
+	b := bot{guildID: "200", service: app.NewService(store, func() time.Time { return now }, func(int) int { return 0 })}
 	session, err := discordgo.New("Bot fixture")
 	if err != nil {
 		t.Fatal(err)

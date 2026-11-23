@@ -10,10 +10,12 @@ A gift is one unit in the member's collected total. The command is available whi
 
 ## Decisions
 
-- The core computes eligibility from the last successful claim and the supplied current time. The application reads the clock once per attempt and uses instants in UTC. A rolling duration works across midnight and daylight saving changes without a scheduled reset.
-- The shared application scopes claims by server ID and member ID. It loads the record, applies the core decision, and conditionally saves the new count and claim time against the observed record version. A competing update causes a reread and a fresh decision with the original request time. The response uses the committed total.
+- The core computes eligibility from the last successful claim and the supplied current time. It converts a uniform roll from 0–9 into an award of 1–10 gifts. The application reads the UTC clock and draws from its injected random source once per attempt. A rolling duration works across midnight and daylight saving changes without a scheduled reset.
+- The shared application scopes claims by server ID and member ID. It loads the record, applies the core decision, and conditionally saves the new count and claim time against the observed record version. A competing update causes a reread and a fresh decision with the original request time and roll. On success the shared formatter uses the committed award in both adapters.
 - Use a local SQLite database in production, with a unique record per server and member and an atomic conditional update. This protects claims on concurrent requests and across restarts. The local chat uses a fixed fixture identity, an in-memory store with the same atomic update contract, and an injected clock in tests.
 - Discord maps the native `daily` command and `claim` option plus interaction identity to the shared use case. Defer an ephemeral response before storage work and edit it with the outcome. Discord can render the next eligible instant as a localized timestamp. The web adapter translates typed input and renders the same outcome in its transcript.
+
+- The application returns the remaining time from the same clock reading as the eligibility decision. A shared formatter renders hours and minutes for both interfaces.
 
 ## Risks and trade-offs
 

@@ -54,6 +54,15 @@ func TestRegisterCommands(t *testing.T) {
 					t.Errorf("unexpected day option: %+v", day)
 				}
 			}
+			switch command.Name {
+			case "send":
+				checkSendRegistration(t, command)
+			case "aura":
+				if len(command.Options) != 1 || command.Options[0].Name != "check" ||
+					command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand || len(command.Options[0].Options) != 0 {
+					t.Errorf("unexpected aura command: %+v", command)
+				}
+			}
 			return fakeResponse(http.StatusCreated, `{"id":"300","name":"hello"}`), nil
 		default:
 			t.Fatalf("unexpected request to %s", request.URL)
@@ -64,10 +73,10 @@ func TestRegisterCommands(t *testing.T) {
 	if err := (bot{guildID: "200"}).registerCommands(t.Context(), session); err != nil {
 		t.Fatal(err)
 	}
-	want := "GET /api/v9/users/@me\nPOST /api/v9/applications/100/guilds/200/commands\nPOST /api/v9/applications/100/guilds/200/commands\nPOST /api/v9/applications/100/guilds/200/commands\nPOST /api/v9/applications/100/guilds/200/commands"
-	if got := strings.Join(commands, ","); got != "hello,daily,advent,grinch" {
+	if got := strings.Join(commands, ","); got != "hello,daily,send,aura,advent,grinch" {
 		t.Errorf("registered commands = %q", got)
 	}
+	want := "GET /api/v9/users/@me" + strings.Repeat("\nPOST /api/v9/applications/100/guilds/200/commands", len(commands))
 	if got := strings.Join(requests, "\n"); got != want {
 		t.Errorf("registration requests = %q, want %q", got, want)
 	}

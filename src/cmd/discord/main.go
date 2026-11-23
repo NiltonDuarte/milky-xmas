@@ -54,5 +54,5 @@ func run(ctx context.Context, token, guildID, path, channel string) error {
 	defer store.Close()
 
 	encounter := app.NewGrinchEncounter(store, guildID+":"+channel, time.Now, rand.IntN)
-	return discord.Run(ctx, token, guildID, app.NewService(store, time.Now), channel, encounter)
+	return discord.Run(ctx, token, guildID, app.NewService(store, time.Now, rand.IntN), channel, encounter)
 }

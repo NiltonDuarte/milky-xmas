@@ -10,7 +10,7 @@ import (
 )
 
 func replyAdvent(w http.ResponseWriter, r *http.Request, service app.Service, args []string) {
-	member := app.Member{ServerID: "local", UserID: "fixture"}
+	member := app.Member{ServerID: fixtureServerID, UserID: fixtureUserID}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	switch {
 	case len(args) == 1 && args[0] == "view":

@@ -15,6 +15,7 @@ type Service struct {
 	gifts  GiftStore
 	advent AdventStore
 	now    func() time.Time
+	random func(int) int
 }
 
 func (Service) Reply(command string) (string, error) {

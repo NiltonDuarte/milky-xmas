@@ -1,20 +1,98 @@
 package core
 
-import "time"
+import (
+	"errors"
+	"math"
+	"time"
+)
 
 const GiftCooldown = 24 * time.Hour
+const MaxDailyGifts = 10
 
-type GiftRecord struct {
-	Total     int64
-	LastClaim time.Time
+type GiftRarity string
+
+const (
+	NormalGift GiftRarity = "normal"
+	RareGift   GiftRarity = "rare"
+	EpicGift   GiftRarity = "epic"
+)
+
+const GiftRarityRolls = 100
+
+// DailyGiftRarity takes a uniform roll in [0, GiftRarityRolls).
+func DailyGiftRarity(roll int) GiftRarity {
+	switch {
+	case roll < 70:
+		return NormalGift
+	case roll < 95:
+		return RareGift
+	default:
+		return EpicGift
+	}
 }
 
-func (record GiftRecord) Collect(now time.Time) (GiftRecord, time.Time, bool) {
-	if record.Total > 0 {
+type GiftInventory struct {
+	Normal int64
+	Rare   int64
+	Epic   int64
+}
+
+func (inventory GiftInventory) Total() int64 {
+	return inventory.Normal + inventory.Rare + inventory.Epic
+}
+
+func (inventory GiftInventory) remainingCapacity() int64 {
+	return math.MaxInt64 - inventory.Total()
+}
+
+func (inventory *GiftInventory) balance(rarity GiftRarity) *int64 {
+	switch rarity {
+	case NormalGift:
+		return &inventory.Normal
+	case RareGift:
+		return &inventory.Rare
+	case EpicGift:
+		return &inventory.Epic
+	default:
+		return nil
+	}
+}
+
+type Aura struct {
+	Bad  int
+	Good int
+}
+
+type GiftRecord struct {
+	Inventory GiftInventory
+	LastClaim time.Time
+	Aura      Aura
+}
+
+var (
+	ErrGiftRarity       = errors.New("unknown gift rarity")
+	ErrGiftQuantity     = errors.New("gift quantity must be positive")
+	ErrInsufficientGift = errors.New("insufficient gifts of that rarity")
+	ErrGiftCapacity     = errors.New("gift inventory is full")
+)
+
+// Collect takes a uniform quantity roll in [0, MaxDailyGifts).
+func (record GiftRecord) Collect(now time.Time, roll int, rarity GiftRarity) (GiftRecord, time.Time, bool, error) {
+	if !record.LastClaim.IsZero() {
 		next := record.LastClaim.Add(GiftCooldown)
 		if now.Before(next) {
-			return record, next, false
+			return record, next, false, nil
 		}
 	}
-	return GiftRecord{Total: record.Total + 1, LastClaim: now}, now.Add(GiftCooldown), true
+	balance := record.Inventory.balance(rarity)
+	if balance == nil {
+		return record, time.Time{}, false, ErrGiftRarity
+	}
+	amount := int64(roll) + 1
+	if amount > record.Inventory.remainingCapacity() {
+		return record, time.Time{}, false, ErrGiftCapacity
+	}
+	*balance += amount
+	record.LastClaim = now
+	return record, now.Add(GiftCooldown), true, nil
 }

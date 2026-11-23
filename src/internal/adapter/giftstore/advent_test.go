@@ -20,7 +20,7 @@ func TestAdventPersistence(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() { store.Close() })
-		return store, app.NewService(store, func() time.Time { return now })
+		return store, app.NewService(store, func() time.Time { return now }, func(int) int { return 4 })
 	}
 	db, service := open()
 	secondDB, second := open()
