@@ -14,7 +14,7 @@ func Aura(aura core.Aura) string {
 
 func Transfer(item string, quantity int64, recipient string, increase int) string {
 	if item == app.CoalItem {
-		return fmt.Sprintf("Sent %d 🪨 Coal to %s. Your 😈 bad deeds increased by %d%%.", quantity, recipient, increase)
+		return fmt.Sprintf("Sent %d %s Coal to %s. Your 😈 bad deeds increased by %d%%.", quantity, CoalEmoji, recipient, increase)
 	}
 	gift := "gifts"
 	if quantity == 1 {

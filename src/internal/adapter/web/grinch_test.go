@@ -47,13 +47,13 @@ func TestLocalGrinch(t *testing.T) {
 	send("/grinch view", "5 ❄️")
 	send("/grinch hit 5", "5.00/100% HP\nfinal")
 	send("/grinch hit 5", "5.00/100% HP\nfinal")
-	send("/socks", "Snowballs: 2\nYellow Snowballs: 0\nCoal: 0")
+	send("/socks", "❄️ Snowballs: 2 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0")
 	for range 4 {
 		send("/grinch hit 2", "HP\nfinal")
 	}
 	send("/grinch hit 2", "Damage leaderboard\n1. fixture — 105.00 pts\n\nGift leaderboard\n1. fixture — 2 pts")
 	send("/grinch view", "👽 Grinch · 0.00/100% HP")
-	send("/socks", "Snowballs: 2\nYellow Snowballs: 0\nCoal: 0")
+	send("/socks", "❄️ Snowballs: 2 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0")
 	now = now.Add(time.Second)
 	send("/grinch summon", "🎅 0 joined")
 	send("/grinch join", "🎅 1 joined")
@@ -68,5 +68,5 @@ func TestLocalGrinch(t *testing.T) {
 	send("/grinch hit 1", "75.00/100% HP\ndefense")
 	now = now.Add(time.Minute)
 	send("/grinch view", "75.00/100% HP\nescaped")
-	send("/socks", "Snowballs: 2\nYellow Snowballs: 1\nCoal: 1")
+	send("/socks", "❄️ Snowballs: 2 | 🟡 Yellow Snowballs: 1\n🌑 Coal: 1")
 }

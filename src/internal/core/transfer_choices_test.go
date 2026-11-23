@@ -35,7 +35,7 @@ func TestTransferYellowSnowball(t *testing.T) {
 	recipient := GiftRecord{Inventory: Inventory{YellowSnowballs: 2, Snowballs: 4}, Aura: Aura{Good: 25}}
 	from, to, err := TransferYellowSnowball(sender, recipient)
 	if err != nil || from.Inventory != (Inventory{Snowballs: 3}) || to.Inventory != (Inventory{YellowSnowballs: 3, Snowballs: 4}) ||
-		from.Aura != sender.Aura || to.Aura != recipient.Aura {
+		from.Aura != (Aura{Bad: 20}) || to.Aura != recipient.Aura {
 		t.Fatalf("send yellow = %+v, %+v, %v", from, to, err)
 	}
 	if _, _, err := TransferYellowSnowball(from, to); !errors.Is(err, ErrInsufficientYellowSnowball) {

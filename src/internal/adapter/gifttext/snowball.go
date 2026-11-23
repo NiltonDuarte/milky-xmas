@@ -9,7 +9,7 @@ import (
 )
 
 func SnowballThrown(recipient string, kind core.SnowballType) string {
-	return fmt.Sprintf("You have thrown a ❄️ %s at %s. 🥶", snowballName(kind), recipient)
+	return fmt.Sprintf("You have thrown a %s %s at %s. 🥶", SnowballEmoji(kind), snowballName(kind), recipient)
 }
 
 func SnowballReceived(sender string, total int64, kind core.SnowballType) string {
@@ -18,7 +18,15 @@ func SnowballReceived(sender string, total int64, kind core.SnowballType) string
 	if total != 1 {
 		plural += "s"
 	}
-	return fmt.Sprintf("%s have threw a ❄️ %s at you, now you have %d ❄️ %s. 🥶", sender, item, total, plural)
+	emoji := SnowballEmoji(kind)
+	return fmt.Sprintf("%s have threw a %s %s at you, now you have %d %s %s. 🥶", sender, emoji, item, total, emoji, plural)
+}
+
+func SnowballEmoji(kind core.SnowballType) string {
+	if kind == core.YellowSnowball {
+		return "🟡"
+	}
+	return "❄️"
 }
 
 func snowballName(kind core.SnowballType) string {

@@ -7,6 +7,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -21,6 +22,7 @@ type grinchBot struct {
 	channel      string
 	encounter    *app.GrinchEncounter
 	lastActivity atomic.Int64
+	registration sync.Map
 }
 
 func grinchCommand() *discordgo.ApplicationCommand {
@@ -86,6 +88,12 @@ func (b *grinchBot) run(ctx context.Context, s *discordgo.Session) {
 	roll := time.NewTicker(time.Minute)
 	defer roll.Stop()
 	display := grinchDisplay{s, b.channel}
+	initial, cancel := context.WithTimeout(ctx, 3*time.Second)
+	_, err := b.encounter.RefreshBoard(initial, display)
+	cancel()
+	if err != nil && ctx.Err() == nil {
+		log.Printf("Restore Grinch board: %v", err)
+	}
 	for {
 		select {
 		case <-ctx.Done():
@@ -117,6 +125,26 @@ func (b *grinchBot) button(s *discordgo.Session, i *discordgo.Interaction) {
 	if (len(parts) != 4 && len(parts) != 5) || parts[0] != "grinch" {
 		return
 	}
+	if i.Member == nil || i.Member.User == nil || i.Member.User.ID == "" {
+		return
+	}
+	at, err := discordgo.SnowflakeTimestamp(i.ID)
+	if err != nil {
+		at = time.Now()
+	}
+	switch parts[2] {
+	case "registration", string(core.GrinchLobby):
+		// Existing encounter messages may still carry the old public Join ID.
+		if len(parts) == 4 && parts[3] == "0" {
+			b.registrationButton(s, i, parts[1], i.Message.ID, "", at)
+		}
+		return
+	case "join":
+		if len(parts) == 5 && i.Message.Flags&discordgo.MessageFlagsEphemeral != 0 {
+			b.registrationButton(s, i, parts[1], parts[3], parts[4], at)
+		}
+		return
+	}
 	slot, err := strconv.Atoi(parts[3])
 	if err != nil {
 		return
@@ -127,13 +155,6 @@ func (b *grinchBot) button(s *discordgo.Session, i *discordgo.Interaction) {
 		if err != nil {
 			return
 		}
-	}
-	at, err := discordgo.SnowflakeTimestamp(i.ID)
-	if err != nil {
-		at = time.Now()
-	}
-	if i.Member == nil || i.Member.User == nil || i.Member.User.ID == "" {
-		return
 	}
 	playContext, stopPlay := context.WithTimeout(context.Background(), time.Second)
 	_, _, err = b.encounter.Play(playContext, parts[1], i.Message.ID, core.GrinchMove{
@@ -148,11 +169,17 @@ func (b *grinchBot) button(s *discordgo.Session, i *discordgo.Interaction) {
 			Data: &discordgo.InteractionResponseData{Flags: discordgo.MessageFlagsEphemeral, Content: "Could not record your action. Try again."},
 		}
 	}
+	acknowledgeGrinchButton(s, i, response)
+}
+
+func acknowledgeGrinchButton(s *discordgo.Session, i *discordgo.Interaction, response *discordgo.InteractionResponse) bool {
 	ackContext, stopAck := context.WithTimeout(context.Background(), 1750*time.Millisecond)
 	defer stopAck()
 	if err := s.InteractionRespond(i, response, discordgo.WithContext(ackContext)); err != nil {
 		logInteractionError(i.ID, "acknowledge Grinch action", err)
+		return false
 	}
+	return true
 }
 
 type grinchDisplay struct {
@@ -251,11 +278,11 @@ func grinchMessage(state core.Grinch) (string, []discordgo.MessageComponent) {
 		return "The Grinch encounter was cancelled because no one joined.", []discordgo.MessageComponent{}
 	}
 	join := discordgo.ActionsRow{Components: []discordgo.MessageComponent{
-		discordgo.Button{Label: "Join", Emoji: &discordgo.ComponentEmoji{Name: "🎅"}, Style: discordgo.SuccessButton,
-			CustomID: "grinch:" + state.ID + ":lobby:0"},
+		discordgo.Button{Label: "Open registration", Emoji: &discordgo.ComponentEmoji{Name: "🎅"}, Style: discordgo.SuccessButton,
+			CustomID: "grinch:" + state.ID + ":registration:0"},
 	}}
 	if state.Phase == core.GrinchLobby {
-		return fmt.Sprintf("%s\n🎄 **The Grinch is coming!**\nJoin with 🎅 before <t:%d:R>. **%d/3 to start early**.",
+		return fmt.Sprintf("%s\n🎄 **The Grinch is coming!**\nOpen registration with 🎅 before <t:%d:R>. **%d/3 to start early**.",
 				content, state.StartedAt.Add(core.GrinchJoinDuration).Unix(), len(state.Joined)),
 			[]discordgo.MessageComponent{join}
 	}

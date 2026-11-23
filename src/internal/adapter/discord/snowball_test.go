@@ -31,13 +31,13 @@ func TestThrownSnowballInteraction(t *testing.T) {
 			b := bot{guildID: "200", service: service}
 			target := app.Member{ServerID: "200", UserID: "500"}
 			sender := app.Member{ServerID: "200", UserID: "400"}
-			item := "snowball"
+			item, emoji := "snowball", "❄️"
 			wantInventory := core.Inventory{Snowballs: 1}
 			options := []*discordgo.ApplicationCommandInteractionDataOption{
 				{Type: discordgo.ApplicationCommandOptionUser, Name: "recipient", Value: target.UserID},
 			}
 			if step.yellow {
-				item = "yellow snowball"
+				item, emoji = "yellow snowball", "🟡"
 				wantInventory = core.Inventory{YellowSnowballs: 1}
 				options = append(options, &discordgo.ApplicationCommandInteractionDataOption{
 					Type: discordgo.ApplicationCommandOptionString, Name: "type", Value: "yellow",
@@ -82,7 +82,7 @@ func TestThrownSnowballInteraction(t *testing.T) {
 					if err := json.NewDecoder(r.Body).Decode(&message); err != nil {
 						t.Fatal(err)
 					}
-					if message.Content != "<@500> Alice have threw a ❄️ "+item+" at you, now you have 1 ❄️ "+item+". 🥶" {
+					if message.Content != "<@500> Alice have threw a "+emoji+" "+item+" at you, now you have 1 "+emoji+" "+item+". 🥶" {
 						t.Errorf("recipient notification = %q", message.Content)
 					}
 					if mentions := message.AllowedMentions; mentions == nil || len(mentions.Parse) != 0 || len(mentions.Users) != 1 || mentions.Users[0] != target.UserID {
@@ -97,7 +97,7 @@ func TestThrownSnowballInteraction(t *testing.T) {
 					if err := json.NewDecoder(r.Body).Decode(&edit); err != nil {
 						t.Fatal(err)
 					}
-					want := "You have thrown a ❄️ " + item + " at Bob. 🥶"
+					want := "You have thrown a " + emoji + " " + item + " at Bob. 🥶"
 					if step.blocked {
 						want += "\nThe snowball was added to their inventory, but I couldn't post the notification in this channel."
 					}
@@ -124,6 +124,13 @@ func TestThrownSnowballInteraction(t *testing.T) {
 			inventory, err := service.ViewInventory(t.Context(), target)
 			if calls != len(paths) || err != nil || inventory != wantInventory {
 				t.Fatalf("throw requests = %d, recipient inventory = %+v, %v", calls, inventory, err)
+			}
+			wantBad := 0
+			if step.yellow {
+				wantBad = 5
+			}
+			if aura, err := service.CheckAura(t.Context(), sender); err != nil || aura.Bad != wantBad {
+				t.Fatalf("sender aura = %+v, %v", aura, err)
 			}
 			if inventory, err := service.ViewInventory(t.Context(), sender); err != nil || inventory.YellowSnowballs != 0 {
 				t.Fatalf("sender inventory = %+v, %v", inventory, err)

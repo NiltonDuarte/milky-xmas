@@ -85,16 +85,16 @@ func TestGiftTransferAuraAndSocksInteractions(t *testing.T) {
 		content string
 	}{
 		{alice.UserID, aura, "😈 Bad 0%  |  😇 Good 0%"},
-		{alice.UserID, socks, "🧦 Your inventory\nNormal gifts: 0\nRare gifts: 2\nEpic gifts: 0\nSnowballs: 0\nYellow Snowballs: 0\nCoal: 2"},
+		{alice.UserID, socks, "🧦 Your inventory\n🎁 Gifts: 0 - normal | 2 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 2"},
 		{alice.UserID, send("600", true, 1, "rare"), "Choose another player in this server."},
 		{alice.UserID, send(bob.UserID, false, 1.5, "rare"), "Enter a positive whole number of items."},
 		{alice.UserID, send(bob.UserID, false, 1, "rare"), "Sent 1 🎁rare gift to Bob. Your 😇 good deeds is 10% more high."},
 		{alice.UserID, send(bob.UserID, false, 1, "rare"), "Sent 1 🎁rare gift to Bob. Your 😇 good deeds is 10% more high."},
 		{alice.UserID, aura, "😈 Bad 0%  |  😇 Good 20%"},
 		{bob.UserID, aura, "😈 Bad 0%  |  😇 Good 0%"},
-		{alice.UserID, socks, "🧦 Your inventory\nNormal gifts: 0\nRare gifts: 0\nEpic gifts: 0\nSnowballs: 0\nYellow Snowballs: 0\nCoal: 2"},
-		{bob.UserID, socks, "🧦 Your inventory\nNormal gifts: 0\nRare gifts: 2\nEpic gifts: 0\nSnowballs: 0\nYellow Snowballs: 0\nCoal: 0"},
-		{alice.UserID, send(bob.UserID, false, 2, "coal"), "Sent 2 🪨 Coal to Bob. Your 😈 bad deeds increased by 10%."},
+		{alice.UserID, socks, "🧦 Your inventory\n🎁 Gifts: 0 - normal | 0 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 2"},
+		{bob.UserID, socks, "🧦 Your inventory\n🎁 Gifts: 0 - normal | 2 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0"},
+		{alice.UserID, send(bob.UserID, false, 2, "coal"), "Sent 2 🌑 Coal to Bob. Your 😈 bad deeds increased by 10%."},
 		{alice.UserID, aura, "😈 Bad 10%  |  😇 Good 20%"},
 	} {
 		session, err := discordgo.New("Bot fixture")

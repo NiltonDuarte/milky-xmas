@@ -105,7 +105,7 @@ func (b bot) autocompleteSnowball(session *discordgo.Session, interaction *disco
 			choices = append(choices, &discordgo.ApplicationCommandOptionChoice{Name: "Normal Snowball", Value: string(core.NormalSnowball)})
 		}
 		if err == nil && inventory.YellowSnowballs > 0 && strings.Contains("yellow snowball", query) {
-			choices = append(choices, &discordgo.ApplicationCommandOptionChoice{Name: "Yellow Snowball", Value: string(core.YellowSnowball)})
+			choices = append(choices, &discordgo.ApplicationCommandOptionChoice{Name: gifttext.SnowballEmoji(core.YellowSnowball) + " Yellow Snowball", Value: string(core.YellowSnowball)})
 		}
 	}
 	replyCtx, stop := context.WithTimeout(context.Background(), 1500*time.Millisecond)

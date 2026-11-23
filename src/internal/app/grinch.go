@@ -129,15 +129,31 @@ func (e *GrinchEncounter) Play(ctx context.Context, id, message string, move cor
 	return state, reply, err
 }
 
+func (e *GrinchEncounter) CanJoin(ctx context.Context, id, message, member string, at time.Time) (bool, error) {
+	state, _, err := e.store.LoadGrinch(ctx, e.scope)
+	return err == nil && state.ID == id && state.MessageID == message && state.CanJoin(member, at), err
+}
+
+func (e *GrinchEncounter) RefreshBoard(ctx context.Context, display GrinchDisplay) (core.Grinch, error) {
+	return e.sync(ctx, display, true)
+}
+
 func (e *GrinchEncounter) Sync(ctx context.Context, display GrinchDisplay) (core.Grinch, error) {
+	return e.sync(ctx, display, false)
+}
+
+func (e *GrinchEncounter) sync(ctx context.Context, display GrinchDisplay, refreshActive bool) (core.Grinch, error) {
 	e.displayMu.Lock()
 	defer e.displayMu.Unlock()
 	state, _, err := e.change(ctx, func(g *core.Grinch) bool { return g.Advance(e.now()) })
-	if err != nil || !state.Dirty || state.MessageID == "" {
+	if err != nil || state.MessageID == "" || (!state.Dirty && (!refreshActive || !state.EndedAt.IsZero())) {
 		return state, err
 	}
 	if err := display.Update(ctx, state); err != nil {
 		return state, err
+	}
+	if !state.Dirty {
+		return state, nil
 	}
 	_, _, err = e.change(ctx, func(g *core.Grinch) bool {
 		if g.ID != state.ID || g.Phase != state.Phase || len(g.Accepted) != len(state.Accepted) {

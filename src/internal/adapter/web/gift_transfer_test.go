@@ -48,7 +48,7 @@ func TestGiftTransferAndAuraInChat(t *testing.T) {
 		{"/daily claim", http.StatusOK, "🎅 you already got the gift for today, the next gift 🎁 is in 24 hours."},
 		{"/send gift friend coal 3", http.StatusBadRequest, "You don't have enough Coal."},
 		{"/aura check", http.StatusOK, "😈 Bad 95%  |  😇 Good 100%"},
-		{"/send gift friend coal 2", http.StatusOK, "Sent 2 🪨 Coal to friend. Your 😈 bad deeds increased by 5%."},
+		{"/send gift friend coal 2", http.StatusOK, "Sent 2 🌑 Coal to friend. Your 😈 bad deeds increased by 5%."},
 		{"/aura check", http.StatusOK, "😈 Bad 100%  |  😇 Good 100%"},
 	} {
 		form := url.Values{"command": {step.command}}

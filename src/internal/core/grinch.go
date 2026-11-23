@@ -157,6 +157,13 @@ func (g Grinch) hasSurvivor() bool {
 	return false
 }
 
+func (g Grinch) CanJoin(member string, at time.Time) bool {
+	deadline := g.Deadline()
+	return g.Joined != nil && !g.Joined[member] && g.EndedAt.IsZero() &&
+		(g.Phase != GrinchLobby || at.Before(g.StartedAt.Add(GrinchJoinDuration))) &&
+		(deadline.IsZero() || at.Before(deadline))
+}
+
 func (g *Grinch) Move(move GrinchMove) string {
 	if g.Accepted[move.RequestID] {
 		return "This action was already counted."

@@ -148,24 +148,70 @@ func TestGrinchButtonAcknowledgement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for index, user := range []string{"50", "50", "51"} {
+	id := func(index int64) string {
+		return fmt.Sprint(((now.UnixMilli() - 1420070400000) << 22) + index)
+	}
+	opener := "grinch:" + fight.ID + ":registration:0"
+	personal := "grinch:" + fight.ID + ":join:999:"
+	for index, step := range []struct {
+		user, customID string
+		privatePanel   bool
+		want           discordgo.InteractionResponseType
+	}{
+		{"50", opener, false, discordgo.InteractionResponseChannelMessageWithSource},
+		{"51", opener, false, discordgo.InteractionResponseChannelMessageWithSource},
+		{"50", personal + id(0), true, discordgo.InteractionResponseUpdateMessage},
+		{"50", opener, false, discordgo.InteractionResponseDeferredMessageUpdate},
+		{"51", personal + id(1), true, discordgo.InteractionResponseUpdateMessage},
+		{"51", opener, false, discordgo.InteractionResponseDeferredMessageUpdate},
+	} {
+		calls := 0
 		s.Client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
-			var response discordgo.InteractionResponse
+			calls++
+			var response struct {
+				Type discordgo.InteractionResponseType `json:"type"`
+				Data *struct {
+					Content    string                 `json:"content"`
+					Flags      discordgo.MessageFlags `json:"flags"`
+					Components []json.RawMessage      `json:"components"`
+				} `json:"data"`
+			}
 			if err := json.NewDecoder(r.Body).Decode(&response); err != nil {
 				t.Fatal(err)
 			}
-			if !strings.HasSuffix(r.URL.Path, "/callback") || response.Type != discordgo.InteractionResponseDeferredMessageUpdate ||
-				response.Data != nil {
-				t.Errorf("expected silent join acknowledgement, got %+v", response)
+			if !strings.HasSuffix(r.URL.Path, "/callback") || response.Type != step.want {
+				t.Fatalf("expected callback type %d, got %+v", step.want, response)
+			}
+			switch step.want {
+			case discordgo.InteractionResponseChannelMessageWithSource:
+				if response.Data == nil || response.Data.Flags != discordgo.MessageFlagsEphemeral ||
+					len(response.Data.Components) != 1 || !strings.Contains(string(response.Data.Components[0]), personal+id(int64(index))) {
+					t.Errorf("expected private Join panel, got %+v", response.Data)
+				}
+			case discordgo.InteractionResponseUpdateMessage:
+				if response.Data == nil || response.Data.Content != grinchRegistrationTitle ||
+					response.Data.Components == nil || len(response.Data.Components) != 0 {
+					t.Errorf("expected the private Join button removed, got %+v", response.Data)
+				}
+			case discordgo.InteractionResponseDeferredMessageUpdate:
+				if response.Data != nil {
+					t.Errorf("expected silent reopen for a registered player, got %+v", response)
+				}
 			}
 			return fakeResponse(http.StatusNoContent, ""), nil
 		})
-		eventID := fmt.Sprint(((now.UnixMilli() - 1420070400000) << 22) + int64(index))
+		message := &discordgo.Message{ID: "999"}
+		if step.privatePanel {
+			message = &discordgo.Message{ID: "panel", Flags: discordgo.MessageFlagsEphemeral}
+		}
 		b.button(s, &discordgo.Interaction{
-			ID: eventID, ChannelID: "400", Message: &discordgo.Message{ID: "999"},
-			Member: &discordgo.Member{User: &discordgo.User{ID: user}},
-			Data:   discordgo.MessageComponentInteractionData{CustomID: "grinch:" + fight.ID + ":lobby:0"},
+			ID: id(int64(index)), ChannelID: "400", Message: message,
+			Member: &discordgo.Member{User: &discordgo.User{ID: step.user}},
+			Data:   discordgo.MessageComponentInteractionData{CustomID: step.customID},
 		})
+		if calls != 1 {
+			t.Fatalf("registration step %d sent %d responses", index, calls)
+		}
 	}
 	s.Client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
 		return fakeResponse(http.StatusOK, `{"id":"999"}`), nil
