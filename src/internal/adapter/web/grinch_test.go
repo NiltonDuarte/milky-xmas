@@ -29,43 +29,44 @@ func TestLocalGrinch(t *testing.T) {
 	}
 	send("/grinch summon", "🎅 0 joined")
 	send("/grinch join", "🎅 1 joined")
-	send("/grinch join", "You already joined")
+	send("/grinch join", "🎅 1 joined")
 	now = now.Add(time.Minute)
-	send("/grinch view", "100.00/100 HP · snowballs")
+	send("/grinch view", "100.00/100% HP\nsnowballs")
 	for range 24 {
-		send("/grinch hit 1", "Snowball hit for 1 HP.")
+		send("/grinch hit 1", "HP\nsnowballs")
 	}
-	send("/grinch hit 1", "75.00/100 HP · defense")
+	send("/grinch hit 1", "75.00/100% HP\ndefense")
 	// The deterministic board is 0b01010101. Slot 2 is an unsafe defense.
-	send("/grinch hit 2", "You lost 10%")
-	send("/grinch hit 2", "45.00/100 HP · attack")
+	send("/grinch hit 2", "HP\ndefense")
+	send("/grinch hit 2", "45.00/100% HP\nattack")
 	for range 7 {
-		send("/grinch hit 1", "Attack hit!")
+		send("/grinch hit 1", "HP\nattack")
 	}
-	send("/grinch hit 1", "5.00/100 HP · final")
-	send("/grinch hit 1", "You earned 2 gift points!")
+	send("/grinch hit 1", "5.00/100% HP\nfinal")
+	send("/grinch hit 1", "5.00/100% HP\nfinal")
 	send("/grinch view", "5 ❄️")
-	send("/grinch hit 5", "You earned 1 Snowball!")
-	send("/grinch hit 5", "You earned 1 Snowball!")
+	send("/grinch hit 5", "5.00/100% HP\nfinal")
+	send("/grinch hit 5", "5.00/100% HP\nfinal")
 	send("/socks", "Snowballs: 2\nYellow Snowballs: 0\nCoal: 0")
 	for range 4 {
-		send("/grinch hit 2", "Final attack hit!")
+		send("/grinch hit 2", "HP\nfinal")
 	}
 	send("/grinch hit 2", "Damage leaderboard\n1. fixture — 105.00 pts\n\nGift leaderboard\n1. fixture — 2 pts")
+	send("/grinch view", "👽 Grinch · 0.00/100% HP")
 	send("/socks", "Snowballs: 2\nYellow Snowballs: 0\nCoal: 0")
 	now = now.Add(time.Second)
 	send("/grinch summon", "🎅 0 joined")
 	send("/grinch join", "🎅 1 joined")
-	send("/grinch join", "You already joined")
+	send("/grinch join", "🎅 1 joined")
 	now = now.Add(time.Minute)
-	send("/grinch view", "100.00/100 HP · snowballs")
+	send("/grinch view", "100.00/100% HP\nsnowballs")
 	now = now.Add(2 * time.Minute)
-	send("/grinch hit 1", "99.00/100 HP · snowballs")
-	for range 24 {
-		send("/grinch hit 1", "Snowball hit for 1 HP.")
+	send("/grinch hit 1", "99.00/100% HP\nsnowballs")
+	for range 23 {
+		send("/grinch hit 1", "HP\nsnowballs")
 	}
-	send("/grinch view", "75.00/100 HP · defense")
+	send("/grinch hit 1", "75.00/100% HP\ndefense")
 	now = now.Add(time.Minute)
-	send("/grinch view", "75.00/100 HP · escaped")
+	send("/grinch view", "75.00/100% HP\nescaped")
 	send("/socks", "Snowballs: 2\nYellow Snowballs: 1\nCoal: 1")
 }

@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/grinchtext"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
@@ -56,7 +57,7 @@ func (fixture grinchFixture) reply(w http.ResponseWriter, r *http.Request, args 
 	case len(args) == 1 && args[0] == "view":
 		// The state above already includes deadline transitions.
 	case len(args) == 1 && args[0] == "join":
-		state, result, err = fixture.encounter.Play(ctx, state.ID, state.MessageID, core.GrinchMove{
+		state, _, err = fixture.encounter.Play(ctx, state.ID, state.MessageID, core.GrinchMove{
 			Phase: core.GrinchLobby, At: now, Member: fixtureUserID, RequestID: strconv.FormatUint(fixture.sequence.Add(1), 10),
 		})
 	case len(args) == 2 && args[0] == "hit":
@@ -65,7 +66,7 @@ func (fixture grinchFixture) reply(w http.ResponseWriter, r *http.Request, args 
 			http.Error(w, "Choose a tile from 1 to 8.", http.StatusBadRequest)
 			return
 		}
-		state, result, err = fixture.encounter.Play(ctx, state.ID, state.MessageID, core.GrinchMove{
+		state, _, err = fixture.encounter.Play(ctx, state.ID, state.MessageID, core.GrinchMove{
 			Phase: state.Phase, Slot: slot - 1, DefenseRound: state.DefenseRound, FinalRound: state.FinalRound, At: now, Member: fixtureUserID,
 			RequestID: strconv.FormatUint(fixture.sequence.Add(1), 10),
 		})
@@ -89,10 +90,13 @@ func fixtureSummary(state core.Grinch) string {
 		return "No Grinch encounter. Use /grinch summon."
 	}
 	var message strings.Builder
-	fmt.Fprintf(&message, "Grinch · %.2f/100 HP · %s", state.Health(), state.Phase)
+	fmt.Fprintf(&message, "%s\n%s", grinchtext.Health(state.Health()), state.Phase)
 	switch state.Phase {
 	case core.GrinchLobby:
-		fmt.Fprintf(&message, "\n🎅 %d joined · /grinch join", len(state.Joined))
+		fmt.Fprintf(&message, "\n🎅 %d joined", len(state.Joined))
+		if !state.Joined[fixtureUserID] {
+			fmt.Fprint(&message, " · /grinch join")
+		}
 	case core.GrinchSnowballs:
 		fmt.Fprint(&message, "\n/grinch hit 1")
 	case core.GrinchFinalAttack:
@@ -123,7 +127,10 @@ func fixtureSummary(state core.Grinch) string {
 		fmt.Fprint(&message, "\n/grinch hit <tile>")
 	}
 	if state.EndedAt.IsZero() && state.Phase != core.GrinchLobby && state.Joined != nil {
-		fmt.Fprintf(&message, "\n🎅 %d joined · /grinch join", len(state.Joined))
+		fmt.Fprintf(&message, "\n🎅 %d joined", len(state.Joined))
+		if !state.Joined[fixtureUserID] {
+			fmt.Fprint(&message, " · /grinch join")
+		}
 	}
 	if !state.EndedAt.IsZero() && state.Phase != core.GrinchCancelled {
 		if scores := state.Leaderboard(); len(scores) > 0 {

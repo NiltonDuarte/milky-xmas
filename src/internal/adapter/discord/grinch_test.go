@@ -148,22 +148,22 @@ func TestGrinchButtonAcknowledgement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for index, want := range []string{"✅ You joined the Grinch fight!", "✅ You already joined this fight."} {
+	for index, user := range []string{"50", "50", "51"} {
 		s.Client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
 			var response discordgo.InteractionResponse
 			if err := json.NewDecoder(r.Body).Decode(&response); err != nil {
 				t.Fatal(err)
 			}
-			if !strings.HasSuffix(r.URL.Path, "/callback") || response.Type != discordgo.InteractionResponseChannelMessageWithSource ||
-				response.Data == nil || response.Data.Flags != discordgo.MessageFlagsEphemeral || !strings.HasPrefix(response.Data.Content, want) {
-				t.Errorf("expected private confirmation %q, got %+v", want, response)
+			if !strings.HasSuffix(r.URL.Path, "/callback") || response.Type != discordgo.InteractionResponseDeferredMessageUpdate ||
+				response.Data != nil {
+				t.Errorf("expected silent join acknowledgement, got %+v", response)
 			}
 			return fakeResponse(http.StatusNoContent, ""), nil
 		})
 		eventID := fmt.Sprint(((now.UnixMilli() - 1420070400000) << 22) + int64(index))
 		b.button(s, &discordgo.Interaction{
 			ID: eventID, ChannelID: "400", Message: &discordgo.Message{ID: "999"},
-			Member: &discordgo.Member{User: &discordgo.User{ID: "50"}},
+			Member: &discordgo.Member{User: &discordgo.User{ID: user}},
 			Data:   discordgo.MessageComponentInteractionData{CustomID: "grinch:" + fight.ID + ":lobby:0"},
 		})
 	}
@@ -171,8 +171,8 @@ func TestGrinchButtonAcknowledgement(t *testing.T) {
 		return fakeResponse(http.StatusOK, `{"id":"999"}`), nil
 	})
 	now = now.Add(core.GrinchJoinDuration)
-	if _, err := b.encounter.Sync(t.Context(), display); err != nil {
-		t.Fatal(err)
+	if state, err := b.encounter.Sync(t.Context(), display); err != nil || len(state.Joined) != 2 {
+		t.Fatalf("expected two distinct players: %+v, %v", state.Joined, err)
 	}
 	s.Client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
 		var response discordgo.InteractionResponse
@@ -237,5 +237,83 @@ func TestGrinchFinalBoardSnowballButton(t *testing.T) {
 		if button.CustomID != want || button.Emoji == nil || button.Emoji.Name != "❄️" || len(buttons) > 5 || !strings.Contains(content, "1 Snowball") {
 			t.Errorf("round %d: snowball button = %+v; items = %d; content = %q", round, button, len(buttons), content)
 		}
+	}
+}
+
+func TestGrinchHealthDisplay(t *testing.T) {
+	for _, state := range []core.Grinch{
+		{Phase: core.GrinchLobby, HP: 10000},
+		{Phase: core.GrinchAttack, HP: 4500},
+		{Phase: core.GrinchWon, HP: 0, EndedAt: time.Now()},
+	} {
+		content, _ := grinchMessage(state)
+		line, _, _ := strings.Cut(content, "\n")
+		want := fmt.Sprintf("👽 Grinch · %.2f/100%% HP", state.Health())
+		if line != want {
+			t.Errorf("health line for %s = %q, want %q", state.Phase, line, want)
+		}
+	}
+}
+
+func TestGrinchReshuffleEditsOriginalMessage(t *testing.T) {
+	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
+	store := &giftfixture.Store{}
+	b := &grinchBot{guild: "200", channel: "400",
+		encounter: app.NewGrinchEncounter(store, "200", "scope", func() time.Time { return now }, func(int) int { return 0 })}
+	fight := core.Grinch{ID: "fight", MessageID: "999", HP: 500, Phase: core.GrinchFinalAttack, FinalRound: 1,
+		StartedAt: now, TimedAt: now, Joined: map[string]bool{"50": true}, Accepted: make(map[string]bool)}
+	if saved, err := store.SaveGrinch(t.Context(), "scope", 0, fight, "200", nil); !saved || err != nil {
+		t.Fatalf("seed final phase: %v, %v", saved, err)
+	}
+	s, err := discordgo.New("Bot fixture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	callbacks, edits := 0, 0
+	s.Client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/callback"):
+			callbacks++
+			var response discordgo.InteractionResponse
+			if err := json.NewDecoder(r.Body).Decode(&response); err != nil {
+				t.Fatal(err)
+			}
+			if response.Type != discordgo.InteractionResponseDeferredMessageUpdate || response.Data != nil {
+				t.Errorf("expected silent acknowledgement: %+v", response)
+			}
+			return fakeResponse(http.StatusNoContent, ""), nil
+		case r.Method == http.MethodPatch && strings.HasSuffix(r.URL.Path, "/channels/400/messages/999"):
+			edits++
+			var update struct {
+				Content    string            `json:"content"`
+				Components []json.RawMessage `json:"components"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.HasPrefix(update.Content, "👽 Grinch · 5.00/100% HP\n") ||
+				len(update.Components) != 2 || !strings.Contains(string(update.Components[0]), "grinch:fight:final:4:2") {
+				t.Errorf("unexpected update: %+v", update)
+			}
+			return fakeResponse(http.StatusOK, `{"id":"999"}`), nil
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+			return nil, nil
+		}
+	})
+	for index := range 2 {
+		b.button(s, &discordgo.Interaction{
+			ID:        fmt.Sprint(((now.UnixMilli() - 1420070400000) << 22) + int64(index)),
+			ChannelID: "400", Message: &discordgo.Message{ID: "999"},
+			Member: &discordgo.Member{User: &discordgo.User{ID: "50"}},
+			Data:   discordgo.MessageComponentInteractionData{CustomID: "grinch:fight:final:4:1"},
+		})
+	}
+	if _, err := b.encounter.Sync(t.Context(), grinchDisplay{s, b.channel}); err != nil {
+		t.Fatal(err)
+	}
+	player, err := store.Load(t.Context(), app.Member{ServerID: "200", UserID: "50"})
+	if err != nil || callbacks != 2 || edits != 1 || player.Inventory.Snowballs != 1 {
+		t.Fatalf("callbacks = %d, edits = %d, inventory = %+v, %v", callbacks, edits, player.Inventory, err)
 	}
 }

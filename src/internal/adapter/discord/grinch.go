@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/grinchtext"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 	"github.com/bwmarrin/discordgo"
@@ -135,20 +136,16 @@ func (b *grinchBot) button(s *discordgo.Session, i *discordgo.Interaction) {
 		return
 	}
 	playContext, stopPlay := context.WithTimeout(context.Background(), time.Second)
-	state, reply, err := b.encounter.Play(playContext, parts[1], i.Message.ID, core.GrinchMove{
+	_, _, err = b.encounter.Play(playContext, parts[1], i.Message.ID, core.GrinchMove{
 		Phase: core.GrinchPhase(parts[2]), Slot: slot, DefenseRound: round, FinalRound: round, Member: i.Member.User.ID, RequestID: i.ID, At: at,
 	})
 	stopPlay()
 	response := &discordgo.InteractionResponse{Type: discordgo.InteractionResponseDeferredMessageUpdate}
-	snowflake := reply == core.GrinchSnowflakeHit
-	if err != nil || !state.Accepted[i.ID] || snowflake || reply == core.GrinchSnowballEarned || strings.HasPrefix(reply, "🎁") || parts[2] == string(core.GrinchLobby) {
-		if err != nil {
-			logInteractionError(i.ID, "play Grinch action", err)
-			reply = "Could not record your action. Try again."
-		}
+	if err != nil {
+		logInteractionError(i.ID, "play Grinch action", err)
 		response = &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{Flags: discordgo.MessageFlagsEphemeral, Content: reply},
+			Data: &discordgo.InteractionResponseData{Flags: discordgo.MessageFlagsEphemeral, Content: "Could not record your action. Try again."},
 		}
 	}
 	ackContext, stopAck := context.WithTimeout(context.Background(), 1750*time.Millisecond)
@@ -249,7 +246,7 @@ func grinchLeaderboards(content string, damage, gifts []core.GrinchScore) (strin
 }
 
 func grinchMessage(state core.Grinch) (string, []discordgo.MessageComponent) {
-	content := fmt.Sprintf("🎄 **Grinch** · **%.2f/100 HP**", state.Health())
+	content := grinchtext.Health(state.Health())
 	if state.Phase == core.GrinchCancelled {
 		return "The Grinch encounter was cancelled because no one joined.", []discordgo.MessageComponent{}
 	}
@@ -258,8 +255,8 @@ func grinchMessage(state core.Grinch) (string, []discordgo.MessageComponent) {
 			CustomID: "grinch:" + state.ID + ":lobby:0"},
 	}}
 	if state.Phase == core.GrinchLobby {
-		return fmt.Sprintf("🎄 **The Grinch is coming!**\nJoin with 🎅 before <t:%d:R>. **%d/3 to start early**.",
-				state.StartedAt.Add(core.GrinchJoinDuration).Unix(), len(state.Joined)),
+		return fmt.Sprintf("%s\n🎄 **The Grinch is coming!**\nJoin with 🎅 before <t:%d:R>. **%d/3 to start early**.",
+				content, state.StartedAt.Add(core.GrinchJoinDuration).Unix(), len(state.Joined)),
 			[]discordgo.MessageComponent{join}
 	}
 	if !state.EndedAt.IsZero() {
@@ -290,8 +287,7 @@ func grinchMessage(state core.Grinch) (string, []discordgo.MessageComponent) {
 		content += "\nThe Grinch attacks! Choose a tree to defend."
 		if state.Phase == core.GrinchAttack {
 			on, off = "🧊", "☃️"
-			content = fmt.Sprintf("🎄 **Grinch** · **%.2f/100 HP**\n“Something, something… ouch!”\nEscapes <t:%d:R>",
-				state.Health(), state.Deadline().Unix())
+			content = grinchtext.Health(state.Health()) + fmt.Sprintf("\n“Something, something… ouch!”\nEscapes <t:%d:R>", state.Deadline().Unix())
 		}
 		for row := range 2 {
 			columns := make([]discordgo.MessageComponent, 4)
