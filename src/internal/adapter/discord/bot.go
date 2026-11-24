@@ -18,6 +18,7 @@ type bot struct {
 	service  app.Service
 	setup    *app.GuildSetup
 	grinches *grinchChannels
+	drops    *dropBot
 }
 
 func Run(ctx context.Context, token, guildID string, service app.Service, setup *app.GuildSetup, encounter func(string, string) *app.GrinchEncounter) error {
@@ -27,7 +28,7 @@ func Run(ctx context.Context, token, guildID string, service app.Service, setup 
 		stop()
 		channels.wait()
 	}()
-	b := bot{guildID: guildID, service: service, setup: setup, grinches: channels}
+	b := bot{guildID: guildID, service: service, setup: setup, grinches: channels, drops: newDropBot(app.NewActivityDrops(service))}
 	session, err := discordgo.New("Bot " + token)
 	if err != nil {
 		return fmt.Errorf("create Discord session: %w", err)
@@ -42,6 +43,7 @@ func Run(ctx context.Context, token, guildID string, service app.Service, setup 
 		}
 	})
 	session.AddHandler(func(s *discordgo.Session, event *discordgo.MessageCreate) {
+		b.observeDrop(s, event)
 		if worker := channels.get(event.GuildID, event.ChannelID); worker != nil {
 			worker.observe(s, event)
 		}
@@ -100,7 +102,9 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 	}
 	if event.Type == discordgo.InteractionMessageComponent {
 		data, ok := event.Data.(discordgo.MessageComponentInteractionData)
-		if ok && strings.HasPrefix(data.CustomID, "grinch:") {
+		if ok && strings.HasPrefix(data.CustomID, "drop:") && b.drops != nil {
+			b.drops.button(session, event.Interaction)
+		} else if ok && strings.HasPrefix(data.CustomID, "grinch:") {
 			if worker := b.grinches.get(event.GuildID, event.ChannelID); worker != nil {
 				worker.button(session, event.Interaction)
 			} else {
