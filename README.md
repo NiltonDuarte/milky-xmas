@@ -125,3 +125,9 @@ In Discord, `/advent view` shows the calendar image with 24 numbered buttons. Cl
 In the Discord test server, run `/advent view` and click today's number, then check the ❌, that the gift total went up, and that the button no longer responds. Run `/advent view` again to see the ❌ persist, and try a number from a later day to confirm it is disabled.
 
 **Temporary test window:** until November 29, 2026 (UTC), every Advent door is available, so the calendar can be tested before December. Doors opened in the window are stored separately and do not count in December, but gifts awarded during the test stay in inventories. Remove the window from `core/advent.go` afterwards.
+
+## Christmas tree
+
+Run `/water` to water the server's Christmas tree. It starts withered at 10% water, loses 1% every hour, and gains 2% per watering. It needs 100% to be full and alive. Each player can water once every 10 minutes. In Discord a watering is shown to the channel with the tree image, the water level, and the top three waterers. A refusal, such as watering too soon or watering a full tree, is private. Only the withered tree image exists so far, so every level uses it until more images are added. The tree has no end date. The local chat shows the same text without the image.
+
+In the Discord test server, run `/water` from two accounts and check the public message and image, then run it again right away to see the private refusal. Restart the bot with the same database to check the level continues.

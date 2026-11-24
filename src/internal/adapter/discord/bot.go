@@ -20,16 +20,17 @@ type bot struct {
 	setup    *app.GuildSetup
 	grinches *grinchChannels
 	drops    *dropBot
+	tree     *app.Tree
 }
 
-func Run(ctx context.Context, token, guildID string, service app.Service, setup *app.GuildSetup, encounter func(string, string) *app.GrinchEncounter) error {
+func Run(ctx context.Context, token, guildID string, service app.Service, setup *app.GuildSetup, encounter func(string, string) *app.GrinchEncounter, tree *app.Tree) error {
 	runCtx, stop := context.WithCancel(ctx)
 	channels := &grinchChannels{ctx: runCtx, setup: setup, build: encounter, workers: make(map[grinchChannel]grinchWorker)}
 	defer func() {
 		stop()
 		channels.wait()
 	}()
-	b := bot{guildID: guildID, service: service, setup: setup, grinches: channels, drops: newDropBot(app.NewActivityDrops(service))}
+	b := bot{guildID: guildID, service: service, setup: setup, grinches: channels, drops: newDropBot(app.NewActivityDrops(service)), tree: tree}
 	session, err := discordgo.New("Bot " + token)
 	if err != nil {
 		return fmt.Errorf("create Discord session: %w", err)
@@ -88,6 +89,7 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 		adventCommand(),
 		grinchCommand(),
 		thrownCommand(),
+		waterCommand(),
 		helpCommand(),
 		setupCommand(),
 	}
@@ -171,6 +173,11 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 	}
 
 	switch data.Name {
+	case waterCommandName:
+		if len(data.Options) == 0 {
+			b.handleWater(session, event.Interaction)
+		}
+		return
 	case gifttext.HelpCommand:
 		if len(data.Options) == 0 {
 			b.handleHelp(session, event.Interaction)

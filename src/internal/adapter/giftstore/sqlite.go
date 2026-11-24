@@ -62,7 +62,8 @@ func initSchema(ctx context.Context, db *sql.DB) error {
 			PRIMARY KEY (server_id, user_id, year, day)
 		);
 		CREATE TABLE IF NOT EXISTS grinch_encounters (scope TEXT PRIMARY KEY, revision INTEGER NOT NULL, payload BLOB NOT NULL);
-		CREATE TABLE IF NOT EXISTS guild_settings (guild_id TEXT PRIMARY KEY, payload BLOB NOT NULL)`)
+		CREATE TABLE IF NOT EXISTS guild_settings (guild_id TEXT PRIMARY KEY, payload BLOB NOT NULL);
+		CREATE TABLE IF NOT EXISTS christmas_trees (server_id TEXT PRIMARY KEY, revision INTEGER NOT NULL, payload BLOB NOT NULL)`)
 	if err != nil {
 		return err
 	}
