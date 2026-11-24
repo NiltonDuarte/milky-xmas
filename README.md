@@ -117,3 +117,9 @@ Run `/helpmemilky` to list the commands you can use. In Discord, moderator comma
 The Random Active Drop shows the Grinch and Max image and the Gift Rain shows the gift rain image. A player with Good deeds of 50% or more has better odds of rare and epic gifts from the Random Active Drop. The button a player opens is disabled. A Gift Rain ends after ten collections and each has a 25% chance of Coal. When a drop ends or expires after ten minutes, its message is edited to say so and to list who collected what. Drops are kept in memory, so a restart leaves an open drop's message as it was.
 
 In the Discord test server, enable a channel and chat until a drop appears. Check the image, that your clicked button is disabled, that a second account cannot open the same button, and that the final list appears after ten minutes. For a Gift Rain, collect ten times across accounts (one collection per minute each) and check the end and the Coal prizes. In the local chat, use `/message <text>` to trigger drops, `/drop collect <id>`, and `/drop expire <id>`.
+
+## Advent calendar buttons
+
+In Discord, `/advent view` shows the calendar image with 24 numbered buttons. Click a number to open that door once. The button becomes ❌ and stays disabled. Doors that are not available yet, or after December 24 UTC, are disabled. `/advent open <day>` still works, and the local chat still lists the doors in text.
+
+In the Discord test server, run `/advent view` and click today's number, then check the ❌, that the gift total went up, and that the button no longer responds. Run `/advent view` again to see the ❌ persist, and try a number from a later day to confirm it is disabled.

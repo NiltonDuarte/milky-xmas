@@ -451,8 +451,8 @@ func TestGrinchFinalMessageImages(t *testing.T) {
 				if !slices.Equal(urls, tt.images) || !slices.Equal(files, tt.images) {
 					t.Errorf("final message embeds %v and files %v, want %v", urls, files, tt.images)
 				}
-				if edit.Attachments == nil || len(edit.Attachments) != 0 {
-					t.Errorf("expected old attachments to be replaced, got %v", edit.Attachments)
+				if len(edit.Attachments) != len(tt.images) {
+					t.Errorf("expected the attachments to list the %d uploaded files, got %v", len(tt.images), edit.Attachments)
 				}
 				return fakeResponse(http.StatusOK, `{"id":"999"}`), nil
 			})

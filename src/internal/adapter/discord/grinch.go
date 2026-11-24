@@ -242,7 +242,6 @@ func (display grinchDisplay) Update(ctx context.Context, state core.Grinch) erro
 			images = append(images, grinchPicture{maxImageName, maxImage})
 		}
 		embeds := make([]*discordgo.MessageEmbed, 0, len(images))
-		edit.Attachments = &[]*discordgo.MessageAttachment{}
 		for _, image := range images {
 			embeds = append(embeds, &discordgo.MessageEmbed{Image: &discordgo.MessageEmbedImage{URL: "attachment://" + image.name}})
 			edit.Files = append(edit.Files, &discordgo.File{Name: image.name, ContentType: "image/jpeg", Reader: bytes.NewReader(image.data)})
@@ -251,6 +250,7 @@ func (display grinchDisplay) Update(ctx context.Context, state core.Grinch) erro
 		if overflow {
 			edit.Files = append(edit.Files, &discordgo.File{Name: "grinch-leaderboard.txt", Reader: strings.NewReader(extra)})
 		}
+		edit.Attachments = attachmentsFor(edit.Files)
 	}
 	_, err := display.session.ChannelMessageEditComplex(edit, discordgo.WithContext(ctx))
 	var denied *discordgo.RESTError
