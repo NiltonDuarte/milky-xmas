@@ -34,3 +34,8 @@ func Opening(day int, opening app.AdventOpening) string {
 		return "Could not open the Advent door. Try again."
 	}
 }
+
+// Header is the line above the Advent buttons.
+func Header(calendar core.AdventCalendar) string {
+	return fmt.Sprintf("🎄 Advent %d · December 1–24 UTC · Advent gifts: %d", calendar.Year, calendar.Total)
+}

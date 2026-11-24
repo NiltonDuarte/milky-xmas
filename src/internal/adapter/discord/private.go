@@ -3,6 +3,7 @@ package discord
 import (
 	"bytes"
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
@@ -11,8 +12,9 @@ import (
 
 // privateReply is a private command result. With Image set, the image is shown above the text.
 type privateReply struct {
-	Content string
-	Image   *privateImage
+	Content    string
+	Image      *privateImage
+	Components []discordgo.MessageComponent
 }
 
 type privateImage struct {
@@ -48,6 +50,15 @@ func respondPrivatelyWith(session *discordgo.Session, interaction *discordgo.Int
 
 	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	edit := privateEdit(result)
+	if _, err := session.InteractionResponseEdit(interaction, edit, discordgo.WithContext(ctx)); err != nil {
+		logInteractionError(interaction.ID, "show command result", err)
+	}
+}
+
+// privateEdit builds the message edit for a private reply. Files are listed in the attachments by
+// position, so editing a message that already has them replaces them instead of adding copies.
+func privateEdit(result privateReply) *discordgo.WebhookEdit {
 	edit := &discordgo.WebhookEdit{AllowedMentions: &discordgo.MessageAllowedMentions{}}
 	if result.Image == nil {
 		edit.Content = &result.Content
@@ -57,8 +68,20 @@ func respondPrivatelyWith(session *discordgo.Session, interaction *discordgo.Int
 			{Description: result.Content},
 		}
 		edit.Files = []*discordgo.File{{Name: result.Image.Name, ContentType: "image/jpeg", Reader: bytes.NewReader(result.Image.Data)}}
+		edit.Attachments = attachmentsFor(edit.Files)
 	}
-	if _, err := session.InteractionResponseEdit(interaction, edit, discordgo.WithContext(ctx)); err != nil {
-		logInteractionError(interaction.ID, "show command result", err)
+	if result.Components != nil {
+		edit.Components = &result.Components
 	}
+	return edit
+}
+
+// attachmentsFor lists newly uploaded files by their position, as Discord expects when an edit
+// replaces a message's attachments.
+func attachmentsFor(files []*discordgo.File) *[]*discordgo.MessageAttachment {
+	attachments := make([]*discordgo.MessageAttachment, len(files))
+	for i := range files {
+		attachments[i] = &discordgo.MessageAttachment{ID: strconv.Itoa(i)}
+	}
+	return &attachments
 }

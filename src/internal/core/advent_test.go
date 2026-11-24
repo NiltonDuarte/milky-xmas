@@ -32,3 +32,35 @@ func TestAdventStatus(t *testing.T) {
 		t.Errorf("calendar = %+v", view)
 	}
 }
+
+func TestAdventTestWindow(t *testing.T) {
+	for _, tt := range []struct {
+		at     time.Time
+		window bool
+		status DoorStatus
+		key    int
+	}{
+		{time.Date(2026, 11, 23, 23, 59, 0, 0, time.UTC), false, DoorLocked, 2026},
+		{time.Date(2026, 11, 24, 0, 0, 0, 0, time.UTC), true, DoorAvailable, 1},
+		{time.Date(2026, 11, 29, 23, 59, 0, 0, time.UTC), true, DoorAvailable, 1},
+		{time.Date(2026, 11, 30, 0, 0, 0, 0, time.UTC), false, DoorLocked, 2026},
+		{time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC), false, DoorAvailable, 2026},
+	} {
+		if got := AdventTestWindow(tt.at); got != tt.window {
+			t.Errorf("window at %s = %v, want %v", tt.at, got, tt.window)
+		}
+		day := 24
+		if tt.at.Month() == time.December {
+			day = 1
+		}
+		if got := AdventStatus(tt.at, day, false); got != tt.status {
+			t.Errorf("door %d at %s = %s, want %s", day, tt.at, got, tt.status)
+		}
+		if got := AdventYearKey(tt.at); got != tt.key {
+			t.Errorf("year key at %s = %d, want %d", tt.at, got, tt.key)
+		}
+	}
+	if got := AdventStatus(time.Date(2026, 11, 25, 0, 0, 0, 0, time.UTC), 7, true); got != DoorOpened {
+		t.Errorf("opened door in the window = %s", got)
+	}
+}
