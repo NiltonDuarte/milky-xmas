@@ -12,14 +12,9 @@ func SnowballThrown(recipient string, kind core.SnowballType) string {
 	return fmt.Sprintf("You have thrown a %s %s at %s. 🥶", SnowballEmoji(kind), snowballName(kind), recipient)
 }
 
-func SnowballReceived(sender string, total int64, kind core.SnowballType) string {
-	item := snowballName(kind)
-	plural := item
-	if total != 1 {
-		plural += "s"
-	}
-	emoji := SnowballEmoji(kind)
-	return fmt.Sprintf("%s have threw a %s %s at you, now you have %d %s %s. 🥶", sender, emoji, item, total, emoji, plural)
+// SnowballReceived takes the recipient's mention or name, which the adapter formats.
+func SnowballReceived(recipient, sender string, kind core.SnowballType) string {
+	return fmt.Sprintf("%s❕  %s has thrown a %s %s at you. 🥶", recipient, sender, SnowballEmoji(kind), snowballName(kind))
 }
 
 func SnowballEmoji(kind core.SnowballType) string {

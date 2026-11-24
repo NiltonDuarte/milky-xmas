@@ -9,6 +9,7 @@
 
 - [x] 2.1 Update the daily claim, inventory, and aura text and their tests.
 - [x] 2.2 Attach the aura image in Discord and test the embeds. Update the README.
+- [x] 2.3 Change the snowball notification text and attach the snowball image in Discord. Test the text and the attached image.
 
 ## 3. Verification
 

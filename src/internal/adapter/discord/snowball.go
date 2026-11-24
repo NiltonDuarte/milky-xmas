@@ -1,7 +1,9 @@
 package discord
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"strings"
 	"time"
 
@@ -12,6 +14,10 @@ import (
 )
 
 const thrownCommandName = "thrown"
+const snowballImageName = "snowball.jpg"
+
+//go:embed snowball.jpg
+var snowballImage []byte
 
 func thrownCommand() *discordgo.ApplicationCommand {
 	return &discordgo.ApplicationCommand{
@@ -49,7 +55,7 @@ func (b bot) handleThrownSnowball(session *discordgo.Session, interaction *disco
 				kind = core.SnowballType(value)
 			}
 		}
-		total, err := b.service.ThrowSnowball(ctx, sender, recipient, kind)
+		_, err := b.service.ThrowSnowball(ctx, sender, recipient, kind)
 		if err != nil {
 			if reply := gifttext.SnowballRejection(err); reply != "" {
 				return reply
@@ -60,7 +66,7 @@ func (b bot) handleThrownSnowball(session *discordgo.Session, interaction *disco
 
 		reply := gifttext.SnowballThrown(name, kind)
 		senderName := memberDisplayName(interaction.Member, interaction.Member.User)
-		if err := notifySnowball(ctx, session, interaction.ChannelID, recipient.Member.UserID, gifttext.SnowballReceived(senderName, total, kind)); err != nil {
+		if err := notifySnowball(ctx, session, interaction.ChannelID, recipient.Member.UserID, kind, senderName); err != nil {
 			logInteractionError(interaction.ID, "notify snowball recipient", err)
 			reply += "\nThe snowball was added to their inventory, but I couldn't post the notification in this channel."
 		}
@@ -68,9 +74,11 @@ func (b bot) handleThrownSnowball(session *discordgo.Session, interaction *disco
 	})
 }
 
-func notifySnowball(ctx context.Context, session *discordgo.Session, channelID, recipientID, text string) error {
+func notifySnowball(ctx context.Context, session *discordgo.Session, channelID, recipientID string, kind core.SnowballType, senderName string) error {
 	_, err := session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
-		Content: "<@" + recipientID + "> " + text,
+		Content: gifttext.SnowballReceived("<@"+recipientID+">", senderName, kind),
+		Embeds:  []*discordgo.MessageEmbed{{Image: &discordgo.MessageEmbedImage{URL: "attachment://" + snowballImageName}}},
+		Files:   []*discordgo.File{{Name: snowballImageName, ContentType: "image/jpeg", Reader: bytes.NewReader(snowballImage)}},
 		AllowedMentions: &discordgo.MessageAllowedMentions{
 			Parse: []discordgo.AllowedMentionType{},
 			Users: []string{recipientID},

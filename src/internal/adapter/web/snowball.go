@@ -21,7 +21,7 @@ func replyThrownSnowball(w http.ResponseWriter, r *http.Request, service app.Ser
 	}
 	sender := app.Member{ServerID: fixtureServerID, UserID: fixtureUserID}
 	recipient := app.Recipient{Member: app.Member{ServerID: fixtureServerID, UserID: name}}
-	total, err := service.ThrowSnowball(r.Context(), sender, recipient, kind)
+	_, err := service.ThrowSnowball(r.Context(), sender, recipient, kind)
 	if err != nil {
 		if reply := gifttext.SnowballRejection(err); reply != "" {
 			http.Error(w, reply, http.StatusBadRequest)
@@ -31,5 +31,5 @@ func replyThrownSnowball(w http.ResponseWriter, r *http.Request, service app.Ser
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	io.WriteString(w, gifttext.SnowballThrown(name, kind)+"\n"+gifttext.SnowballReceived(fixtureUserID, total, kind))
+	io.WriteString(w, gifttext.SnowballThrown(name, kind)+"\n"+gifttext.SnowballReceived(name, fixtureUserID, kind))
 }

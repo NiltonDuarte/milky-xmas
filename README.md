@@ -103,3 +103,5 @@ Moderators with Manage Messages or Administrator can run `/give gift <recipient>
 `/daily claim`, `/socks`, and `/aura check` use a heading and code block. In Discord, `/aura check` shows the bad good image above `😈 Bad n%  |  n% Good 😇`. The local chat shows the text only.
 
 In the Discord test server, check that a member without Manage Messages cannot see `/give` or is refused, that a moderator's grant appears in the recipient's `/socks`, and that the aura image appears above the aura line.
+
+The snowball notification reads `<recipient>❕  <sender> has thrown a <type> at you. 🥶`. In Discord it mentions the recipient and shows the snowball image below the text. Check that after `/thrown snowball`.

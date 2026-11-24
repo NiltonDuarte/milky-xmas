@@ -9,6 +9,7 @@ Moderators need a way to hand out gifts, and the daily claim, inventory, and aur
 - Add `/give gift <recipient> <amount> <rarity>` for moderators. It adds gifts to the recipient without touching any inventory or aura of the moderator.
 - Reformat the `/daily claim`, `/socks`, and `/aura check` replies with a heading and code block.
 - Show the "bad good" image above the aura line in Discord.
+- Change the snowball notification to `<recipient>❕  <sender> has thrown a <type> at you. 🥶` with the snowball image.
 
 ## Capabilities
 
