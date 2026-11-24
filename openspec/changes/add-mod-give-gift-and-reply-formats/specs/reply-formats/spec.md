@@ -18,12 +18,12 @@ A collected daily claim SHALL show the heading `## 🎅🏻 Christmas won’t be
 
 ### Requirement: Inventory presentation
 
-`/socks` SHALL show the heading `## 🧦 Your inventory` and a code block listing gifts by rarity, Snowballs, Yellow Snowballs, and Coal.
+`/look in-your-stocking` SHALL show the heading `## 🧦 Your inventory` and a code block listing gifts by rarity, Snowballs, Yellow Snowballs, and Coal.
 
 #### Scenario: Inventory listing
 
 - **GIVEN** a player has any inventory
-- **WHEN** they run `/socks`
+- **WHEN** they run `/look in-your-stocking`
 - **THEN** the reply uses the heading and code block with every balance, including zeros
 
 ### Requirement: Aura presentation
@@ -41,3 +41,19 @@ A collected daily claim SHALL show the heading `## 🎅🏻 Christmas won’t be
 - **GIVEN** a player runs `/aura check` in Discord
 - **WHEN** the reply is shown
 - **THEN** the image appears above the aura line, and the local chat shows only the aura line
+
+### Requirement: Stocking command name
+
+The inventory command SHALL be `/look in-your-stocking` and `/socks` SHALL no longer be offered. Discord SHALL register `/look` with one subcommand `in-your-stocking` and no arguments, remove the old `/socks` command from the configured server, and reply privately.
+
+#### Scenario: Inventory under the new name
+
+- **GIVEN** a player has any inventory
+- **WHEN** they run `/look in-your-stocking`
+- **THEN** they see their inventory as before
+
+#### Scenario: Old command removed
+
+- **GIVEN** the bot starts in a server that still has `/socks` registered
+- **WHEN** the bot registers its commands
+- **THEN** `/socks` is removed from that server

@@ -8,7 +8,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-func (b bot) handleSocks(session *discordgo.Session, interaction *discordgo.Interaction) {
+func (b bot) handleStocking(session *discordgo.Session, interaction *discordgo.Interaction) {
 	respondPrivately(session, interaction, func(ctx context.Context, member app.Member) string {
 		items, err := b.service.ViewInventory(ctx, member)
 		if err != nil {

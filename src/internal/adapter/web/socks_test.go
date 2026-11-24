@@ -42,12 +42,12 @@ func TestSocksInChat(t *testing.T) {
 	} {
 		t.Run(step.name, func(t *testing.T) {
 			handler := web.NewHandler(app.NewService(step.store, time.Now, func(int) int { return 0 }), nil)
-			request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader("command=%2Fsocks"))
+			request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader("command=%2Flook+in-your-stocking"))
 			request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			recorder := httptest.NewRecorder()
 			handler.ServeHTTP(recorder, request)
 			if got := strings.TrimSpace(recorder.Body.String()); recorder.Code != step.code || got != step.reply {
-				t.Fatalf("/socks = %d %q, want %d %q", recorder.Code, got, step.code, step.reply)
+				t.Fatalf("/look in-your-stocking = %d %q, want %d %q", recorder.Code, got, step.code, step.reply)
 			}
 		})
 	}

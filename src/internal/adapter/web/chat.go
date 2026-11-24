@@ -54,9 +54,9 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 			case "/thrown":
 				replyThrownSnowball(w, r, service, args)
 				return
-			case "/" + app.SocksCommand:
-				if len(args) != 0 {
-					http.Error(w, "Use /socks.", http.StatusBadRequest)
+			case "/" + app.LookCommand:
+				if got := strings.Join(args, "-"); got != app.StockingSubcommand {
+					http.Error(w, "Use /look in-your-stocking.", http.StatusBadRequest)
 					return
 				}
 				replyInventory(w, r, service)
@@ -90,7 +90,7 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 		}
 		reply, err := service.Reply(command)
 		if err != nil {
-			http.Error(w, "Unknown command. Try /"+app.HelloCommand+", /daily claim, /advent view, /grinch view, /send gift, /aura check, or /socks.", http.StatusBadRequest)
+			http.Error(w, "Unknown command. Try /"+app.HelloCommand+", /daily claim, /advent view, /grinch view, /send gift, /aura check, or /look in-your-stocking.", http.StatusBadRequest)
 			return
 		}
 

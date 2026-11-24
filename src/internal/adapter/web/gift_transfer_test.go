@@ -85,7 +85,7 @@ func TestGiveGiftInChat(t *testing.T) {
 		{"/give gift friend 1 mythic", http.StatusBadRequest, "Choose normal, rare, epic, or coal."},
 		{"/give gift fixture 1 rare", http.StatusBadRequest, "Choose another player in this server."},
 		{"/give gift friend", http.StatusBadRequest, "Use /give gift <recipient> <amount> <rarity>."},
-		{"/socks", http.StatusOK, "## 🧦 Your inventory\n```\n🎁 Gifts: 0 - normal | 0 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0\n```"},
+		{"/look in-your-stocking", http.StatusOK, "## 🧦 Your inventory\n```\n🎁 Gifts: 0 - normal | 0 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0\n```"},
 	} {
 		if code, reply := post(step.command); code != step.code || reply != step.reply {
 			t.Errorf("%s = %d %q, want %d %q", step.command, code, reply, step.code, step.reply)

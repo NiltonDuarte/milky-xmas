@@ -81,7 +81,7 @@ func TestGiftTransferAuraAndSocksInteractions(t *testing.T) {
 			{Type: discordgo.ApplicationCommandOptionSubCommand, Name: "check"},
 		},
 	}
-	socks := discordgo.ApplicationCommandInteractionData{CommandType: discordgo.ChatApplicationCommand, Name: "socks"}
+	socks := discordgo.ApplicationCommandInteractionData{CommandType: discordgo.ChatApplicationCommand, Name: "look", Options: []*discordgo.ApplicationCommandInteractionDataOption{{Type: discordgo.ApplicationCommandOptionSubCommand, Name: "in-your-stocking"}}}
 	for _, step := range []struct {
 		user    string
 		data    discordgo.ApplicationCommandInteractionData

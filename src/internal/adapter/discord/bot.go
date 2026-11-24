@@ -78,20 +78,37 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 		auraCommand(),
 		{
 			Type:        discordgo.ChatApplicationCommand,
-			Name:        app.SocksCommand,
-			Description: "View your gift and item inventory",
+			Name:        app.LookCommand,
+			Description: "Look at your items",
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionSubCommand, Name: app.StockingSubcommand, Description: "View your gift and item inventory"},
+			},
 		},
 		adventCommand(),
 		grinchCommand(),
 		thrownCommand(),
 		setupCommand(),
 	}
+	wanted := make(map[string]bool, len(commands))
 	for _, command := range commands {
+		wanted[command.Name] = true
 		if b.guildID == "" {
 			command.Contexts = &[]discordgo.InteractionContextType{discordgo.InteractionContextGuild}
 		}
 		if _, err := session.ApplicationCommandCreate(user.ID, b.guildID, command, discordgo.WithContext(ctx)); err != nil {
 			return fmt.Errorf("register /%s in Discord server %s: %w", command.Name, b.guildID, err)
+		}
+	}
+	// Remove commands this bot no longer offers, such as the old /socks.
+	existing, err := session.ApplicationCommands(user.ID, b.guildID, discordgo.WithContext(ctx))
+	if err != nil {
+		return fmt.Errorf("list Discord commands in server %s: %w", b.guildID, err)
+	}
+	for _, command := range existing {
+		if !wanted[command.Name] {
+			if err := session.ApplicationCommandDelete(user.ID, b.guildID, command.ID, discordgo.WithContext(ctx)); err != nil {
+				return fmt.Errorf("remove /%s from Discord server %s: %w", command.Name, b.guildID, err)
+			}
 		}
 	}
 	return nil
@@ -153,9 +170,9 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 	case thrownCommandName:
 		b.handleThrownSnowball(session, event.Interaction, data)
 		return
-	case app.SocksCommand:
-		if len(data.Options) == 0 {
-			b.handleSocks(session, event.Interaction)
+	case app.LookCommand:
+		if commandSubcommand(data.Options, app.StockingSubcommand) != nil {
+			b.handleStocking(session, event.Interaction)
 		}
 		return
 	case sendCommandName:

@@ -10,6 +10,7 @@
 - [x] 2.1 Update the daily claim, inventory, and aura text and their tests.
 - [x] 2.2 Attach the aura image in Discord and test the embeds. Update the README.
 - [x] 2.3 Change the snowball notification text and attach the snowball image in Discord. Test the text and the attached image.
+- [x] 2.4 Rename the inventory command to `/look in-your-stocking` and remove stale Discord commands at startup. Test registration, routing, and the local chat.
 
 ## 3. Verification
 
@@ -18,4 +19,4 @@
 ## Acceptance evidence
 
 - Unit tests cover the core grant rule, the shared service (success, repeat, invalid recipient, rarity, quantity, unchanged moderator and aura), Discord `/give gift` (permission refusal, Administrator, rejections, private reply, registered permission), the local chat, the new reply text, and the aura reply's two embeds with one attached image.
-- Live Discord acceptance is pending: run `/give gift`, `/daily claim`, `/socks`, and `/aura check` in the test server and check the formatting and image order.
+- Live Discord acceptance is pending: run `/give gift`, `/daily claim`, `/look in-your-stocking`, and `/aura check` in the test server and check the formatting and image order.
