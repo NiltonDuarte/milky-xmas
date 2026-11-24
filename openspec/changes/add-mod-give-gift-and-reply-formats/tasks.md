@@ -13,6 +13,7 @@
 - [x] 2.4 Rename the inventory command to `/look in-your-stocking` and remove stale Discord commands at startup. Test registration, routing, and the local chat.
 - [x] 2.5 Attach the stocking image to the Discord inventory reply and test the embeds.
 - [x] 2.6 Attach the Grinch image to the announcement and test the posted message.
+- [x] 2.7 Show Max's image on the final message when the Grinch escapes or defeats the players, and test all three outcomes.
 
 ## 3. Verification
 

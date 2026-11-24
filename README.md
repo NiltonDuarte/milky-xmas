@@ -107,3 +107,5 @@ In the Discord test server, check that a member without Manage Messages cannot s
 The snowball notification reads `<recipient>❕  <sender> has thrown a <type> at you. 🥶`. In Discord it mentions the recipient and shows the snowball image below the text. Check that after `/thrown snowball`.
 
 The Grinch announcement shows the Grinch image below the registration text. In the Discord test server, summon the Grinch with `/grinch summon` and check the image, then join and confirm the image stays while the fight updates.
+
+If the Grinch escapes or defeats all players, the final battle message also shows Max's image next to the Grinch image. A victory shows only the Grinch. Check both endings in the Discord test server.

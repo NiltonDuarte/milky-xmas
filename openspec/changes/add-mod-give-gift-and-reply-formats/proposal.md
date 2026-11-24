@@ -11,6 +11,7 @@ Moderators need a way to hand out gifts, and the daily claim, inventory, and aur
 - Rename `/socks` to `/look in-your-stocking`. Discord registers `/look` with the subcommand `in-your-stocking` because command names cannot contain spaces, and removes the old `/socks` command from the server.
 - Show the stocking image above the inventory in Discord.
 - Attach the Grinch image to the encounter announcement in Discord.
+- Add Max's image to the final message when the Grinch survives.
 - Show the "bad good" image above the aura line in Discord.
 - Change the snowball notification to `<recipient>❕  <sender> has thrown a <type> at you. 🥶` with the snowball image.
 

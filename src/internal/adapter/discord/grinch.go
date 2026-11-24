@@ -185,9 +185,20 @@ func acknowledgeGrinchButton(s *discordgo.Session, i *discordgo.Interaction, res
 }
 
 const grinchImageName = "grinch.jpg"
+const maxImageName = "maxpee.jpg"
 
 //go:embed grinch.jpg
 var grinchImage []byte
+
+// maxImage is shown when the Grinch survives the fight.
+//
+//go:embed maxpee.jpg
+var maxImage []byte
+
+type grinchPicture struct {
+	name string
+	data []byte
+}
 
 type grinchDisplay struct {
 	session *discordgo.Session
@@ -224,16 +235,28 @@ func (display grinchDisplay) Update(ctx context.Context, state core.Grinch) erro
 		var extra string
 		content, extra = grinchLeaderboards(content, state.Leaderboard(), state.GiftLeaderboard())
 		overflow = extra != ""
+		// Re-send the images with the final message. Replacing the attachments also drops stale ones,
+		// so the Grinch image and, when the Grinch survived, Max's image are uploaded again.
+		images := []grinchPicture{{grinchImageName, grinchImage}}
+		if state.Phase != core.GrinchWon {
+			images = append(images, grinchPicture{maxImageName, maxImage})
+		}
+		embeds := make([]*discordgo.MessageEmbed, 0, len(images))
+		edit.Attachments = &[]*discordgo.MessageAttachment{}
+		for _, image := range images {
+			embeds = append(embeds, &discordgo.MessageEmbed{Image: &discordgo.MessageEmbedImage{URL: "attachment://" + image.name}})
+			edit.Files = append(edit.Files, &discordgo.File{Name: image.name, ContentType: "image/jpeg", Reader: bytes.NewReader(image.data)})
+		}
+		edit.Embeds = &embeds
 		if overflow {
-			edit.Attachments = &[]*discordgo.MessageAttachment{}
-			edit.Files = []*discordgo.File{{Name: "grinch-leaderboard.txt", Reader: strings.NewReader(extra)}}
+			edit.Files = append(edit.Files, &discordgo.File{Name: "grinch-leaderboard.txt", Reader: strings.NewReader(extra)})
 		}
 	}
 	_, err := display.session.ChannelMessageEditComplex(edit, discordgo.WithContext(ctx))
 	var denied *discordgo.RESTError
 	if overflow && errors.As(err, &denied) && denied.Message != nil && denied.Message.Code == 50013 {
 		content = strings.TrimSuffix(content, "\nFull standings are attached.") + "\nFull standings require permission to attach files."
-		edit.Attachments, edit.Files = nil, nil
+		edit.Attachments, edit.Files, edit.Embeds = nil, nil, nil // Keep the announcement's existing image.
 		_, err = display.session.ChannelMessageEditComplex(edit, discordgo.WithContext(ctx))
 	}
 	var rest *discordgo.RESTError
