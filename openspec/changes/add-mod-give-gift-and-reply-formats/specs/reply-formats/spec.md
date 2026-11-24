@@ -57,3 +57,13 @@ The inventory command SHALL be `/look in-your-stocking` and `/socks` SHALL no lo
 - **GIVEN** the bot starts in a server that still has `/socks` registered
 - **WHEN** the bot registers its commands
 - **THEN** `/socks` is removed from that server
+
+### Requirement: Stocking image in Discord
+
+Discord SHALL show the stocking image above the inventory in the private `/look in-your-stocking` reply. The local chat shows the inventory text only. If the inventory cannot be loaded, the reply SHALL be the error text without the image.
+
+#### Scenario: Image above the inventory
+
+- **GIVEN** a player runs `/look in-your-stocking` in Discord
+- **WHEN** the reply is shown
+- **THEN** the stocking image appears above the heading and inventory

@@ -119,13 +119,13 @@ func TestGiftTransferAuraAndSocksInteractions(t *testing.T) {
 				}
 				return fakeResponse(http.StatusNoContent, ""), nil
 			case 2:
-				if step.data.Name == "aura" {
-					edit, files := decodeMultipartEdit(t, r)
+				if image := map[string]string{"aura": "badgood.jpg", "look": "stocking.jpg"}[step.data.Name]; image != "" {
+					edit, files := decodeMultipartEdit(t, r, image)
 					embeds := *edit.Embeds
 					if r.Method != http.MethodPatch || len(embeds) != 2 || embeds[0].Image == nil ||
-						embeds[0].Image.URL != "attachment://badgood.jpg" || embeds[1].Description != step.content ||
+						embeds[0].Image.URL != "attachment://"+image || embeds[1].Description != step.content ||
 						files != 1 {
-						t.Errorf("expected image above aura %q, got %s %+v with %d files", step.content, r.Method, embeds, files)
+						t.Errorf("expected %s above %q, got %s %+v with %d files", image, step.content, r.Method, embeds, files)
 					}
 					return fakeResponse(http.StatusOK, `{"id":"123"}`), nil
 				}
@@ -156,7 +156,7 @@ func TestGiftTransferAuraAndSocksInteractions(t *testing.T) {
 	}
 }
 
-func decodeMultipartEdit(t *testing.T, r *http.Request) (discordgo.WebhookEdit, int) {
+func decodeMultipartEdit(t *testing.T, r *http.Request, image string) (discordgo.WebhookEdit, int) {
 	t.Helper()
 	_, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil {
@@ -177,7 +177,7 @@ func decodeMultipartEdit(t *testing.T, r *http.Request) (discordgo.WebhookEdit, 
 			if err := json.NewDecoder(part).Decode(&edit); err != nil {
 				t.Fatal(err)
 			}
-		} else if part.FileName() == "badgood.jpg" {
+		} else if part.FileName() == image {
 			if data, _ := io.ReadAll(part); len(data) > 0 {
 				files++
 			}

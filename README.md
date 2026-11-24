@@ -64,7 +64,7 @@ Run `/look in-your-stocking` (Discord: `/look`, subcommand `in-your-stocking`) t
 
 In a fresh local chat, run `/look in-your-stocking` to check all six balances are zero. Run `/daily claim`, then `/look in-your-stocking` and check the quantity for the awarded rarity. Send one gift to `friend` and use `/look in-your-stocking` to check that balance decreased by one.
 
-In the Discord test server, invoke `/look in-your-stocking` and check that only your account can see the reply. Send a gift to a second account and confirm each account sees its updated balance when it runs `/look in-your-stocking`.
+In the Discord test server, invoke `/look in-your-stocking` and check that only your account can see the reply, with the stocking image above the inventory. Send a gift to a second account and confirm each account sees its updated balance when it runs `/look in-your-stocking`.
 
 ## Throw a snowball
 

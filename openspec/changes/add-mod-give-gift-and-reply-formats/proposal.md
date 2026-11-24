@@ -9,6 +9,7 @@ Moderators need a way to hand out gifts, and the daily claim, inventory, and aur
 - Add `/give gift <recipient> <amount> <rarity>` for moderators. It adds gifts to the recipient without touching any inventory or aura of the moderator.
 - Reformat the `/daily claim`, `/look in-your-stocking`, and `/aura check` replies with a heading and code block.
 - Rename `/socks` to `/look in-your-stocking`. Discord registers `/look` with the subcommand `in-your-stocking` because command names cannot contain spaces, and removes the old `/socks` command from the server.
+- Show the stocking image above the inventory in Discord.
 - Show the "bad good" image above the aura line in Discord.
 - Change the snowball notification to `<recipient>❕  <sender> has thrown a <type> at you. 🥶` with the snowball image.
 

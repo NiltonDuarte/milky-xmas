@@ -11,6 +11,7 @@
 - [x] 2.2 Attach the aura image in Discord and test the embeds. Update the README.
 - [x] 2.3 Change the snowball notification text and attach the snowball image in Discord. Test the text and the attached image.
 - [x] 2.4 Rename the inventory command to `/look in-your-stocking` and remove stale Discord commands at startup. Test registration, routing, and the local chat.
+- [x] 2.5 Attach the stocking image to the Discord inventory reply and test the embeds.
 
 ## 3. Verification
 
