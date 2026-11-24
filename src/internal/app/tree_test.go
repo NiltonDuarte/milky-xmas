@@ -61,3 +61,19 @@ func TestTreeWaterKeepsEveryConcurrentWatering(t *testing.T) {
 		t.Fatalf("after 20 concurrent waterings: level %d, %d waterings", got.Level, total)
 	}
 }
+
+func TestTreeCannotBeWateredAfterTheEvent(t *testing.T) {
+	now := core.TreeEventEnd.Add(-time.Minute)
+	tree := NewTree(&MemoryTreeStore{}, func() time.Time { return now })
+	if _, err := tree.Water(t.Context(), Member{ServerID: "s", UserID: "alice"}); err != nil {
+		t.Fatalf("water before the end = %v", err)
+	}
+	now = core.TreeEventEnd
+	got, err := tree.Water(t.Context(), Member{ServerID: "s", UserID: "bob"})
+	if !errors.Is(err, core.ErrTreeEventOver) || got.Level != core.TreeStartLevel+core.TreeWaterPoints {
+		t.Fatalf("water at the end = %+v, %v", got, err)
+	}
+	if view, _ := tree.View(t.Context(), "s"); view.Level != got.Level || view.Waters["bob"] != 0 {
+		t.Fatalf("view after the end = %+v", view)
+	}
+}

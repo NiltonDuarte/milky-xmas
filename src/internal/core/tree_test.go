@@ -56,7 +56,7 @@ func TestTreeWateringRules(t *testing.T) {
 	}
 	_, err = recent.Water(treeStart.Add(4*time.Minute), "alice")
 	var cooldown TreeCooldownError
-	if !errors.Is(err, ErrTreeCooldown) || !errors.As(err, &cooldown) || cooldown.Remaining != 6*time.Minute {
+	if !errors.Is(err, ErrTreeCooldown) || !errors.As(err, &cooldown) || cooldown.Remaining != 56*time.Minute {
 		t.Fatalf("early watering = %v", err)
 	}
 	if _, err := recent.Water(treeStart.Add(4*time.Minute), "bob"); err != nil {
@@ -83,5 +83,49 @@ func TestTreeStagesAndTopWaterers(t *testing.T) {
 	}
 	if len((Tree{}).TopWaterers(3)) != 0 {
 		t.Error("an unwatered tree has no top waterers")
+	}
+}
+
+func TestTreeCooldownIsOneHour(t *testing.T) {
+	if TreeWaterCooldown != time.Hour {
+		t.Fatalf("cooldown = %s", TreeWaterCooldown)
+	}
+	tree, err := Tree{Level: 50, Since: treeStart}.Water(treeStart, "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tree.Water(treeStart.Add(59*time.Minute), "alice"); !errors.Is(err, ErrTreeCooldown) {
+		t.Fatalf("watering after 59 minutes = %v", err)
+	}
+	if _, err := tree.Water(treeStart.Add(time.Hour), "alice"); err != nil {
+		t.Fatalf("watering after an hour = %v", err)
+	}
+}
+
+func TestTreeStopsAtTheEndOfTheEvent(t *testing.T) {
+	if want := time.Date(2027, 1, 5, 1, 0, 0, 0, time.UTC); !TreeEventEnd.Equal(want) {
+		t.Fatalf("event end = %s", TreeEventEnd)
+	}
+	before := TreeEventEnd.Add(-90 * time.Minute)
+	tree, err := Tree{Level: 60, Since: before}.Water(before, "alice")
+	if err != nil || tree.Level != 62 {
+		t.Fatalf("watering before the end = %+v, %v", tree, err)
+	}
+	// The event ends 90 minutes after that watering, which cost one hour of water: 61%. Decay stops at the end.
+	for _, after := range []time.Duration{0, time.Hour, 200 * time.Hour} {
+		at := TreeEventEnd.Add(after)
+		got, err := tree.Water(at, "bob")
+		if !errors.Is(err, ErrTreeEventOver) || got.Level != tree.At(TreeEventEnd).Level || got.Level != 61 {
+			t.Errorf("watering %s after the end = level %d, %v", after, got.Level, err)
+		}
+		if view := tree.At(at); view.Level != 61 || !TreeEventOver(at) {
+			t.Errorf("view %s after the end = %+v", after, view)
+		}
+	}
+	if TreeEventOver(TreeEventEnd.Add(-time.Nanosecond)) || !TreeEventOver(TreeEventEnd) {
+		t.Error("the event does not end exactly at the end time")
+	}
+	if fresh := (Tree{}).At(TreeEventEnd.Add(time.Hour)); fresh.Level != TreeStartLevel {
+		t.Errorf("an untouched tree after the end = %+v", fresh)
 	}
 }

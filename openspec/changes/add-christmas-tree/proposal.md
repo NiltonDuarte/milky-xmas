@@ -8,7 +8,8 @@ A shared Christmas tree gives the community something to care for together until
 
 - Add `/water` so players water one Christmas tree shared by the server.
 - The tree starts withered at 10% water. It needs 100% water to be full and alive, loses 1% every hour, and gains 2% per watering.
-- Each player can water once every 10 minutes.
+- Each player can water once every hour.
+- The event ends on January 5, 2027 at 01:00 UTC. After that the tree keeps its final level and can no longer be watered.
 - In Discord, a watering is a public message with the withered tree image, the water level, and the top waterers.
 
 ## Capabilities

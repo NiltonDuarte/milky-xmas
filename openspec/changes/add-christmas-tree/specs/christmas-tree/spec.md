@@ -30,7 +30,7 @@ Each server SHALL have one Christmas tree. A new tree SHALL start at 10% water. 
 
 ### Requirement: Water command
 
-Both adapters SHALL support `/water` with no arguments. A player SHALL be able to water once every 10 minutes. A refusal SHALL say how many minutes remain.
+Both adapters SHALL support `/water` with no arguments. A player SHALL be able to water once every hour. A refusal SHALL say how long remains, in hours and minutes.
 
 #### Scenario: First watering
 
@@ -42,7 +42,7 @@ Both adapters SHALL support `/water` with no arguments. A player SHALL be able t
 
 - **GIVEN** a player watered the tree 4 minutes ago
 - **WHEN** they run `/water` again
-- **THEN** no water is added and they are told to try again in 6 minutes
+- **THEN** no water is added and they are told to try again in 56 minutes
 
 #### Scenario: Different players
 
@@ -61,6 +61,22 @@ Both adapters SHALL support `/water` with no arguments. A player SHALL be able t
 - **GIVEN** two servers
 - **WHEN** a player waters one tree
 - **THEN** the other server's tree does not change
+
+### Requirement: Event end
+
+The event SHALL end on January 5, 2027 at 01:00 UTC. From then on the tree SHALL keep the level it had at that moment, and `/water` SHALL NOT add water. The reply SHALL tell the player the event is over and show the tree's final state privately.
+
+#### Scenario: Watering after the end
+
+- **GIVEN** the time is after January 5, 2027 01:00 UTC
+- **WHEN** a player runs `/water`
+- **THEN** no water is added and the player sees that the event is over with the tree's final level
+
+#### Scenario: No decay after the end
+
+- **GIVEN** a tree watered shortly before the end
+- **WHEN** the tree is read a week after the end
+- **THEN** its level is what it was at 01:00 UTC on January 5, 2027
 
 ### Requirement: Tree presentation
 

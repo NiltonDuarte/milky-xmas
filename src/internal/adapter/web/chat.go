@@ -2,6 +2,7 @@ package web
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/gifttext"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
+	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
 
 const fixtureServerID = "local"
@@ -193,7 +195,11 @@ func replyWater(w http.ResponseWriter, r *http.Request, tree *app.Tree) {
 	mention := func(userID string) string { return userID }
 	updated, err := tree.Water(r.Context(), member)
 	if err == nil {
-		io.WriteString(w, gifttext.Watered(member.UserID, updated, mention))
+		io.WriteString(w, gifttext.Watered(member.UserID, updated, tree.Now(), mention))
+		return
+	}
+	if errors.Is(err, core.ErrTreeEventOver) {
+		io.WriteString(w, gifttext.TreeEventOver(updated, tree.Now(), mention))
 		return
 	}
 	if reply := gifttext.TreeRejection(err); reply != "" {

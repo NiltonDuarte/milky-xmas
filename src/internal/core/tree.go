@@ -12,12 +12,20 @@ const (
 	TreeStartLevel    = 10
 	TreeWaterPoints   = 2
 	TreeDecayInterval = time.Hour
-	TreeWaterCooldown = 10 * time.Minute
+	TreeWaterCooldown = time.Hour
 )
 
+// TreeEventEnd is when the event ends: January 5, 2027 at 01:00 UTC. The tree stops decaying and
+// cannot be watered from then on.
+var TreeEventEnd = time.Date(2027, time.January, 5, 1, 0, 0, 0, time.UTC)
+
+// TreeEventOver reports whether the event has ended.
+func TreeEventOver(now time.Time) bool { return !now.Before(TreeEventEnd) }
+
 var (
-	ErrTreeFull     = errors.New("the tree is already full of water")
-	ErrTreeCooldown = errors.New("the player watered the tree recently")
+	ErrTreeFull      = errors.New("the tree is already full of water")
+	ErrTreeCooldown  = errors.New("the player watered the tree recently")
+	ErrTreeEventOver = errors.New("the event is over")
 )
 
 // TreeCooldownError says how long a player has to wait before watering again.
@@ -38,6 +46,9 @@ type Tree struct {
 
 // At returns the tree as it stands at now, after any decay.
 func (t Tree) At(now time.Time) Tree {
+	if TreeEventOver(now) {
+		now = TreeEventEnd // The tree keeps the level it had when the event ended.
+	}
 	if t.Since.IsZero() {
 		t.Level, t.Since = TreeStartLevel, now
 		return t
@@ -55,6 +66,9 @@ func (t Tree) At(now time.Time) Tree {
 // Water adds a watering by the member and returns the next tree. It does not change the receiver's maps.
 func (t Tree) Water(now time.Time, member string) (Tree, error) {
 	next := t.At(now)
+	if TreeEventOver(now) {
+		return next, ErrTreeEventOver
+	}
 	if next.Level >= TreeMaxLevel {
 		return next, ErrTreeFull
 	}

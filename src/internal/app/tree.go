@@ -26,6 +26,9 @@ func NewTree(store TreeStore, now func() time.Time) *Tree {
 	return &Tree{store: store, now: now}
 }
 
+// Now is the use case's current time, for adapters that show the tree.
+func (tree *Tree) Now() time.Time { return tree.now().UTC() }
+
 // View returns the server's tree as it stands now, without changing it.
 func (tree *Tree) View(ctx context.Context, server string) (core.Tree, error) {
 	stored, _, err := tree.store.LoadTree(ctx, server)

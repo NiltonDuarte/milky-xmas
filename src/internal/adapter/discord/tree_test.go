@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
+	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -20,7 +21,7 @@ func TestWaterInteraction(t *testing.T) {
 		content string
 	}{
 		{"alice", true, "💧 <@alice> watered the tree! +2%\n## 🎄 The Christmas tree\n```\n💧 Water level: 12%  [█░░░░░░░░░]\n```\n🥀 The tree is withered."},
-		{"alice", false, "💧 You watered the tree a moment ago. Try again in 10 minutes."},
+		{"alice", false, "💧 You already watered the tree. Try again in 1 hour."},
 		{"bob", true, "💧 <@bob> watered the tree! +2%"},
 	} {
 		session, err := discordgo.New("Bot fixture")
@@ -74,6 +75,33 @@ func TestWaterInteraction(t *testing.T) {
 			t.Errorf("expected one response for %s, got %d", step.user, calls)
 		}
 	}
+	over := bot{guildID: "200", tree: app.NewTree(&app.MemoryTreeStore{}, func() time.Time { return core.TreeEventEnd })}
+	session, err := discordgo.New("Bot fixture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	session.Client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
+		var response struct {
+			Data struct {
+				Content string
+				Flags   discordgo.MessageFlags
+			}
+		}
+		if err := json.NewDecoder(r.Body).Decode(&response); err != nil {
+			t.Fatal(err)
+		}
+		if response.Data.Flags != discordgo.MessageFlagsEphemeral ||
+			!strings.HasPrefix(response.Data.Content, "🎄 The event is over, so the tree can't be watered any more.\n## 🎄 The Christmas tree") ||
+			!strings.Contains(response.Data.Content, "The event has ended. This is the tree's final state.") {
+			t.Errorf("event-over reply = %+v", response.Data)
+		}
+		return fakeResponse(http.StatusNoContent, ""), nil
+	})
+	over.handleInteraction(session, &discordgo.InteractionCreate{Interaction: &discordgo.Interaction{
+		ID: "300", AppID: "100", Token: "fixture", GuildID: "200", Type: discordgo.InteractionApplicationCommand,
+		Member: &discordgo.Member{User: &discordgo.User{ID: "alice"}},
+		Data:   discordgo.ApplicationCommandInteractionData{CommandType: discordgo.ChatApplicationCommand, Name: "water"},
+	}})
 	if command := waterCommand(); command.Name != "water" || len(command.Options) != 0 {
 		t.Errorf("unexpected /water registration: %+v", command)
 	}

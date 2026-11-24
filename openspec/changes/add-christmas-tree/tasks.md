@@ -17,5 +17,5 @@
 
 ## Acceptance evidence
 
-- Tests cover decay by the hour, the 100% cap, the full tree, the cooldown and its boundary, other players and servers, 20 concurrent waterings, SQLite reload and stale revisions, the Discord public and private replies with the image, and the local chat.
+- Tests cover decay by the hour, the 100% cap, the full tree, the one-hour cooldown and its boundary, the event end,, other players and servers, 20 concurrent waterings, SQLite reload and stale revisions, the Discord public and private replies with the image, and the local chat.
 - Live Discord acceptance is pending: see the README.
