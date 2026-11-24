@@ -11,11 +11,6 @@ import (
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
 
-const (
-	GiftRainClaimCooldown = time.Minute
-	GiftDropLifetime      = 10 * time.Minute
-)
-
 var (
 	ErrDropUnavailable = errors.New("gift drop is no longer available")
 	ErrDropCollected   = errors.New("gift drop already collected")
@@ -67,6 +62,11 @@ type ActivityDrops struct {
 	rainClaims map[Member]time.Time
 }
 
+// Lifetime is how long a drop stays open.
+func (drops *ActivityDrops) Lifetime() time.Duration {
+	return drops.service.tuning.Drops.Lifetime
+}
+
 func NewActivityDrops(service Service) *ActivityDrops {
 	return &ActivityDrops{
 		service:    service,
@@ -87,18 +87,19 @@ func (drops *ActivityDrops) Observe(server, channel string) *GiftDrop {
 
 	key := dropChannel{server: server, channel: channel}
 	activity := drops.activity[key]
+	tuning := drops.service.tuning.Drops
 	if activity.target == 0 {
-		activity.target = core.NextGiftRainThreshold(drops.service.random(core.GiftRainMessageRange))
+		activity.target = tuning.NextGiftRainThreshold(drops.service.random(tuning.GiftRainMessageRange()))
 	}
 	activity.messages++
 	if activity.messages >= activity.target {
 		activity.messages = 0
-		activity.target = core.NextGiftRainThreshold(drops.service.random(core.GiftRainMessageRange))
+		activity.target = tuning.NextGiftRainThreshold(drops.service.random(tuning.GiftRainMessageRange()))
 		drops.activity[key] = activity
 		return drops.createLocked(core.GiftRainDrop)
 	}
 	drops.activity[key] = activity
-	if core.RandomActiveDropEligible(drops.service.random(core.RandomActiveDropRolls)) {
+	if tuning.RandomActiveDropEligible(drops.service.random(tuning.RandomActiveOneIn)) {
 		return drops.createLocked(core.RandomActiveDrop)
 	}
 	return nil
@@ -114,12 +115,12 @@ func (drops *ActivityDrops) createLocked(kind core.GiftDropKind) *GiftDrop {
 func (drops *ActivityDrops) pruneLocked(now time.Time) {
 	for id, drop := range drops.drops {
 		// Adapters close drops themselves at expiry. This only drops forgotten ones.
-		if now.Sub(drop.createdAt) >= GiftDropLifetime+time.Minute {
+		if now.Sub(drop.createdAt) >= drops.service.tuning.Drops.Lifetime+time.Minute {
 			delete(drops.drops, id)
 		}
 	}
 	for member, claimedAt := range drops.rainClaims {
-		if now.Sub(claimedAt) >= GiftRainClaimCooldown {
+		if now.Sub(claimedAt) >= drops.service.tuning.Drops.GiftRain.ClaimCooldown {
 			delete(drops.rainClaims, member)
 		}
 	}
@@ -173,7 +174,8 @@ func (drops *ActivityDrops) Claim(ctx context.Context, claim GiftDropClaim) (Gif
 		return GiftDropAward{}, ErrDropUnavailable
 	}
 	now := drops.service.now().UTC()
-	if now.Sub(drop.createdAt) >= GiftDropLifetime {
+	tuning := drops.service.tuning.Drops
+	if now.Sub(drop.createdAt) >= tuning.Lifetime {
 		return GiftDropAward{}, ErrDropUnavailable
 	}
 	slotBit := uint8(0)
@@ -188,7 +190,7 @@ func (drops *ActivityDrops) Claim(ctx context.Context, claim GiftDropClaim) (Gif
 			return GiftDropAward{}, ErrDropSlotTaken
 		}
 	}
-	if drop.Kind == core.GiftRainDrop && now.Sub(drops.rainClaims[claim.Member]) < GiftRainClaimCooldown {
+	if drop.Kind == core.GiftRainDrop && now.Sub(drops.rainClaims[claim.Member]) < tuning.GiftRain.ClaimCooldown {
 		return GiftDropAward{}, ErrDropCooldown
 	}
 	coalRoll, rarityRoll := 0, drops.service.random(core.GiftRarityRolls)
@@ -203,14 +205,14 @@ func (drops *ActivityDrops) Claim(ctx context.Context, claim GiftDropClaim) (Gif
 		var next core.GiftRecord
 		result := DropClaimRecord{UserID: claim.Member.UserID}
 		switch {
-		case drop.Kind == core.GiftRainDrop && core.RainPrizeIsCoal(coalRoll):
+		case drop.Kind == core.GiftRainDrop && tuning.RainPrizeIsCoal(coalRoll):
 			result.Coal = true
 			next, err = core.AwardCoal(record)
 		case drop.Kind == core.GiftRainDrop:
-			result.Rarity = core.DailyGiftRarity(rarityRoll)
+			result.Rarity = drops.service.tuning.Gifts.DailyGiftRarity(rarityRoll)
 			next, err = core.AwardGift(record, result.Rarity)
 		default:
-			result.Rarity = core.ActiveDropRarity(rarityRoll, record.Aura.Good)
+			result.Rarity = drops.service.tuning.Gifts.ActiveDropRarity(rarityRoll, record.Aura.Good)
 			next, err = core.AwardGift(record, result.Rarity)
 		}
 		if err != nil {
@@ -228,7 +230,7 @@ func (drops *ActivityDrops) Claim(ctx context.Context, claim GiftDropClaim) (Gif
 			award := GiftDropAward{Kind: drop.Kind, Rarity: result.Rarity, Coal: result.Coal, Taken: drop.taken}
 			if drop.Kind == core.GiftRainDrop {
 				drops.rainClaims[claim.Member] = now
-				if len(drop.results) >= core.GiftRainClaimLimit {
+				if len(drop.results) >= tuning.GiftRain.ClaimsToEnd {
 					summary, _ := drops.closeLocked(drop.ID)
 					award.Finished = &summary
 				}

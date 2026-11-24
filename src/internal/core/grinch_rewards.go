@@ -16,7 +16,7 @@ func (inventory Inventory) AddGrinchReward(reward GrinchReward) Inventory {
 }
 
 // LossRewards returns the same grant for each registered participant on a loss.
-func (g Grinch) LossRewards() map[string]GrinchReward {
+func (g Grinch) LossRewards(rules GrinchRules) map[string]GrinchReward {
 	if g.Phase != GrinchDefeat && g.Phase != GrinchEscaped {
 		return nil
 	}
@@ -26,7 +26,7 @@ func (g Grinch) LossRewards() map[string]GrinchReward {
 	}
 	rewards := make(map[string]GrinchReward, len(roster))
 	for member := range roster {
-		rewards[member] = GrinchReward{Coal: 1, YellowSnowballs: int64(len(roster))}
+		rewards[member] = GrinchReward{Coal: rules.LossCoal, YellowSnowballs: int64(len(roster)) * rules.LossYellowPerGroupMember}
 	}
 	return rewards
 }

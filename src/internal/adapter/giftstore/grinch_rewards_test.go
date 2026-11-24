@@ -22,8 +22,8 @@ func TestGrinchRewardsAreAtomicAndSurviveRestart(t *testing.T) {
 	if saved, err := one.SaveGrinch(ctx, scope, 0, fight, "guild", nil); err != nil || !saved {
 		t.Fatalf("seed encounter = %v, %v", saved, err)
 	}
-	first := app.NewGrinchEncounter(one, "guild", scope, func() time.Time { return now }, func(int) int { return 0 })
-	second := app.NewGrinchEncounter(two, "guild", scope, func() time.Time { return now }, func(int) int { return 0 })
+	first := app.NewGrinchEncounter(one, "guild", scope, core.DefaultTuning().Grinch, func() time.Time { return now }, func(int) int { return 0 })
+	second := app.NewGrinchEncounter(two, "guild", scope, core.DefaultTuning().Grinch, func() time.Time { return now }, func(int) int { return 0 })
 	move := core.GrinchMove{Phase: core.GrinchFinalAttack, Slot: core.GrinchSnowballSlot, Member: "alice", At: start,
 		FinalRound: 1, RequestID: "first"}
 	type result struct {
@@ -43,7 +43,7 @@ func TestGrinchRewardsAreAtomicAndSurviveRestart(t *testing.T) {
 		if got.err != nil {
 			t.Fatal(got.err)
 		}
-		if got.reply == core.GrinchSnowballEarned {
+		if got.reply == core.DefaultTuning().Grinch.SnowballEarned() {
 			credits++
 		}
 	}
@@ -51,7 +51,7 @@ func TestGrinchRewardsAreAtomicAndSurviveRestart(t *testing.T) {
 		t.Fatalf("duplicate interaction produced %d credits", credits)
 	}
 	move.RequestID, move.FinalRound = "second", 2
-	if _, reply, err := first.Play(ctx, fight.ID, fight.MessageID, move); err != nil || reply != core.GrinchSnowballEarned {
+	if _, reply, err := first.Play(ctx, fight.ID, fight.MessageID, move); err != nil || reply != core.DefaultTuning().Grinch.SnowballEarned() {
 		t.Fatalf("second click = %q, %v", reply, err)
 	}
 	alice := app.Member{ServerID: "guild", UserID: "alice"}
@@ -91,7 +91,7 @@ func TestGrinchRewardsAreAtomicAndSurviveRestart(t *testing.T) {
 	}
 
 	reopened := openGiftPlayers(t, path)
-	restarted := app.NewGrinchEncounter(reopened, "guild", scope, func() time.Time { return now }, func(int) int { return 0 })
+	restarted := app.NewGrinchEncounter(reopened, "guild", scope, core.DefaultTuning().Grinch, func() time.Time { return now }, func(int) int { return 0 })
 	if _, err := restarted.Sync(ctx, display); err != nil {
 		t.Fatal(err)
 	}
@@ -100,5 +100,65 @@ func TestGrinchRewardsAreAtomicAndSurviveRestart(t *testing.T) {
 		if err != nil || got.Inventory.Coal != 1 || got.Inventory.YellowSnowballs != 4 {
 			t.Errorf("inventory after restart for %s = %+v, %v", user, got, err)
 		}
+	}
+}
+
+func TestGrinchLossRewardsUseTunedNumbers(t *testing.T) {
+	ctx := t.Context()
+	store := openGiftPlayers(t, filepath.Join(t.TempDir(), "gifts.sqlite"))
+	defer store.Close()
+	start := time.Date(2026, 12, 1, 18, 0, 0, 0, time.UTC)
+	now := start
+	rules := core.DefaultTuning().Grinch
+	rules.FightDuration = 30 * time.Second
+	rules.LossCoal, rules.LossYellowPerGroupMember = 2, 3
+	fight := core.Grinch{ID: "fight", MessageID: "message", Phase: core.GrinchDefense, HP: 7500, StartedAt: start, TimedAt: start,
+		DefensePlayers: 3, Joined: map[string]bool{"alice": true, "bob": true, "carol": true},
+		PlayerDamage: map[string]int{}, Accepted: make(map[string]bool)}
+	const scope = "guild:channel"
+	if saved, err := store.SaveGrinch(ctx, scope, 0, fight, "guild", nil); err != nil || !saved {
+		t.Fatalf("seed encounter = %v, %v", saved, err)
+	}
+	encounter := app.NewGrinchEncounter(store, "guild", scope, rules, func() time.Time { return now }, func(int) int { return 0 })
+
+	now = start.Add(29 * time.Second)
+	if state, err := encounter.Sync(ctx, &grinchDisplayFixture{}); err != nil || state.Phase != core.GrinchDefense {
+		t.Fatalf("before the tuned deadline = %+v, %v", state, err)
+	}
+	now = start.Add(30 * time.Second)
+	if state, err := encounter.Sync(ctx, &grinchDisplayFixture{}); err != nil || state.Phase != core.GrinchEscaped {
+		t.Fatalf("at the tuned deadline = %+v, %v", state, err)
+	}
+	for _, user := range []string{"alice", "bob", "carol"} {
+		got, err := store.Load(ctx, app.Member{ServerID: "guild", UserID: user})
+		if err != nil || got.Inventory.Coal != 2 || got.Inventory.YellowSnowballs != 9 {
+			t.Fatalf("%s inventory = %+v, %v; want 2 Coal and 9 Yellow Snowballs", user, got.Inventory, err)
+		}
+	}
+}
+
+func TestGrinchSpawnChanceAndWindowAreTuned(t *testing.T) {
+	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
+	rules := core.DefaultTuning().Grinch
+	rules.SpawnChancePercent, rules.ActivityWindow = 50, time.Minute
+	for _, tt := range []struct {
+		name     string
+		roll     int
+		activity time.Time
+		want     int
+	}{
+		{"roll inside the tuned chance", 49, now.Add(-time.Minute), 1},
+		{"roll at the tuned chance", 50, now.Add(-time.Minute), 0},
+		{"activity outside the tuned window", 0, now.Add(-time.Minute - time.Second), 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			store := openGiftPlayers(t, filepath.Join(t.TempDir(), "gifts.sqlite"))
+			defer store.Close()
+			encounter := app.NewGrinchEncounter(store, "guild", "guild:channel", rules, func() time.Time { return now }, func(int) int { return tt.roll })
+			display := &grinchDisplayFixture{now: now}
+			if _, err := encounter.Spawn(t.Context(), tt.activity, false, display); err != nil || display.created != tt.want {
+				t.Fatalf("announcements = %d, %v; want %d", display.created, err, tt.want)
+			}
+		})
 	}
 }

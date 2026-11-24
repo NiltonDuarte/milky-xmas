@@ -131,3 +131,20 @@ In the Discord test server, run `/advent view` and click today's number, then ch
 Run `/water` to water the server's Christmas tree. It starts withered at 10% water, loses 1% every hour, and gains 2% per watering. It needs 100% to be full and alive. Each player can water once every hour. The event ends on January 5, 2027 at 01:00 UTC. After that the tree keeps its final level and `/water` only shows it privately. In Discord a watering is shown to the channel with the tree image, the water level, and the top three waterers. A refusal, such as watering too soon or watering a full tree, is private. Only the withered tree image exists so far, so every level uses it until more images are added. The local chat shows the same text without the image.
 
 In the Discord test server, run `/water` from two accounts and check the public message and image, then run it again right away to see the private refusal. Restart the bot with the same database to check the level continues.
+
+## Tuning the numbers
+
+The balance numbers in [docs/activity-drops-numbers.md](docs/activity-drops-numbers.md) and [docs/grinch-fight-numbers.md](docs/grinch-fight-numbers.md) live in [tuning.yaml](tuning.yaml): drop odds and lifetimes, Gift Rain size and Coal chance, gift rarity odds, and every Grinch timer, HP milestone, damage value, and reward. The file holds the defaults with a comment per value. Without it the bot uses the same built-in numbers.
+
+Point the bot at the file before starting it. Both the local chat and the Discord bot read it once at startup, so restart to apply a change.
+
+```sh
+MILKY_TUNING_CONFIG=tuning.yaml go run ./src/cmd/web
+MILKY_TUNING_CONFIG=tuning.yaml go run ./src/cmd/discord
+```
+
+Keys you leave out keep their default. An unknown key, a bad unit, or a value outside its range stops the bot at startup and the message lists every problem with its key path. Durations are strings such as `90s` or `10m`, and boss HP and damage are percentages with up to two decimals.
+
+In the local chat, copy `tuning.yaml`, set `drops.gift_rain.min_messages` and `max_messages` to `2`, `claims_to_end` to `2`, and `claim_cooldown` to `0s`, then start the chat with the copy. Send `/message hi` twice to start a Gift Rain and `/drop collect 1` twice. The second collection ends the drop. For the Grinch, set `grinch.registration.early_start_players` to `1` and `grinch.snowballs.boss_hp_after` to `90`. Run `/grinch summon` and `/grinch join`, then ten `/grinch hit 1`. The fight reaches the defense phase at 90 HP. In the Discord test server, start the bot with the same file and check that the announcement shows `0/1 to start early` and `reaches **90 HP**`.
+
+Make an invalid change, such as `gifts.daily_rarity.epic: 10`, to check the startup error that names `gifts.daily_rarity`.

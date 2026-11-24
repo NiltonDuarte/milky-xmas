@@ -41,7 +41,7 @@ func TestClaimGift(t *testing.T) {
 	roll := 9
 	saveError := errors.New("disk unavailable")
 	store := &giftStoreFixture{records: make(map[Member]core.GiftRecord), saveError: saveError}
-	service := Service{gifts: store, now: func() time.Time { return now }, random: func(n int) int {
+	service := Service{gifts: store, tuning: core.DefaultTuning(), now: func() time.Time { return now }, random: func(n int) int {
 		if n == core.GiftRarityRolls {
 			return 70
 		}

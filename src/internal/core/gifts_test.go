@@ -27,7 +27,7 @@ func TestCollect(t *testing.T) {
 func TestDailyGiftRarity(t *testing.T) {
 	counts := make(map[GiftRarity]int)
 	for roll := range GiftRarityRolls {
-		counts[DailyGiftRarity(roll)]++
+		counts[defaults.Gifts.DailyGiftRarity(roll)]++
 	}
 	if counts[NormalGift] != 70 || counts[RareGift] != 25 || counts[EpicGift] != 5 {
 		t.Fatalf("rarity counts = %v", counts)

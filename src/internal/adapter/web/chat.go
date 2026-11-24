@@ -21,7 +21,7 @@ const fixtureUserID = "fixture"
 var chatPage string
 
 func NewHandler(service app.Service, grinchStore app.GrinchStore) http.Handler {
-	return newHandler(service, newGrinchFixture(time.Now, grinchStore), app.NewActivityDrops(service))
+	return newHandler(service, newGrinchFixture(time.Now, grinchStore, service.Tuning().Grinch), app.NewActivityDrops(service))
 }
 
 func newHandler(service app.Service, grinch grinchFixture, activity ...*app.ActivityDrops) http.Handler {

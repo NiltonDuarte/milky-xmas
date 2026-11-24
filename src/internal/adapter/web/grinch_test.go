@@ -10,13 +10,14 @@ import (
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/giftfixture"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
+	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
 
 func TestLocalGrinch(t *testing.T) {
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
 	store := &giftfixture.Store{}
 	service := app.NewService(store, func() time.Time { return now }, func(int) int { return 0 })
-	handler := newHandler(service, newGrinchFixture(func() time.Time { return now }, store))
+	handler := newHandler(service, newGrinchFixture(func() time.Time { return now }, store, core.DefaultTuning().Grinch))
 	send := func(command, want string) {
 		t.Helper()
 		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(url.Values{"command": {command}}.Encode()))
