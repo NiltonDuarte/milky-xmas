@@ -20,6 +20,7 @@ var (
 	ErrDropUnavailable = errors.New("gift drop is no longer available")
 	ErrDropCollected   = errors.New("gift drop already collected")
 	ErrDropCooldown    = errors.New("gift rain collection is cooling down")
+	ErrDropSlotTaken   = errors.New("gift drop slot already opened")
 )
 
 type GiftDrop struct {
@@ -38,6 +39,21 @@ type liveDrop struct {
 	GiftDrop
 	createdAt time.Time
 	claims    map[string]time.Time
+	taken     uint8 // Opened slots of a Random Active Drop, one bit per slot.
+	results   []DropClaimRecord
+}
+
+// DropClaimRecord is one collected prize, in collection order.
+type DropClaimRecord struct {
+	UserID string
+	Coal   bool
+	Rarity core.GiftRarity
+}
+
+// DropSummary lists who collected what from a finished drop.
+type DropSummary struct {
+	Kind   core.GiftDropKind
+	Claims []DropClaimRecord
 }
 
 // ActivityDrops owns short-lived channel activity and per-player claim state.
@@ -97,7 +113,8 @@ func (drops *ActivityDrops) createLocked(kind core.GiftDropKind) *GiftDrop {
 
 func (drops *ActivityDrops) pruneLocked(now time.Time) {
 	for id, drop := range drops.drops {
-		if now.Sub(drop.createdAt) >= GiftDropLifetime {
+		// Adapters close drops themselves at expiry. This only drops forgotten ones.
+		if now.Sub(drop.createdAt) >= GiftDropLifetime+time.Minute {
 			delete(drops.drops, id)
 		}
 	}
@@ -111,11 +128,38 @@ func (drops *ActivityDrops) pruneLocked(now time.Time) {
 type GiftDropClaim struct {
 	Member Member
 	DropID string
+	// Slot is the 1-based button of a Random Active Drop. Zero means the interface has no buttons.
+	Slot int
 }
 
 type GiftDropAward struct {
 	Kind   core.GiftDropKind
 	Rarity core.GiftRarity
+	Coal   bool
+	// Taken has one bit per opened slot of a Random Active Drop.
+	Taken uint8
+	// Finished is set when this claim ended the drop, with the full list of collections.
+	Finished *DropSummary
+}
+
+// Close ends a drop and returns who collected what. It reports false when the drop
+// was already closed, so only one caller announces the end.
+func (drops *ActivityDrops) Close(dropID string) (DropSummary, bool) {
+	if drops == nil {
+		return DropSummary{}, false
+	}
+	drops.mu.Lock()
+	defer drops.mu.Unlock()
+	return drops.closeLocked(dropID)
+}
+
+func (drops *ActivityDrops) closeLocked(dropID string) (DropSummary, bool) {
+	drop, ok := drops.drops[dropID]
+	if !ok {
+		return DropSummary{}, false
+	}
+	delete(drops.drops, dropID)
+	return DropSummary{Kind: drop.Kind, Claims: drop.results}, true
 }
 
 func (drops *ActivityDrops) Claim(ctx context.Context, claim GiftDropClaim) (GiftDropAward, error) {
@@ -130,22 +174,45 @@ func (drops *ActivityDrops) Claim(ctx context.Context, claim GiftDropClaim) (Gif
 	}
 	now := drops.service.now().UTC()
 	if now.Sub(drop.createdAt) >= GiftDropLifetime {
-		delete(drops.drops, drop.ID)
 		return GiftDropAward{}, ErrDropUnavailable
 	}
-	if drop.Kind == core.RandomActiveDrop && !drop.claims[claim.Member.UserID].IsZero() {
-		return GiftDropAward{}, ErrDropCollected
+	slotBit := uint8(0)
+	if claim.Slot >= 1 && claim.Slot <= core.GiftDropSlots {
+		slotBit = 1 << (claim.Slot - 1)
+	}
+	if drop.Kind == core.RandomActiveDrop {
+		if !drop.claims[claim.Member.UserID].IsZero() {
+			return GiftDropAward{}, ErrDropCollected
+		}
+		if drop.taken&slotBit != 0 {
+			return GiftDropAward{}, ErrDropSlotTaken
+		}
 	}
 	if drop.Kind == core.GiftRainDrop && now.Sub(drops.rainClaims[claim.Member]) < GiftRainClaimCooldown {
 		return GiftDropAward{}, ErrDropCooldown
 	}
-	rarity := core.DailyGiftRarity(drops.service.random(core.GiftRarityRolls))
+	coalRoll, rarityRoll := 0, drops.service.random(core.GiftRarityRolls)
+	if drop.Kind == core.GiftRainDrop {
+		coalRoll, rarityRoll = rarityRoll, drops.service.random(core.GiftRarityRolls)
+	}
 	for ctx.Err() == nil {
 		record, err := drops.service.gifts.Load(ctx, claim.Member)
 		if err != nil {
 			return GiftDropAward{}, fmt.Errorf("load drop inventory: %w", err)
 		}
-		next, err := core.AwardGift(record, rarity)
+		var next core.GiftRecord
+		result := DropClaimRecord{UserID: claim.Member.UserID}
+		switch {
+		case drop.Kind == core.GiftRainDrop && core.RainPrizeIsCoal(coalRoll):
+			result.Coal = true
+			next, err = core.AwardCoal(record)
+		case drop.Kind == core.GiftRainDrop:
+			result.Rarity = core.DailyGiftRarity(rarityRoll)
+			next, err = core.AwardGift(record, result.Rarity)
+		default:
+			result.Rarity = core.ActiveDropRarity(rarityRoll, record.Aura.Good)
+			next, err = core.AwardGift(record, result.Rarity)
+		}
 		if err != nil {
 			return GiftDropAward{}, err
 		}
@@ -155,11 +222,18 @@ func (drops *ActivityDrops) Claim(ctx context.Context, claim GiftDropClaim) (Gif
 		}
 		if saved {
 			drop.claims[claim.Member.UserID] = now
+			drop.taken |= slotBit
+			drop.results = append(drop.results, result)
 			drops.drops[drop.ID] = drop
+			award := GiftDropAward{Kind: drop.Kind, Rarity: result.Rarity, Coal: result.Coal, Taken: drop.taken}
 			if drop.Kind == core.GiftRainDrop {
 				drops.rainClaims[claim.Member] = now
+				if len(drop.results) >= core.GiftRainClaimLimit {
+					summary, _ := drops.closeLocked(drop.ID)
+					award.Finished = &summary
+				}
 			}
-			return GiftDropAward{Kind: drop.Kind, Rarity: rarity}, nil
+			return award, nil
 		}
 	}
 	return GiftDropAward{}, ctx.Err()

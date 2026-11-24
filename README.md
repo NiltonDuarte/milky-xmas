@@ -111,3 +111,9 @@ The Grinch announcement shows the Grinch image below the registration text. In t
 If the Grinch escapes or defeats all players, the final battle message also shows Max's image next to the Grinch image. A victory shows only the Grinch. Check both endings in the Discord test server.
 
 Run `/helpmemilky` to list the commands you can use. In Discord, moderator commands appear only for members with the permission: Manage Messages for `/give gift` and `/grinch summon`, Manage Server for `/setup`. The reply is private. The list is written by hand in `gifttext/help.go`, so update it when a command is added or renamed. In the Discord test server, run it with a regular account and with a moderator account and compare the lists.
+
+## Activity drop updates
+
+The Random Active Drop shows the Grinch and Max image and the Gift Rain shows the gift rain image. A player with Good deeds of 50% or more has better odds of rare and epic gifts from the Random Active Drop. The button a player opens is disabled. A Gift Rain ends after ten collections and each has a 25% chance of Coal. When a drop ends or expires after ten minutes, its message is edited to say so and to list who collected what. Drops are kept in memory, so a restart leaves an open drop's message as it was.
+
+In the Discord test server, enable a channel and chat until a drop appears. Check the image, that your clicked button is disabled, that a second account cannot open the same button, and that the final list appears after ten minutes. For a Gift Rain, collect ten times across accounts (one collection per minute each) and check the end and the Coal prizes. In the local chat, use `/message <text>` to trigger drops, `/drop collect <id>`, and `/drop expire <id>`.

@@ -53,3 +53,42 @@ func TestLocalActivityGiftRain(t *testing.T) {
 		t.Fatalf("cooldown reply = %q", got)
 	}
 }
+
+func TestLocalGiftRainEndsAtTenClaimsAndExpireListsPlayers(t *testing.T) {
+	now := time.Date(2026, 12, 1, 18, 0, 0, 0, time.UTC)
+	store := &giftfixture.Store{}
+	service := app.NewService(store, func() time.Time { return now }, func(bound int) int {
+		switch bound {
+		case core.GiftRainMessageRange, core.RandomActiveDropRolls:
+			if bound == core.GiftRainMessageRange {
+				return 0
+			}
+			return 1
+		default:
+			return 0 // Every Gift Rain claim is Coal.
+		}
+	})
+	handler := newHandler(service, newGrinchFixture(func() time.Time { return now }, store), app.NewActivityDrops(service))
+	send := func(command string) string {
+		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(url.Values{"command": {command}}.Encode()))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		return response.Body.String()
+	}
+	for range core.GiftRainMinimumMessages {
+		send("/message festive chat")
+	}
+	if got := send("/drop collect 1"); got != "You collected 🌑 Coal." {
+		t.Fatalf("claim = %q", got)
+	}
+	if got := send("/drop expire 1"); got != "⌛ This drop has expired.\n**Collected by**\nfixture — 🌑 Coal" {
+		t.Fatalf("expire = %q", got)
+	}
+	if got := send("/drop expire 1"); got != "This gift drop is no longer available." {
+		t.Fatalf("second expire = %q", got)
+	}
+	if got := send("/drop collect 1"); got != "This gift drop is no longer available." {
+		t.Fatalf("claim after expire = %q", got)
+	}
+}
