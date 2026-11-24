@@ -1,7 +1,9 @@
 package discord
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"log"
@@ -182,6 +184,11 @@ func acknowledgeGrinchButton(s *discordgo.Session, i *discordgo.Interaction, res
 	return true
 }
 
+const grinchImageName = "grinch.jpg"
+
+//go:embed grinch.jpg
+var grinchImage []byte
+
 type grinchDisplay struct {
 	session *discordgo.Session
 	channel string
@@ -193,6 +200,8 @@ func (display grinchDisplay) Announce(ctx context.Context, state core.Grinch) (s
 	content, components := grinchMessage(state)
 	message, err := display.session.ChannelMessageSendComplex(display.channel, &discordgo.MessageSend{
 		Content: content, Components: components,
+		Embeds: []*discordgo.MessageEmbed{{Image: &discordgo.MessageEmbedImage{URL: "attachment://" + grinchImageName}}},
+		Files:  []*discordgo.File{{Name: grinchImageName, ContentType: "image/jpeg", Reader: bytes.NewReader(grinchImage)}},
 	}, discordgo.WithContext(ctx), discordgo.WithRetryOnRatelimit(false), discordgo.WithRestRetries(0))
 	if err != nil {
 		return "", time.Time{}, err
