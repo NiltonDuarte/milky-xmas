@@ -70,6 +70,9 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 			case "/send":
 				replyGiftTransfer(w, r, service, args)
 				return
+			case "/give":
+				replyGiveGift(w, r, service, args)
+				return
 			case "/aura":
 				replyAura(w, r, service, args)
 				return

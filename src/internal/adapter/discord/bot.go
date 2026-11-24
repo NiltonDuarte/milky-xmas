@@ -74,6 +74,7 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 		},
 		dailyCommand(),
 		sendCommand(),
+		giveCommand(),
 		auraCommand(),
 		{
 			Type:        discordgo.ChatApplicationCommand,
@@ -159,6 +160,9 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 		return
 	case sendCommandName:
 		b.handleSendGift(session, event.Interaction, data)
+		return
+	case giveCommandName:
+		b.handleGiveGift(session, event.Interaction, data)
 		return
 	case auraCommandName:
 		b.handleAura(session, event.Interaction, data.Options)

@@ -32,7 +32,7 @@ func TestThrownSnowballInChat(t *testing.T) {
 		{"/thrown snowball Bob", http.StatusOK, "You have thrown a ❄️ snowball at Bob. 🥶\nfixture have threw a ❄️ snowball at you, now you have 2 ❄️ snowballs. 🥶"},
 		{"/thrown snowball Bob yellow", http.StatusOK, "You have thrown a 🟡 yellow snowball at Bob. 🥶\nfixture have threw a 🟡 yellow snowball at you, now you have 1 🟡 yellow snowball. 🥶"},
 		{"/thrown snowball Bob yellow", http.StatusBadRequest, "You don't have a Yellow Snowball to throw."},
-		{"/aura check", http.StatusOK, "😈 Bad 5%  |  😇 Good 0%"},
+		{"/aura check", http.StatusOK, "```\n😈 Bad 5%  |  0% Good 😇\n```"},
 	} {
 		form := url.Values{"command": {step.command}}
 		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(form.Encode()))

@@ -10,7 +10,7 @@ import (
 
 func Claim(claim app.GiftClaim) string {
 	if claim.Collected {
-		return fmt.Sprintf("🎅🏻 Christmas won’t be Christmas without any presents. You collected %d gifts 🎁.\nGift rarity · %s.", claim.Amount, claim.Rarity)
+		return fmt.Sprintf("## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected %d gifts 🎁.\nGift rarity · %s ·\n```", claim.Amount, claim.Rarity)
 	}
 	minutes := int((claim.Remaining + time.Minute - time.Nanosecond) / time.Minute)
 	var parts []string

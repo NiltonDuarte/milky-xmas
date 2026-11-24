@@ -9,7 +9,7 @@ import (
 )
 
 func Aura(aura core.Aura) string {
-	return fmt.Sprintf("😈 Bad %d%%  |  😇 Good %d%%", aura.Bad, aura.Good)
+	return fmt.Sprintf("```\n😈 Bad %d%%  |  %d%% Good 😇\n```", aura.Bad, aura.Good)
 }
 
 func Transfer(item string, quantity int64, recipient string, increase int) string {
@@ -43,3 +43,13 @@ func TransferRejection(err error) string {
 		return ""
 	}
 }
+
+func GiftGiven(quantity int64, rarity, recipient string) string {
+	gift := "gifts"
+	if quantity == 1 {
+		gift = "gift"
+	}
+	return fmt.Sprintf("Gave %d 🎁%s %s to %s.", quantity, rarity, gift, recipient)
+}
+
+const GiveNeedsModerator = "You need Manage Messages permission to give gifts."

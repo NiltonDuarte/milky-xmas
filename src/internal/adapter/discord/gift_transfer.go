@@ -2,12 +2,16 @@ package discord
 
 import (
 	"context"
+	_ "embed"
 	"strings"
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/gifttext"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 	"github.com/bwmarrin/discordgo"
 )
+
+//go:embed badgood.jpg
+var badGoodImage []byte
 
 const sendCommandName = "send"
 const auraCommandName = "aura"
@@ -56,7 +60,7 @@ func (b bot) handleSendGift(session *discordgo.Session, interaction *discordgo.I
 		return
 	}
 	respondPrivately(session, interaction, func(ctx context.Context, member app.Member) string {
-		recipient, name, item, quantity := giftOptions(member.ServerID, sub.Options, data.Resolved)
+		recipient, name, item, quantity := giftOptions(member.ServerID, sub.Options, data.Resolved, "quantity")
 		auraIncrease, err := b.service.SendItem(ctx, member, recipient, item, quantity)
 		if err != nil {
 			if reply := gifttext.TransferRejection(err); reply != "" {
@@ -74,13 +78,13 @@ func (b bot) handleAura(session *discordgo.Session, interaction *discordgo.Inter
 	if sub == nil || len(sub.Options) != 0 {
 		return
 	}
-	respondPrivately(session, interaction, func(ctx context.Context, member app.Member) string {
+	respondPrivatelyWith(session, interaction, func(ctx context.Context, member app.Member) privateReply {
 		aura, err := b.service.CheckAura(ctx, member)
 		if err != nil {
 			logInteractionError(interaction.ID, "load aura", err)
-			return "Could not load your aura. Try again."
+			return privateReply{Content: "Could not load your aura. Try again."}
 		}
-		return gifttext.Aura(aura)
+		return privateReply{Content: gifttext.Aura(aura), Image: &privateImage{Name: "badgood.jpg", Data: badGoodImage}}
 	})
 }
 
@@ -91,7 +95,7 @@ func commandSubcommand(options []*discordgo.ApplicationCommandInteractionDataOpt
 	return options[0]
 }
 
-func giftOptions(serverID string, options []*discordgo.ApplicationCommandInteractionDataOption, resolved *discordgo.ApplicationCommandInteractionDataResolved) (app.Recipient, string, string, int64) {
+func giftOptions(serverID string, options []*discordgo.ApplicationCommandInteractionDataOption, resolved *discordgo.ApplicationCommandInteractionDataResolved, quantityName string) (app.Recipient, string, string, int64) {
 	var recipient app.Recipient
 	var name string
 	var item string
@@ -105,7 +109,7 @@ func giftOptions(serverID string, options []*discordgo.ApplicationCommandInterac
 			recipient, name = resolveRecipient(serverID, option, resolved)
 		case (option.Name == "item" || option.Name == "rarity") && option.Type == discordgo.ApplicationCommandOptionString:
 			item, _ = option.Value.(string)
-		case option.Name == "quantity" && option.Type == discordgo.ApplicationCommandOptionInteger:
+		case option.Name == quantityName && option.Type == discordgo.ApplicationCommandOptionInteger:
 			// DiscordGo decodes numeric options as float64.
 			value, ok := option.Value.(float64)
 			if ok && value >= 1 && value <= 1<<53 && value == float64(int64(value)) {

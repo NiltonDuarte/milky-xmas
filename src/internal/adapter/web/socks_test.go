@@ -36,8 +36,8 @@ func TestSocksInChat(t *testing.T) {
 		code  int
 		reply string
 	}{
-		{"filled", store, http.StatusOK, "🧦 Your inventory\n🎁 Gifts: 1 - normal | 2 rare | 3 epic\n❄️ Snowballs: 4 | 🟡 Yellow Snowballs: 6\n🌑 Coal: 5"},
-		{"empty", &giftfixture.Store{}, http.StatusOK, "🧦 Your inventory\n🎁 Gifts: 0 - normal | 0 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0"},
+		{"filled", store, http.StatusOK, "## 🧦 Your inventory\n```\n🎁 Gifts: 1 - normal | 2 rare | 3 epic\n❄️ Snowballs: 4 | 🟡 Yellow Snowballs: 6\n🌑 Coal: 5\n```"},
+		{"empty", &giftfixture.Store{}, http.StatusOK, "## 🧦 Your inventory\n```\n🎁 Gifts: 0 - normal | 0 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0\n```"},
 		{"read failure", &unavailableInventory{}, http.StatusInternalServerError, "Could not load your inventory. Try again."},
 	} {
 		t.Run(step.name, func(t *testing.T) {

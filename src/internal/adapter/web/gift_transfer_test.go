@@ -35,8 +35,8 @@ func TestGiftTransferAndAuraInChat(t *testing.T) {
 		status  int
 		reply   string
 	}{
-		{"/aura check", http.StatusOK, "😈 Bad 95%  |  😇 Good 90%"},
-		{"/daily claim", http.StatusOK, "🎅🏻 Christmas won’t be Christmas without any presents. You collected 2 gifts 🎁.\nGift rarity · epic."},
+		{"/aura check", http.StatusOK, "```\n😈 Bad 95%  |  90% Good 😇\n```"},
+		{"/daily claim", http.StatusOK, "## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected 2 gifts 🎁.\nGift rarity · epic ·\n```"},
 		{"/send gift friend normal 1", http.StatusBadRequest, "You don't have enough gifts of that rarity."},
 		{"/send gift fixture epic 1", http.StatusBadRequest, "Choose another player in this server."},
 		{"/send gift friend epic -1", http.StatusBadRequest, "Enter a positive whole number of items."},
@@ -44,12 +44,12 @@ func TestGiftTransferAndAuraInChat(t *testing.T) {
 		{"/send gift friend mystery 1", http.StatusBadRequest, "Choose normal, rare, epic, or coal."},
 		{"/send gift friend epic 2", http.StatusOK, "Sent 2 🎁epic gifts to friend. Your 😇 good deeds is 10% more high."},
 		{"/send gift friend epic 1", http.StatusBadRequest, "You don't have enough gifts of that rarity."},
-		{"/aura check", http.StatusOK, "😈 Bad 95%  |  😇 Good 100%"},
+		{"/aura check", http.StatusOK, "```\n😈 Bad 95%  |  100% Good 😇\n```"},
 		{"/daily claim", http.StatusOK, "🎅 you already got the gift for today, the next gift 🎁 is in 24 hours."},
 		{"/send gift friend coal 3", http.StatusBadRequest, "You don't have enough Coal."},
-		{"/aura check", http.StatusOK, "😈 Bad 95%  |  😇 Good 100%"},
+		{"/aura check", http.StatusOK, "```\n😈 Bad 95%  |  100% Good 😇\n```"},
 		{"/send gift friend coal 2", http.StatusOK, "Sent 2 🌑 Coal to friend. Your 😈 bad deeds increased by 5%."},
-		{"/aura check", http.StatusOK, "😈 Bad 100%  |  😇 Good 100%"},
+		{"/aura check", http.StatusOK, "```\n😈 Bad 100%  |  100% Good 😇\n```"},
 	} {
 		form := url.Values{"command": {step.command}}
 		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(form.Encode()))
@@ -63,5 +63,32 @@ func TestGiftTransferAndAuraInChat(t *testing.T) {
 	friend, err := store.Load(t.Context(), app.Member{ServerID: "local", UserID: "friend"})
 	if err != nil || friend.Inventory.Epic != 2 || friend.Inventory.Coal != 2 || friend.Aura != (core.Aura{}) || !friend.LastClaim.IsZero() {
 		t.Fatalf("recipient record = %+v, %v", friend, err)
+	}
+}
+
+func TestGiveGiftInChat(t *testing.T) {
+	handler := web.NewHandler(app.NewService(&giftfixture.Store{}, time.Now, func(int) int { return 0 }), nil)
+	post := func(command string) (int, string) {
+		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader("command="+url.QueryEscape(command)))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		return recorder.Code, strings.TrimSpace(recorder.Body.String())
+	}
+	for _, step := range []struct {
+		command string
+		code    int
+		reply   string
+	}{
+		{"/give gift friend 3 rare", http.StatusOK, "Gave 3 🎁rare gifts to friend."},
+		{"/give gift friend 0 rare", http.StatusBadRequest, "Enter a positive whole number of items."},
+		{"/give gift friend 1 mythic", http.StatusBadRequest, "Choose normal, rare, epic, or coal."},
+		{"/give gift fixture 1 rare", http.StatusBadRequest, "Choose another player in this server."},
+		{"/give gift friend", http.StatusBadRequest, "Use /give gift <recipient> <amount> <rarity>."},
+		{"/socks", http.StatusOK, "## 🧦 Your inventory\n```\n🎁 Gifts: 0 - normal | 0 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0\n```"},
+	} {
+		if code, reply := post(step.command); code != step.code || reply != step.reply {
+			t.Errorf("%s = %d %q, want %d %q", step.command, code, reply, step.code, step.reply)
+		}
 	}
 }
