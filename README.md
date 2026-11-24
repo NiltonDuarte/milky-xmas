@@ -60,15 +60,15 @@ In the Discord test server, use two human accounts with application command perm
 
 ## Socks inventory
 
-Run `/socks` to see your normal, rare, and epic gifts, Snowballs, Yellow Snowballs, and Coal, including items with zero balance. Snowballs, Yellow Snowballs, and Coal start at zero. Advent gifts appear in the Advent calendar.
+Run `/look in-your-stocking` (Discord: `/look`, subcommand `in-your-stocking`) to see your normal, rare, and epic gifts, Snowballs, Yellow Snowballs, and Coal, including items with zero balance. Snowballs, Yellow Snowballs, and Coal start at zero. Advent gifts appear in the Advent calendar.
 
-In a fresh local chat, run `/socks` to check all six balances are zero. Run `/daily claim`, then `/socks` and check the quantity for the awarded rarity. Send one gift to `friend` and use `/socks` to check that balance decreased by one.
+In a fresh local chat, run `/look in-your-stocking` to check all six balances are zero. Run `/daily claim`, then `/look in-your-stocking` and check the quantity for the awarded rarity. Send one gift to `friend` and use `/look in-your-stocking` to check that balance decreased by one.
 
-In the Discord test server, invoke `/socks` and check that only your account can see the reply. Send a gift to a second account and confirm each account sees its updated balance when it runs `/socks`.
+In the Discord test server, invoke `/look in-your-stocking` and check that only your account can see the reply, with the stocking image above the inventory. Send a gift to a second account and confirm each account sees its updated balance when it runs `/look in-your-stocking`.
 
 ## Throw a snowball
 
-In the Discord test server, use `/thrown snowball` and select another player. Use the optional type field to choose Normal or Yellow Snowball. Yellow appears when you have one. Throwing it transfers one to the recipient and adds five percentage points to your Bad deeds, up to 100%. The sender sees a private confirmation and the bot mentions the recipient in the same channel with their new Snowball total. The recipient can run `/socks` to check the balance. If the bot cannot post in that channel, the inventory still increases and the sender sees a delivery warning.
+In the Discord test server, use `/thrown snowball` and select another player. Use the optional type field to choose Normal or Yellow Snowball. Yellow appears when you have one. Throwing it transfers one to the recipient and adds five percentage points to your Bad deeds, up to 100%. The sender sees a private confirmation and the bot mentions the recipient in the same channel with their new Snowball total. The recipient can run `/look in-your-stocking` to check the balance. If the bot cannot post in that channel, the inventory still increases and the sender sees a delivery warning.
 
 In the local chat, run `/thrown snowball friend` twice. The transcript shows the confirmation and simulated notification. The notification reports one Snowball on the first throw and two on the second. Use `/thrown snowball friend yellow` to throw a Yellow Snowball from your inventory. Use `/send gift friend coal 1` to transfer Coal.
 
@@ -92,6 +92,22 @@ Use `/setup channel` to enable the boss in each Discord text channel where it ma
 
 The Grinch can also appear automatically. Each minute, the bot checks the designated channel for human activity within the last ten minutes and rolls a 10% spawn chance if there is no fight or automatic spawn cooldown. Automatic spawning cools down for 30 minutes after a fight. Manual summons skip that cooldown.
 
-Click 🎅 **Open registration** in the announcement, then **Join** in your private panel. The Join button disappears from your panel after you register. Combat starts as soon as three players join or after one minute with one or two players. If nobody joins, the encounter is cancelled. New players can still join during combat. Throw snowballs until the Grinch reaches 75% HP. This first phase has no time limit. The shared one-minute countdown starts at 75% HP. Choose 🎄 to defend and damage him by 30 percentage points divided by the number who joined with 🎅 before defense begins, down to 45%. The defense emojis reshuffle after each accepted click. At 45%, the 🧊 and ☃️ attack grid appears. At 5%, each accepted ⚔️ deals 1 HP and awards 2 damage points, and 🎁 awards 1–5 gift points. Pick ❄️ for one Snowball in `/socks`. The four attack and gift buttons are rerolled after each accepted choice. The countdown continues through defense, the attack grid, and the final attack. The final message shows separate damage and gift rankings for everyone who joined. Give the bot **Attach Files** permission to include full standings when they exceed Discord's message limit. One player can fight and win alone. If all registered players reach zero HP, the Grinch wins immediately. If the Grinch wins or escapes, every registered player receives one Coal and a number of Yellow Snowballs equal to the group size. A group of four receives four Yellow Snowballs per player.
+Click 🎅 **Open registration** in the announcement, then **Join** in your private panel. The Join button disappears from your panel after you register. Combat starts as soon as three players join or after one minute with one or two players. If nobody joins, the encounter is cancelled. New players can still join during combat. Throw snowballs until the Grinch reaches 75% HP. This first phase has no time limit. The shared one-minute countdown starts at 75% HP. Choose 🎄 to defend and damage him by 30 percentage points divided by the number who joined with 🎅 before defense begins, down to 45%. The defense emojis reshuffle after each accepted click. At 45%, the 🧊 and ☃️ attack grid appears. At 5%, each accepted ⚔️ deals 1 HP and awards 2 damage points, and 🎁 awards 1–5 gift points. Pick ❄️ for one Snowball in `/look in-your-stocking`. The four attack and gift buttons are rerolled after each accepted choice. The countdown continues through defense, the attack grid, and the final attack. The final message shows separate damage and gift rankings for everyone who joined. Give the bot **Attach Files** permission to include full standings when they exceed Discord's message limit. One player can fight and win alone. If all registered players reach zero HP, the Grinch wins immediately. If the Grinch wins or escapes, every registered player receives one Coal and a number of Yellow Snowballs equal to the group size. A group of four receives four Yellow Snowballs per player.
 
 In the local chat, use `/grinch summon`, then `/grinch join` within one minute. Use `/grinch view` to see when combat has started. Use `/grinch hit 1` for snowballs, or `/grinch hit <tile>` for the numbered boards. The local fixture needs no Discord credentials.
+
+## Moderator gifts and reply formats
+
+Moderators with Manage Messages or Administrator can run `/give gift <recipient> <amount> <rarity>` to add normal, rare, or epic gifts to a player. It does not use the moderator's inventory and does not change aura or cooldowns. Reply is private. In the local chat, run `/give gift friend 3 rare`; the browser acts as the moderator.
+
+`/daily claim`, `/look in-your-stocking`, and `/aura check` use a heading and code block. In Discord, `/aura check` shows the bad good image above `😈 Bad n%  |  n% Good 😇`. The local chat shows the text only.
+
+In the Discord test server, check that a member without Manage Messages cannot see `/give` or is refused, that a moderator's grant appears in the recipient's `/look in-your-stocking`, and that the aura image appears above the aura line.
+
+The snowball notification reads `<recipient>❕  <sender> has thrown a <type> at you. 🥶`. In Discord it mentions the recipient and shows the snowball image below the text. Check that after `/thrown snowball`.
+
+The Grinch announcement shows the Grinch image below the registration text. In the Discord test server, summon the Grinch with `/grinch summon` and check the image, then join and confirm the image stays while the fight updates.
+
+If the Grinch escapes or defeats all players, the final battle message also shows Max's image next to the Grinch image. A victory shows only the Grinch. Check both endings in the Discord test server.
+
+Run `/helpmemilky` to list the commands you can use. In Discord, moderator commands appear only for members with the permission: Manage Messages for `/give gift` and `/grinch summon`, Manage Server for `/setup`. The reply is private. The list is written by hand in `gifttext/help.go`, so update it when a command is added or renamed. In the Discord test server, run it with a regular account and with a moderator account and compare the lists.

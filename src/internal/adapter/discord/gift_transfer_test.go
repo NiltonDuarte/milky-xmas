@@ -2,6 +2,9 @@ package discord
 
 import (
 	"encoding/json"
+	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"testing"
 	"time"
@@ -78,24 +81,24 @@ func TestGiftTransferAuraAndSocksInteractions(t *testing.T) {
 			{Type: discordgo.ApplicationCommandOptionSubCommand, Name: "check"},
 		},
 	}
-	socks := discordgo.ApplicationCommandInteractionData{CommandType: discordgo.ChatApplicationCommand, Name: "socks"}
+	socks := discordgo.ApplicationCommandInteractionData{CommandType: discordgo.ChatApplicationCommand, Name: "look", Options: []*discordgo.ApplicationCommandInteractionDataOption{{Type: discordgo.ApplicationCommandOptionSubCommand, Name: "in-your-stocking"}}}
 	for _, step := range []struct {
 		user    string
 		data    discordgo.ApplicationCommandInteractionData
 		content string
 	}{
-		{alice.UserID, aura, "😈 Bad 0%  |  😇 Good 0%"},
-		{alice.UserID, socks, "🧦 Your inventory\n🎁 Gifts: 0 - normal | 2 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 2"},
+		{alice.UserID, aura, "```\n😈 Bad 0%  |  0% Good 😇\n```"},
+		{alice.UserID, socks, "## 🧦 Your inventory\n```\n🎁 Gifts: 0 - normal | 2 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 2\n```"},
 		{alice.UserID, send("600", true, 1, "rare"), "Choose another player in this server."},
 		{alice.UserID, send(bob.UserID, false, 1.5, "rare"), "Enter a positive whole number of items."},
 		{alice.UserID, send(bob.UserID, false, 1, "rare"), "Sent 1 🎁rare gift to Bob. Your 😇 good deeds is 10% more high."},
 		{alice.UserID, send(bob.UserID, false, 1, "rare"), "Sent 1 🎁rare gift to Bob. Your 😇 good deeds is 10% more high."},
-		{alice.UserID, aura, "😈 Bad 0%  |  😇 Good 20%"},
-		{bob.UserID, aura, "😈 Bad 0%  |  😇 Good 0%"},
-		{alice.UserID, socks, "🧦 Your inventory\n🎁 Gifts: 0 - normal | 0 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 2"},
-		{bob.UserID, socks, "🧦 Your inventory\n🎁 Gifts: 0 - normal | 2 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0"},
+		{alice.UserID, aura, "```\n😈 Bad 0%  |  20% Good 😇\n```"},
+		{bob.UserID, aura, "```\n😈 Bad 0%  |  0% Good 😇\n```"},
+		{alice.UserID, socks, "## 🧦 Your inventory\n```\n🎁 Gifts: 0 - normal | 0 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 2\n```"},
+		{bob.UserID, socks, "## 🧦 Your inventory\n```\n🎁 Gifts: 0 - normal | 2 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0\n```"},
 		{alice.UserID, send(bob.UserID, false, 2, "coal"), "Sent 2 🌑 Coal to Bob. Your 😈 bad deeds increased by 10%."},
-		{alice.UserID, aura, "😈 Bad 10%  |  😇 Good 20%"},
+		{alice.UserID, aura, "```\n😈 Bad 10%  |  20% Good 😇\n```"},
 	} {
 		session, err := discordgo.New("Bot fixture")
 		if err != nil {
@@ -116,6 +119,16 @@ func TestGiftTransferAuraAndSocksInteractions(t *testing.T) {
 				}
 				return fakeResponse(http.StatusNoContent, ""), nil
 			case 2:
+				if image := map[string]string{"aura": "badgood.jpg", "look": "stocking.jpg"}[step.data.Name]; image != "" {
+					edit, files := decodeMultipartEdit(t, r, image)
+					embeds := *edit.Embeds
+					if r.Method != http.MethodPatch || len(embeds) != 2 || embeds[0].Image == nil ||
+						embeds[0].Image.URL != "attachment://"+image || embeds[1].Description != step.content ||
+						files != 1 {
+						t.Errorf("expected %s above %q, got %s %+v with %d files", image, step.content, r.Method, embeds, files)
+					}
+					return fakeResponse(http.StatusOK, `{"id":"123"}`), nil
+				}
 				var edit discordgo.WebhookEdit
 				if err := json.NewDecoder(r.Body).Decode(&edit); err != nil {
 					t.Fatal(err)
@@ -140,5 +153,34 @@ func TestGiftTransferAuraAndSocksInteractions(t *testing.T) {
 	record, err := store.Load(t.Context(), bob)
 	if err != nil || record.Inventory.Rare != 2 || record.Inventory.Coal != 2 || record.Aura != (core.Aura{}) {
 		t.Fatalf("recipient record = %+v, %v", record, err)
+	}
+}
+
+func decodeMultipartEdit(t *testing.T, r *http.Request, image string) (discordgo.WebhookEdit, int) {
+	t.Helper()
+	_, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := multipart.NewReader(r.Body, params["boundary"])
+	var edit discordgo.WebhookEdit
+	files := 0
+	for {
+		part, err := reader.NextPart()
+		if err == io.EOF {
+			return edit, files
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if part.FormName() == "payload_json" {
+			if err := json.NewDecoder(part).Decode(&edit); err != nil {
+				t.Fatal(err)
+			}
+		} else if part.FileName() == image {
+			if data, _ := io.ReadAll(part); len(data) > 0 {
+				files++
+			}
+		}
 	}
 }

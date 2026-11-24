@@ -24,13 +24,16 @@ func TestRegisterCommands(t *testing.T) {
 		case "/api/v9/users/@me":
 			return fakeResponse(http.StatusOK, `{"id":"100"}`), nil
 		case "/api/v9/applications/100/guilds/200/commands":
+			if request.Method == http.MethodGet {
+				return fakeResponse(http.StatusOK, `[{"id":"900","name":"socks"},{"id":"300","name":"hello"}]`), nil
+			}
 			var command discordgo.ApplicationCommand
 			if err := json.NewDecoder(request.Body).Decode(&command); err != nil {
 				t.Fatal(err)
 			}
 			commands = append(commands, command.Name)
 			if command.Type != discordgo.ChatApplicationCommand ||
-				((command.Name == "hello" || command.Name == "socks") && len(command.Options) != 0) ||
+				((command.Name == "hello") && len(command.Options) != 0) ||
 				(command.Name == "daily" && (len(command.Options) != 1 || command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand || command.Options[0].Name != "claim")) {
 				t.Errorf("unexpected registered command: %+v", command)
 			}
@@ -75,6 +78,11 @@ func TestRegisterCommands(t *testing.T) {
 				if kind.Name != "type" || kind.Required || !kind.Autocomplete || kind.Type != discordgo.ApplicationCommandOptionString {
 					t.Errorf("unexpected snowball type option: %+v", kind)
 				}
+			case "look":
+				if len(command.Options) != 1 || command.Options[0].Name != "in-your-stocking" ||
+					command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand || len(command.Options[0].Options) != 0 {
+					t.Errorf("unexpected look command: %+v", command)
+				}
 			case "aura":
 				if len(command.Options) != 1 || command.Options[0].Name != "check" ||
 					command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand || len(command.Options[0].Options) != 0 {
@@ -82,6 +90,8 @@ func TestRegisterCommands(t *testing.T) {
 				}
 			}
 			return fakeResponse(http.StatusCreated, `{"id":"300","name":"hello"}`), nil
+		case "/api/v9/applications/100/guilds/200/commands/900":
+			return fakeResponse(http.StatusNoContent, ""), nil
 		default:
 			t.Fatalf("unexpected request to %s", request.URL)
 			return nil, nil
@@ -91,10 +101,11 @@ func TestRegisterCommands(t *testing.T) {
 	if err := (bot{guildID: "200"}).registerCommands(t.Context(), session); err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(commands, ","); got != "hello,daily,send,aura,socks,advent,grinch,thrown,setup" {
+	if got := strings.Join(commands, ","); got != "hello,daily,send,give,aura,look,advent,grinch,thrown,helpmemilky,setup" {
 		t.Errorf("registered commands = %q", got)
 	}
-	want := "GET /api/v9/users/@me" + strings.Repeat("\nPOST /api/v9/applications/100/guilds/200/commands", len(commands))
+	want := "GET /api/v9/users/@me" + strings.Repeat("\nPOST /api/v9/applications/100/guilds/200/commands", len(commands)) +
+		"\nGET /api/v9/applications/100/guilds/200/commands\nDELETE /api/v9/applications/100/guilds/200/commands/900"
 	if got := strings.Join(requests, "\n"); got != want {
 		t.Errorf("registration requests = %q, want %q", got, want)
 	}

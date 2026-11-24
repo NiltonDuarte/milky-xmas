@@ -7,6 +7,7 @@ import (
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/gifttext"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
+	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
 
 func replyGiftTransfer(w http.ResponseWriter, r *http.Request, service app.Service, args []string) {
@@ -47,4 +48,27 @@ func replyAura(w http.ResponseWriter, r *http.Request, service app.Service, args
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	io.WriteString(w, gifttext.Aura(aura))
+}
+
+func replyGiveGift(w http.ResponseWriter, r *http.Request, service app.Service, args []string) {
+	if len(args) != 4 || args[0] != "gift" {
+		http.Error(w, "Use /give gift <recipient> <amount> <rarity>.", http.StatusBadRequest)
+		return
+	}
+	amount, err := strconv.ParseInt(args[2], 10, 64)
+	if err != nil {
+		amount = 0
+	}
+	moderator := app.Member{ServerID: fixtureServerID, UserID: fixtureUserID}
+	recipient := app.Recipient{Member: app.Member{ServerID: fixtureServerID, UserID: args[1]}}
+	if err := service.GiveGift(r.Context(), moderator, recipient, core.GiftRarity(args[3]), amount); err != nil {
+		if reply := gifttext.TransferRejection(err); reply != "" {
+			http.Error(w, reply, http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "Could not give the gifts. Try again.", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	io.WriteString(w, gifttext.GiftGiven(amount, args[3], args[1]))
 }

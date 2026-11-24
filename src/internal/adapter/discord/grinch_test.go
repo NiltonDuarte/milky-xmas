@@ -3,7 +3,11 @@ package discord
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -68,9 +72,11 @@ func TestGrinchSummon(t *testing.T) {
 				var message struct {
 					Content    string
 					Components []json.RawMessage
+					Embeds     []struct{ Image struct{ URL string } }
 				}
-				if err := json.NewDecoder(r.Body).Decode(&message); err != nil {
-					t.Fatal(err)
+				if files := decodeMultipartPayload(t, r, &message, "grinch.jpg"); files != 1 ||
+					len(message.Embeds) != 1 || message.Embeds[0].Image.URL != "attachment://grinch.jpg" {
+					t.Errorf("announcement image = %+v with %d files", message.Embeds, files)
 				}
 				if len(message.Components) != 1 || !strings.Contains(message.Content, "The Grinch is coming!") || !strings.Contains(string(message.Components[0]), "🎅") {
 					t.Errorf("announcement = %+v", message)
@@ -361,5 +367,99 @@ func TestGrinchReshuffleEditsOriginalMessage(t *testing.T) {
 	player, err := store.Load(t.Context(), app.Member{ServerID: "200", UserID: "50"})
 	if err != nil || callbacks != 2 || edits != 1 || player.Inventory.Snowballs != 1 {
 		t.Fatalf("callbacks = %d, edits = %d, inventory = %+v, %v", callbacks, edits, player.Inventory, err)
+	}
+}
+
+// decodeMultipartPayload decodes the JSON payload of a multipart request and returns how many
+// non-empty files with the given name it carried.
+func decodeMultipartPayload(t *testing.T, r *http.Request, payload any, fileName string) int {
+	t.Helper()
+	_, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := multipart.NewReader(r.Body, params["boundary"])
+	files := 0
+	for {
+		part, err := reader.NextPart()
+		if err == io.EOF {
+			return files
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if part.FormName() == "payload_json" {
+			if err := json.NewDecoder(part).Decode(payload); err != nil {
+				t.Fatal(err)
+			}
+		} else if part.FileName() == fileName {
+			if data, _ := io.ReadAll(part); len(data) > 0 {
+				files++
+			}
+		}
+	}
+}
+
+func TestGrinchFinalMessageImages(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		phase  core.GrinchPhase
+		images []string
+	}{
+		{"won", core.GrinchWon, []string{"grinch.jpg"}},
+		{"defeat", core.GrinchDefeat, []string{"grinch.jpg", "maxpee.jpg"}},
+		{"escaped", core.GrinchEscaped, []string{"grinch.jpg", "maxpee.jpg"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			session, err := discordgo.New("Bot fixture")
+			if err != nil {
+				t.Fatal(err)
+			}
+			edits := 0
+			session.Client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
+				edits++
+				_, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				var edit struct {
+					Embeds      []struct{ Image struct{ URL string } }
+					Attachments []json.RawMessage
+				}
+				var files []string
+				reader := multipart.NewReader(r.Body, params["boundary"])
+				for {
+					part, err := reader.NextPart()
+					if err == io.EOF {
+						break
+					}
+					if err != nil {
+						t.Fatal(err)
+					}
+					if part.FormName() == "payload_json" {
+						if err := json.NewDecoder(part).Decode(&edit); err != nil {
+							t.Fatal(err)
+						}
+					} else if data, _ := io.ReadAll(part); len(data) > 0 {
+						files = append(files, part.FileName())
+					}
+				}
+				var urls []string
+				for _, embed := range edit.Embeds {
+					urls = append(urls, strings.TrimPrefix(embed.Image.URL, "attachment://"))
+				}
+				if !slices.Equal(urls, tt.images) || !slices.Equal(files, tt.images) {
+					t.Errorf("final message embeds %v and files %v, want %v", urls, files, tt.images)
+				}
+				if edit.Attachments == nil || len(edit.Attachments) != 0 {
+					t.Errorf("expected old attachments to be replaced, got %v", edit.Attachments)
+				}
+				return fakeResponse(http.StatusOK, `{"id":"999"}`), nil
+			})
+			state := core.Grinch{ID: "g", MessageID: "999", Phase: tt.phase, EndedAt: time.Now()}
+			if err := (grinchDisplay{session, "400"}).Update(t.Context(), state); err != nil || edits != 1 {
+				t.Fatalf("Update = %v after %d edits", err, edits)
+			}
+		})
 	}
 }

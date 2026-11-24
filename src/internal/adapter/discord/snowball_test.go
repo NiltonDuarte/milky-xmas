@@ -2,6 +2,9 @@ package discord
 
 import (
 	"encoding/json"
+	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -78,12 +81,12 @@ func TestThrownSnowballInteraction(t *testing.T) {
 					if err != nil || inventory != wantInventory {
 						t.Fatalf("channel post requested before credit: %+v, %v", inventory, err)
 					}
-					var message discordgo.MessageSend
-					if err := json.NewDecoder(r.Body).Decode(&message); err != nil {
-						t.Fatal(err)
-					}
-					if message.Content != "<@500> Alice have threw a "+emoji+" "+item+" at you, now you have 1 "+emoji+" "+item+". 🥶" {
+					message, files := decodeMultipartSend(t, r)
+					if message.Content != "<@500>❕  Alice has thrown a "+emoji+" "+item+" at you. 🥶" {
 						t.Errorf("recipient notification = %q", message.Content)
+					}
+					if len(message.Embeds) != 1 || message.Embeds[0].Image == nil || message.Embeds[0].Image.URL != "attachment://snowball.jpg" || files != 1 {
+						t.Errorf("expected the snowball image attached, got %+v with %d files", message.Embeds, files)
 					}
 					if mentions := message.AllowedMentions; mentions == nil || len(mentions.Parse) != 0 || len(mentions.Users) != 1 || mentions.Users[0] != target.UserID {
 						t.Errorf("unexpected allowed mentions: %+v", mentions)
@@ -203,6 +206,35 @@ func TestSnowballAutocomplete(t *testing.T) {
 		}})
 		if !called {
 			t.Fatal("autocomplete interaction was not acknowledged")
+		}
+	}
+}
+
+func decodeMultipartSend(t *testing.T, r *http.Request) (discordgo.MessageSend, int) {
+	t.Helper()
+	_, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := multipart.NewReader(r.Body, params["boundary"])
+	var message discordgo.MessageSend
+	files := 0
+	for {
+		part, err := reader.NextPart()
+		if err == io.EOF {
+			return message, files
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if part.FormName() == "payload_json" {
+			if err := json.NewDecoder(part).Decode(&message); err != nil {
+				t.Fatal(err)
+			}
+		} else if part.FileName() == "snowball.jpg" {
+			if data, _ := io.ReadAll(part); len(data) > 0 {
+				files++
+			}
 		}
 	}
 }

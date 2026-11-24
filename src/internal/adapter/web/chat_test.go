@@ -34,8 +34,8 @@ func TestChatCommands(t *testing.T) {
 		status                     int
 	}{
 		{name: "hello", input: "/hello", status: http.StatusOK, reply: "Hello, world!"},
-		{name: "unknown", input: "/unknown", status: http.StatusBadRequest, reply: "Unknown command. Try /hello, /daily claim, /advent view, /grinch view, /send gift, /aura check, or /socks."},
-		{name: "missing slash", input: "hello", status: http.StatusBadRequest, reply: "Unknown command. Try /hello, /daily claim, /advent view, /grinch view, /send gift, /aura check, or /socks."},
+		{name: "unknown", input: "/unknown", status: http.StatusBadRequest, reply: "Unknown command. Try /hello, /daily claim, /advent view, /grinch view, /send gift, /aura check, /look in-your-stocking, or /helpmemilky."},
+		{name: "missing slash", input: "hello", status: http.StatusBadRequest, reply: "Unknown command. Try /hello, /daily claim, /advent view, /grinch view, /send gift, /aura check, /look in-your-stocking, or /helpmemilky."},
 		{name: "hello after error", input: "/hello", status: http.StatusOK, reply: "Hello, world!"},
 		{name: "foreign origin", input: "/hello", origin: "https://example.org", status: http.StatusForbidden},
 	} {
@@ -71,10 +71,10 @@ func TestDailyClaimInChat(t *testing.T) {
 		roll    int
 		reply   string
 	}{
-		{0, 0, "🎅🏻 Christmas won’t be Christmas without any presents. You collected 1 gifts 🎁.\nGift rarity · normal."},
+		{0, 0, "## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected 1 gifts 🎁.\nGift rarity · normal ·\n```"},
 		{30 * time.Minute, 3, "🎅 you already got the gift for today, the next gift 🎁 is in 23 hours 30 minutes."},
 		{24*time.Hour - time.Second, 6, "🎅 you already got the gift for today, the next gift 🎁 is in 1 minute."},
-		{24 * time.Hour, 9, "🎅🏻 Christmas won’t be Christmas without any presents. You collected 10 gifts 🎁.\nGift rarity · normal."},
+		{24 * time.Hour, 9, "## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected 10 gifts 🎁.\nGift rarity · normal ·\n```"},
 	} {
 		now = first.Add(step.elapsed)
 		roll = step.roll
