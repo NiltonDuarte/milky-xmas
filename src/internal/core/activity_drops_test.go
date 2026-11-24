@@ -15,7 +15,7 @@ func TestActivityDropRules(t *testing.T) {
 		{1, false},
 		{RandomActiveDropRolls - 1, false},
 	} {
-		if got := RandomActiveDropEligible(tt.roll); got != tt.want {
+		if got := defaults.Drops.RandomActiveDropEligible(tt.roll); got != tt.want {
 			t.Errorf("active drop roll %d = %v, want %v", tt.roll, got, tt.want)
 		}
 	}
@@ -26,7 +26,7 @@ func TestActivityDropRules(t *testing.T) {
 		{0, GiftRainMinimumMessages},
 		{GiftRainMessageRange - 1, 100},
 	} {
-		if got := NextGiftRainThreshold(tt.roll); got != tt.want {
+		if got := defaults.Drops.NextGiftRainThreshold(tt.roll); got != tt.want {
 			t.Errorf("rain threshold roll %d = %d, want %d", tt.roll, got, tt.want)
 		}
 	}
@@ -57,14 +57,14 @@ func TestActiveDropRarityBoost(t *testing.T) {
 		{49, 50, NormalGift}, {50, 50, RareGift}, {84, 50, RareGift}, {85, 50, EpicGift},
 		{70, 100, RareGift}, {99, 100, EpicGift},
 	} {
-		if got := ActiveDropRarity(tt.roll, tt.good); got != tt.want {
+		if got := defaults.Gifts.ActiveDropRarity(tt.roll, tt.good); got != tt.want {
 			t.Errorf("ActiveDropRarity(%d, %d) = %s, want %s", tt.roll, tt.good, got, tt.want)
 		}
 	}
 }
 
 func TestRainCoalAndAwardCoal(t *testing.T) {
-	if !RainPrizeIsCoal(0) || !RainPrizeIsCoal(RainCoalPercent-1) || RainPrizeIsCoal(RainCoalPercent) {
+	if !defaults.Drops.RainPrizeIsCoal(0) || !defaults.Drops.RainPrizeIsCoal(RainCoalPercent-1) || defaults.Drops.RainPrizeIsCoal(RainCoalPercent) {
 		t.Error("coal chance is not the first 25 of 100 rolls")
 	}
 	record, err := AwardCoal(GiftRecord{Inventory: Inventory{Coal: 2, Normal: 1}, Aura: Aura{Bad: 5}})
@@ -76,3 +76,5 @@ func TestRainCoalAndAwardCoal(t *testing.T) {
 		t.Fatalf("full AwardCoal = %+v, %v", got, err)
 	}
 }
+
+var defaults = DefaultTuning()

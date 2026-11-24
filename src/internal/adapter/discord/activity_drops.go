@@ -34,7 +34,7 @@ type dropBot struct {
 }
 
 func newDropBot(drops *app.ActivityDrops) *dropBot {
-	return &dropBot{drops: drops, lifetime: app.GiftDropLifetime}
+	return &dropBot{drops: drops, lifetime: drops.Lifetime()}
 }
 
 func (b bot) observeDrop(session *discordgo.Session, event *discordgo.MessageCreate) {

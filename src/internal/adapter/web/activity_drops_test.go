@@ -26,7 +26,7 @@ func TestLocalActivityGiftRain(t *testing.T) {
 			return 70
 		}
 	})
-	handler := newHandler(service, newGrinchFixture(func() time.Time { return now }, store), app.NewActivityDrops(service))
+	handler := newHandler(service, newGrinchFixture(func() time.Time { return now }, store, core.DefaultTuning().Grinch), app.NewActivityDrops(service))
 	send := func(command string) string {
 		t.Helper()
 		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(url.Values{"command": {command}}.Encode()))
@@ -68,7 +68,7 @@ func TestLocalGiftRainEndsAtTenClaimsAndExpireListsPlayers(t *testing.T) {
 			return 0 // Every Gift Rain claim is Coal.
 		}
 	})
-	handler := newHandler(service, newGrinchFixture(func() time.Time { return now }, store), app.NewActivityDrops(service))
+	handler := newHandler(service, newGrinchFixture(func() time.Time { return now }, store, core.DefaultTuning().Grinch), app.NewActivityDrops(service))
 	send := func(command string) string {
 		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(url.Values{"command": {command}}.Encode()))
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")

@@ -23,27 +23,27 @@ func TestGrinchCombat(t *testing.T) {
 				if fight.Board == board {
 					board = 5
 				}
-				fight.Move(GrinchMove{Phase: phase, Slot: slot, Member: strconv.Itoa(member),
+				fight.Move(testRules, GrinchMove{Phase: phase, Slot: slot, Member: strconv.Itoa(member),
 					RequestID: strconv.Itoa(sequence), At: at, NextBoard: board, FinalRound: fight.FinalRound, DefenseRound: fight.DefenseRound})
 			}
 			for range 25 {
 				hit(GrinchSnowballs, 0, 0, start.Add(9*time.Second))
 			}
 			hit(GrinchSnowballs, 0, 0, start.Add(9*time.Second))
-			if fight.Phase != GrinchDefense || fight.Health() != 75 || fight.DefensePlayers != players {
+			if fight.Phase != GrinchDefense || fight.Health(testRules) != 75 || fight.DefensePlayers != players {
 				t.Fatalf("defense started at %+v", fight)
 			}
 			hit(GrinchDefense, 1, 0, start.Add(12*time.Second))
-			if fight.PlayerDamage["0"] != 10 || fight.Health() != 75 {
+			if fight.PlayerDamage["0"] != 10 || fight.Health(testRules) != 75 {
 				t.Fatalf("snowflake result: %+v", fight)
 			}
 			for i := range players {
 				hit(GrinchDefense, 0, i, start.Add(15*time.Second))
-				if i == 0 && fight.Health() != 75-30/float64(players) {
-					t.Errorf("scaled damage left %v HP", fight.Health())
+				if i == 0 && fight.Health(testRules) != 75-30/float64(players) {
+					t.Errorf("scaled damage left %v HP", fight.Health(testRules))
 				}
 			}
-			if fight.Phase != GrinchAttack || fight.Health() != 45 {
+			if fight.Phase != GrinchAttack || fight.Health(testRules) != 45 {
 				t.Fatalf("attack phase started at %+v", fight)
 			}
 			hit(GrinchAttack, 1, 0, start.Add(20*time.Second))
@@ -70,28 +70,28 @@ func TestGrinchCombat(t *testing.T) {
 func TestGrinchDeadlines(t *testing.T) {
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
 	var fight Grinch
-	if fight.CanSpawn(now, time.Time{}, 0, false) || fight.CanSpawn(now, now, 10, false) ||
-		!fight.CanSpawn(now, now.Add(-10*time.Minute), 9, false) {
+	if fight.CanSpawn(testRules, now, time.Time{}, 0, false) || fight.CanSpawn(testRules, now, now, 10, false) ||
+		!fight.CanSpawn(testRules, now, now.Add(-10*time.Minute), 9, false) {
 		t.Fatal("unexpected activity or roll eligibility")
 	}
 	fight = Grinch{ID: "fight", Phase: GrinchSnowballs, StartedAt: now, HP: 10000}
-	if fight.CanSpawn(now, now, 0, true) || fight.Advance(now.Add(2*time.Minute)) || fight.Phase != GrinchSnowballs {
+	if fight.CanSpawn(testRules, now, now, 0, true) || fight.Advance(testRules, now.Add(2*time.Minute)) || fight.Phase != GrinchSnowballs {
 		t.Fatalf("untimed snowball phase left %+v", fight)
 	}
 	threshold := now.Add(3 * time.Minute)
 	fight.HP = 7600
 	fight.Joined = map[string]bool{"alice": true}
 	fight.Accepted = map[string]bool{}
-	fight.Move(GrinchMove{Phase: GrinchSnowballs, At: threshold, Member: "alice", RequestID: "threshold"})
+	fight.Move(testRules, GrinchMove{Phase: GrinchSnowballs, At: threshold, Member: "alice", RequestID: "threshold"})
 	end := threshold.Add(time.Minute)
-	if fight.Phase != GrinchDefense || fight.Deadline() != end || fight.Advance(end.Add(-time.Nanosecond)) {
+	if fight.Phase != GrinchDefense || fight.Deadline(testRules) != end || fight.Advance(testRules, end.Add(-time.Nanosecond)) {
 		t.Fatalf("countdown did not begin at 75%%: %+v", fight)
 	}
-	if !fight.Advance(end) || fight.Phase != GrinchEscaped || fight.EndedAt != end {
+	if !fight.Advance(testRules, end) || fight.Phase != GrinchEscaped || fight.EndedAt != end {
 		t.Fatalf("encounter deadline left %+v", fight)
 	}
-	if fight.CanSpawn(end, end, 0, false) || !fight.CanSpawn(end, time.Time{}, 99, true) ||
-		!fight.CanSpawn(end.Add(30*time.Minute), end.Add(30*time.Minute), 0, false) {
+	if fight.CanSpawn(testRules, end, end, 0, false) || !fight.CanSpawn(testRules, end, time.Time{}, 99, true) ||
+		!fight.CanSpawn(testRules, end.Add(30*time.Minute), end.Add(30*time.Minute), 0, false) {
 		t.Fatal("unexpected spawn cooldown or moderator override")
 	}
 }
@@ -103,33 +103,33 @@ func TestGrinchRegistration(t *testing.T) {
 		Joined: map[string]bool{}, Participants: map[string]bool{}, Accepted: map[string]bool{},
 	}
 	deadline := start.Add(time.Minute)
-	if fight.Advance(deadline.Add(-time.Nanosecond)) {
+	if fight.Advance(testRules, deadline.Add(-time.Nanosecond)) {
 		t.Fatal("registration closed early")
 	}
 	join := GrinchMove{Phase: GrinchLobby, Member: "alice", RequestID: "join", At: deadline.Add(-time.Nanosecond)}
-	fight.Move(join)
+	fight.Move(testRules, join)
 	join.RequestID = "repeat"
-	fight.Move(join)
+	fight.Move(testRules, join)
 	if len(fight.Joined) != 1 || len(fight.Accepted) != 1 {
 		t.Fatal("registration was counted more than once")
 	}
 	join.Member, join.RequestID, join.At = "bob", "late", deadline
-	fight.Move(join)
-	if len(fight.Joined) != 1 || !fight.Advance(deadline) || fight.Phase != GrinchSnowballs || fight.StartedAt != deadline {
+	fight.Move(testRules, join)
+	if len(fight.Joined) != 1 || !fight.Advance(testRules, deadline) || fight.Phase != GrinchSnowballs || fight.StartedAt != deadline {
 		t.Fatalf("incorrect registration cutoff: %+v", fight)
 	}
 	hit := GrinchMove{Phase: GrinchSnowballs, Member: "bob", RequestID: "hit", At: deadline}
-	fight.Move(hit)
+	fight.Move(testRules, hit)
 	if fight.HP != 10000 {
 		t.Fatal("unregistered attack was counted")
 	}
 	hit.Member = "alice"
-	fight.Move(hit)
-	if fight.HP != 9900 || fight.Advance(deadline.Add(time.Minute)) || fight.Phase != GrinchSnowballs {
+	fight.Move(testRules, hit)
+	if fight.HP != 9900 || fight.Advance(testRules, deadline.Add(time.Minute)) || fight.Phase != GrinchSnowballs {
 		t.Fatalf("unexpected combat progress: %+v", fight)
 	}
 	empty := Grinch{ID: "empty", Phase: GrinchLobby, StartedAt: start, HP: 10000}
-	if !empty.Advance(deadline) || empty.Phase != GrinchCancelled {
+	if !empty.Advance(testRules, deadline) || empty.Phase != GrinchCancelled {
 		t.Fatalf("empty registration was not cancelled: %+v", empty)
 	}
 }
@@ -142,12 +142,12 @@ func TestGrinchDefeat(t *testing.T) {
 		Accepted: map[string]bool{}, PlayerDamage: map[string]int{"alice": 90, "bob": 90},
 	}
 	for _, member := range []string{"alice", "bob"} {
-		fight.Move(GrinchMove{Phase: GrinchDefense, Slot: 1, Member: member, RequestID: member, At: now.Add(time.Second), NextBoard: 5, DefenseRound: fight.DefenseRound})
+		fight.Move(testRules, GrinchMove{Phase: GrinchDefense, Slot: 1, Member: member, RequestID: member, At: now.Add(time.Second), NextBoard: 5, DefenseRound: fight.DefenseRound})
 		if member == "alice" && (fight.Phase != GrinchDefense || !fight.EndedAt.IsZero()) {
 			t.Fatal("fight ended with another player alive")
 		}
 	}
-	if fight.Phase != GrinchDefeat || fight.Health() != 75 || fight.EndedAt != now.Add(time.Second) {
+	if fight.Phase != GrinchDefeat || fight.Health(testRules) != 75 || fight.EndedAt != now.Add(time.Second) {
 		t.Fatalf("fight did not end immediately after the last elimination: %+v", fight)
 	}
 	solo := Grinch{ID: "solo", Phase: GrinchDefense, StartedAt: now, HP: 7500, Board: 1,
@@ -158,7 +158,7 @@ func TestGrinchDefeat(t *testing.T) {
 		if solo.Board == board {
 			board = 5
 		}
-		solo.Move(GrinchMove{Phase: GrinchDefense, Slot: 1, Member: "alice", RequestID: strconv.Itoa(i), At: now,
+		solo.Move(testRules, GrinchMove{Phase: GrinchDefense, Slot: 1, Member: "alice", RequestID: strconv.Itoa(i), At: now,
 			NextBoard: board, DefenseRound: solo.DefenseRound})
 	}
 	if solo.Phase != GrinchDefeat || solo.PlayerDamage["alice"] != 100 {
@@ -177,7 +177,7 @@ func TestGrinchLeaderboardCountsAppliedDamage(t *testing.T) {
 		if fight.Board == board {
 			board = 5
 		}
-		fight.Move(GrinchMove{Phase: phase, Slot: slot, Member: player, RequestID: id, At: now, NextBoard: board, FinalRound: fight.FinalRound, DefenseRound: fight.DefenseRound})
+		fight.Move(testRules, GrinchMove{Phase: phase, Slot: slot, Member: player, RequestID: id, At: now, NextBoard: board, FinalRound: fight.FinalRound, DefenseRound: fight.DefenseRound})
 	}
 	hit(GrinchSnowballs, 0, "alice", "snowball")
 	hit(GrinchSnowballs, 0, "alice", "snowball")
@@ -190,7 +190,7 @@ func TestGrinchLeaderboardCountsAppliedDamage(t *testing.T) {
 	hit(GrinchAttack, 0, "alice", "ice")
 	hit(GrinchFinalAttack, 0, "bob", "final")
 	want := []GrinchScore{{"bob", 22}, {"alice", 12}, {"carol", 0}}
-	got := fight.Leaderboard()
+	got := fight.Leaderboard(testRules)
 	if len(got) != len(want) {
 		t.Fatalf("leaderboard = %+v", got)
 	}
@@ -207,7 +207,7 @@ func TestGrinchLeaderboardPreservesFractionalDefenseDamage(t *testing.T) {
 		DefensePlayers: 7,
 		DamageDealt:    map[string]GrinchDamage{"alice": {Defenses: 4}, "bob": {Defenses: 3}},
 	}
-	scores := fight.Leaderboard()
+	scores := fight.Leaderboard(testRules)
 	if len(scores) != 2 || scores[0].Member != "alice" || scores[0].Points != 120.0/7 || scores[0].Points+scores[1].Points != 30 {
 		t.Fatalf("fractional contributions = %+v", scores)
 	}
@@ -220,19 +220,19 @@ func TestGrinchFinalGiftRow(t *testing.T) {
 	}
 	move := GrinchMove{Phase: GrinchFinalAttack, Member: "alice", At: now, FinalRound: 1,
 		RequestID: "gift", Slot: 0, GiftPoints: 5, FinalBoard: 2}
-	fight.Move(move)
+	fight.Move(testRules, move)
 	if fight.HP != 500 || fight.Gifts["alice"] != 5 || fight.FinalBoard != 2 || fight.FinalRound != 2 {
 		t.Fatalf("gift state = %+v", fight)
 	}
-	fight.Move(move)
+	fight.Move(testRules, move)
 	move.RequestID = "stale"
-	fight.Move(move)
+	fight.Move(testRules, move)
 	if fight.HP != 500 || fight.Gifts["alice"] != 5 {
 		t.Fatalf("duplicate or stale click changed score: %+v", fight)
 	}
 	move.RequestID, move.FinalRound = "attack", 2
-	fight.Move(move)
-	if fight.HP != 400 || fight.Leaderboard()[0].Points != 2 || fight.GiftLeaderboard()[0].Points != 5 {
+	fight.Move(testRules, move)
+	if fight.HP != 400 || fight.Leaderboard(testRules)[0].Points != 2 || fight.GiftLeaderboard()[0].Points != 5 {
 		t.Fatalf("attack state = %+v", fight)
 	}
 }
@@ -243,7 +243,7 @@ func TestGrinchEarlyStartAndLateJoin(t *testing.T) {
 		Joined: map[string]bool{}, Accepted: map[string]bool{},
 	}
 	join := func(member, request string, at time.Time) {
-		fight.Move(GrinchMove{Phase: GrinchLobby, Member: member, RequestID: request, At: at})
+		fight.Move(testRules, GrinchMove{Phase: GrinchLobby, Member: member, RequestID: request, At: at})
 	}
 	join("alice", "1", now)
 	join("bob", "2", now)
@@ -258,12 +258,12 @@ func TestGrinchEarlyStartAndLateJoin(t *testing.T) {
 	}
 	join("dave", "4", early.Add(time.Second))
 	fight.HP = 7600
-	fight.Move(GrinchMove{Phase: GrinchSnowballs, Member: "dave", RequestID: "hit", At: early.Add(2 * time.Second)})
+	fight.Move(testRules, GrinchMove{Phase: GrinchSnowballs, Member: "dave", RequestID: "hit", At: early.Add(2 * time.Second)})
 	join("eve", "5", early.Add(3*time.Second))
 	if fight.Phase != GrinchDefense || fight.DefensePlayers != 4 || len(fight.Joined) != 5 {
 		t.Fatalf("late join or defense scaling failed: %+v", fight)
 	}
-	fight.Advance(fight.Deadline())
+	fight.Advance(testRules, fight.Deadline(testRules))
 	join("frank", "6", early.Add(2*time.Minute))
 	if fight.Joined["frank"] {
 		t.Fatal("player joined an ended fight")
@@ -279,18 +279,20 @@ func TestGrinchDefenseBoardRerollsAndRejectsStaleClicks(t *testing.T) {
 	}
 	move := GrinchMove{Phase: GrinchDefense, Member: "alice", Slot: 0, RequestID: "tree",
 		At: now, DefenseRound: 1, NextBoard: 2}
-	fight.Move(move)
-	if fight.Health() != 65 || fight.Board != 2 || fight.DefenseRound != 2 {
+	fight.Move(testRules, move)
+	if fight.Health(testRules) != 65 || fight.Board != 2 || fight.DefenseRound != 2 {
 		t.Fatalf("tree did not update the board: %+v", fight)
 	}
 	move.Member, move.RequestID = "bob", "stale"
-	fight.Move(move)
-	if fight.Health() != 65 || fight.PlayerDamage["bob"] != 0 || fight.DefenseRound != 2 {
+	fight.Move(testRules, move)
+	if fight.Health(testRules) != 65 || fight.PlayerDamage["bob"] != 0 || fight.DefenseRound != 2 {
 		t.Fatalf("stale tree click was applied to the new snowflake: %+v", fight)
 	}
 	move.RequestID, move.DefenseRound = "snowflake", 2
-	fight.Move(move)
-	if fight.Health() != 65 || fight.PlayerDamage["bob"] != 10 || fight.DefenseRound != 3 || fight.Board == 2 {
+	fight.Move(testRules, move)
+	if fight.Health(testRules) != 65 || fight.PlayerDamage["bob"] != 10 || fight.DefenseRound != 3 || fight.Board == 2 {
 		t.Fatalf("snowflake did not change the board: %+v", fight)
 	}
 }
+
+var testRules = DefaultTuning().Grinch

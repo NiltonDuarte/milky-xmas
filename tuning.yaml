@@ -1,0 +1,90 @@
+# Números de balanceamento do Milky Xmas.
+#
+# Como usar: aponte MILKY_TUNING_CONFIG para este arquivo antes de iniciar o bot
+# (Discord ou chat local), por exemplo:
+#
+#   MILKY_TUNING_CONFIG=tuning.yaml go run ./src/cmd/web
+#
+# - Todos os valores abaixo são os padrões. Chaves removidas voltam ao padrão.
+# - Chaves desconhecidas e valores fora da faixa impedem o bot de iniciar, e a
+#   mensagem lista todos os problemas.
+# - O arquivo é lido uma vez, na inicialização. Reinicie o bot para aplicar.
+# - Durações são textos com unidade: 30s, 1m, 10m, 1h.
+# - HP do boss e dano são % do HP total (100) e aceitam até 2 casas decimais (5.25).
+# - Referência dos números: docs/activity-drops-numbers.md e docs/grinch-fight-numbers.md.
+#
+# Não são ajustáveis aqui: 8 botões por drop e por tabuleiro, a linha final de 5
+# botões, e o HP total do boss (100%).
+
+gifts:
+  # Chances de raridade do gift em %. Os três somam 100.
+  # Valem para /daily claim, para os gifts da Gift Rain e para o Random Active Drop
+  # de quem está abaixo do limite de Good deeds.
+  daily_rarity:
+    normal: 70
+    rare: 25
+    epic: 5
+  # Bônus do Random Active Drop para quem tem Good deeds altos.
+  good_deeds_boost:
+    threshold: 50     # Good deeds (%) a partir do qual o bônus vale
+    rarity:           # chances em %, somam 100
+      normal: 50
+      rare: 35
+      epic: 15
+
+drops:
+  lifetime: 10m       # quanto tempo um drop fica aberto (Random Active Drop e Gift Rain)
+
+  random_active:
+    one_in: 20        # aparece em 1 a cada N mensagens (20 = 5%)
+
+  gift_rain:
+    min_messages: 5       # a chuva aparece depois de min a max mensagens no canal,
+    max_messages: 100     # sorteado de novo a cada chuva (limites incluídos)
+    claims_to_end: 10     # coletas, de qualquer jogador, que encerram a chuva
+    claim_cooldown: 1m    # espera de cada jogador entre coletas de chuva
+    coal_percent: 25      # chance de a coleta dar Coal em vez de gift
+
+grinch:
+  spawn:
+    check_interval: 1m          # de quanto em quanto tempo o bot sorteia a aparição
+    chance_percent: 10          # chance por sorteio, em %
+    activity_window: 10m        # alguém precisa ter falado no canal do boss neste prazo
+    cooldown_after_fight: 30m   # intervalo mínimo depois do fim de uma luta
+
+  registration:
+    duration: 1m            # tempo para se inscrever
+    early_start_players: 3  # com este número de inscritos a luta começa na hora
+
+  fight_duration: 1m        # relógio de combate, começa quando o boss chega ao HP de snowballs.boss_hp_after
+
+  # Fase 1: cliques de snowball (sem relógio).
+  snowballs:
+    damage: 1               # HP do boss por clique
+    boss_hp_after: 75       # a fase termina quando o boss chega a este HP
+
+  # Fase 2: defesa. O dano total da fase (snowballs.boss_hp_after - defense.boss_hp_after)
+  # é dividido entre os jogadores inscritos: são necessárias tantas defesas quanto jogadores.
+  defense:
+    boss_hp_after: 45
+    miss_hp_loss_percent: 10   # % do HP máximo do jogador perdido ao errar
+
+  # Fase 3: ataque. Os últimos golpes são cortados para não passar de boss_hp_after.
+  attack:
+    damage: 5               # HP do boss por clique em ☃️
+    heavy_damage: 5.25      # HP do boss por clique em 🧊
+    boss_hp_after: 5
+
+  # Fase 4: ataque final, até o boss chegar a 0.
+  final_attack:
+    hit_damage: 1           # HP do boss tirado por ⚔️
+    hit_score: 2            # pontos de dano que ⚔️ dá no placar
+    gift_points:            # 🎁 dá pontos de presente sorteados nesta faixa
+      min: 1
+      max: 5
+    snowballs_reward: 1     # Snowballs que o botão ❄️ final dá
+
+  # Recompensa de cada jogador inscrito na fuga e na derrota.
+  loss_rewards:
+    coal: 1
+    yellow_snowballs_per_group_member: 1   # Yellow Snowballs = nº de inscritos x este valor

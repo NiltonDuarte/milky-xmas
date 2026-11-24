@@ -76,7 +76,7 @@ func TestActivityDropsObserveAndClaim(t *testing.T) {
 			if _, err := drops.Claim(t.Context(), GiftDropClaim{Member: member, DropID: drop.ID}); !errors.Is(err, ErrDropCooldown) {
 				t.Fatalf("early rain claim error = %v", err)
 			}
-			now = now.Add(GiftRainClaimCooldown)
+			now = now.Add(core.GiftRainClaimCooldown)
 			if _, err := drops.Claim(t.Context(), GiftDropClaim{Member: member, DropID: drop.ID}); err != nil {
 				t.Fatalf("rain claim at minute boundary = %v", err)
 			}
@@ -143,7 +143,7 @@ func TestActivityDropExpires(t *testing.T) {
 		}
 	}))
 	drop := drops.Observe("guild", "channel")
-	now = now.Add(GiftDropLifetime)
+	now = now.Add(core.GiftDropLifetime)
 	if _, err := drops.Claim(t.Context(), GiftDropClaim{Member: Member{ServerID: "guild", UserID: "alice"}, DropID: drop.ID}); !errors.Is(err, ErrDropUnavailable) {
 		t.Fatalf("expired claim error = %v", err)
 	}

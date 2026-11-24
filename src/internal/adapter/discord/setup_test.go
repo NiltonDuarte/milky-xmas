@@ -11,6 +11,7 @@ import (
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/giftstore"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
+	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -24,7 +25,7 @@ func TestSetupChannels(t *testing.T) {
 	setup := app.NewGuildSetup(store)
 	channels := &grinchChannels{ctx: ctx, setup: setup, workers: make(map[grinchChannel]grinchWorker),
 		build: func(server, scope string) *app.GrinchEncounter {
-			return app.NewGrinchEncounter(store, server, scope, time.Now, func(n int) int { return n - 1 })
+			return app.NewGrinchEncounter(store, server, scope, core.DefaultTuning().Grinch, time.Now, func(n int) int { return n - 1 })
 		}}
 	defer func() {
 		stop()

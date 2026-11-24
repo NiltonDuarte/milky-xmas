@@ -15,7 +15,7 @@ type GrinchScore struct {
 	Points float64
 }
 
-func (g Grinch) Leaderboard() []GrinchScore {
+func (g Grinch) Leaderboard(rules GrinchRules) []GrinchScore {
 	if g.DamageDealt == nil {
 		return nil
 	}
@@ -28,7 +28,7 @@ func (g Grinch) Leaderboard() []GrinchScore {
 	entries := make([]entry, 0, len(g.Joined))
 	for member := range g.Joined {
 		damage := g.DamageDealt[member]
-		entries = append(entries, entry{member, damage.Hundredths*players + damage.Defenses*3000})
+		entries = append(entries, entry{member, damage.Hundredths*players + damage.Defenses*rules.DefenseTotal()})
 	}
 	slices.SortFunc(entries, func(a, b entry) int {
 		if order := cmp.Compare(b.numerator, a.numerator); order != 0 {

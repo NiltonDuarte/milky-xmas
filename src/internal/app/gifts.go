@@ -37,13 +37,13 @@ type GiftClaim struct {
 }
 
 func NewService(store Store, now func() time.Time, random func(int) int) Service {
-	return Service{gifts: store, advent: store, now: now, random: random}
+	return Service{gifts: store, advent: store, now: now, random: random, tuning: core.DefaultTuning()}
 }
 
 func (service Service) ClaimGift(ctx context.Context, member Member) (GiftClaim, error) {
 	now := service.now().UTC()
 	roll := service.random(core.MaxDailyGifts)
-	rarity := core.DailyGiftRarity(service.random(core.GiftRarityRolls))
+	rarity := service.tuning.Gifts.DailyGiftRarity(service.random(core.GiftRarityRolls))
 	for ctx.Err() == nil {
 		record, err := service.gifts.Load(ctx, member)
 		if err != nil {

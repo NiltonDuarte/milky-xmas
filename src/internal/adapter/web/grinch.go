@@ -20,9 +20,9 @@ type grinchFixture struct {
 	sequence  *atomic.Uint64
 }
 
-func newGrinchFixture(now func() time.Time, store app.GrinchStore) grinchFixture {
+func newGrinchFixture(now func() time.Time, store app.GrinchStore, rules core.GrinchRules) grinchFixture {
 	return grinchFixture{
-		encounter: app.NewGrinchEncounter(store, fixtureServerID, fixtureServerID, now, func(n int) int { return n / 3 }),
+		encounter: app.NewGrinchEncounter(store, fixtureServerID, fixtureServerID, rules, now, func(n int) int { return n / 3 }),
 		now:       now,
 		sequence:  new(atomic.Uint64),
 	}
@@ -82,15 +82,15 @@ func (fixture grinchFixture) reply(w http.ResponseWriter, r *http.Request, args 
 	if result != "" {
 		fmt.Fprintln(w, result)
 	}
-	fmt.Fprint(w, fixtureSummary(state))
+	fmt.Fprint(w, fixtureSummary(fixture.encounter.Rules(), state))
 }
 
-func fixtureSummary(state core.Grinch) string {
+func fixtureSummary(rules core.GrinchRules, state core.Grinch) string {
 	if state.ID == "" {
 		return "No Grinch encounter. Use /grinch summon."
 	}
 	var message strings.Builder
-	fmt.Fprintf(&message, "%s\n%s", grinchtext.Health(state.Health()), state.Phase)
+	fmt.Fprintf(&message, "%s\n%s", grinchtext.Health(state.Health(rules)), state.Phase)
 	switch state.Phase {
 	case core.GrinchLobby:
 		fmt.Fprintf(&message, "\n🎅 %d joined", len(state.Joined))
@@ -133,7 +133,7 @@ func fixtureSummary(state core.Grinch) string {
 		}
 	}
 	if !state.EndedAt.IsZero() && state.Phase != core.GrinchCancelled {
-		if scores := state.Leaderboard(); len(scores) > 0 {
+		if scores := state.Leaderboard(rules); len(scores) > 0 {
 			fmt.Fprint(&message, "\n\nDamage leaderboard")
 			for index, score := range scores {
 				fmt.Fprintf(&message, "\n%d. %s — %.2f pts", index+1, score.Member, score.Points)

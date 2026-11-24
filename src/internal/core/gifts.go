@@ -19,18 +19,6 @@ const (
 
 const GiftRarityRolls = 100
 
-// DailyGiftRarity takes a uniform roll in [0, GiftRarityRolls).
-func DailyGiftRarity(roll int) GiftRarity {
-	switch {
-	case roll < 70:
-		return NormalGift
-	case roll < 95:
-		return RareGift
-	default:
-		return EpicGift
-	}
-}
-
 type Inventory struct {
 	Normal          int64
 	Rare            int64

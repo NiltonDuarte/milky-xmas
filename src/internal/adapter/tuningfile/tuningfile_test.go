@@ -1,0 +1,129 @@
+package tuningfile
+
+import (
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
+)
+
+func TestShippedFileEqualsTheDefaults(t *testing.T) {
+	got, err := Load(filepath.Join("..", "..", "..", "..", "tuning.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := core.DefaultTuning(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("tuning.yaml = %+v\nwant defaults %+v", got, want)
+	}
+}
+
+func TestParseEmptyAndCommentOnlyFilesUseDefaults(t *testing.T) {
+	for name, text := range map[string]string{"empty": "", "comments": "# nothing here\n"} {
+		got, err := Parse([]byte(text))
+		if err != nil || !reflect.DeepEqual(got, core.DefaultTuning()) {
+			t.Errorf("%s file = %+v, %v", name, got, err)
+		}
+	}
+}
+
+func TestParsePartialFileKeepsOtherDefaults(t *testing.T) {
+	got, err := Parse([]byte("drops:\n  gift_rain:\n    claims_to_end: 3\ngrinch:\n  attack:\n    heavy_damage: 6.5\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := core.DefaultTuning()
+	want.Drops.GiftRain.ClaimsToEnd = 3
+	want.Grinch.AttackHeavyDamage = 650
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("tuning = %+v\nwant %+v", got, want)
+	}
+}
+
+func TestParseConvertsUnits(t *testing.T) {
+	got, err := Parse([]byte(`
+drops:
+  lifetime: 90s
+grinch:
+  fight_duration: 2m30s
+  snowballs: {damage: 0.5, boss_hp_after: 90}
+  defense: {boss_hp_after: 60.25}
+  final_attack: {hit_score: 3}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := got.Grinch
+	if got.Drops.Lifetime != 90*time.Second || g.FightDuration != 150*time.Second ||
+		g.SnowballDamage != 50 || g.SnowballsBossHP != 9000 || g.DefenseBossHP != 6025 || g.FinalHitScore != 300 {
+		t.Fatalf("converted tuning = %+v", got)
+	}
+}
+
+func TestParseRejectsBadFiles(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		text string
+		want []string
+	}{
+		{"unknown key", "drops:\n  gift_rain:\n    claims_to_edn: 3\n", []string{"claims_to_edn"}},
+		{"unknown section", "dorps: {}\n", []string{"dorps"}},
+		{"odds do not add up", "gifts:\n  daily_rarity: {normal: 70, rare: 25, epic: 10}\n", []string{"gifts.daily_rarity", "add up to 100"}},
+		{"bare number as duration", "drops:\n  lifetime: 10\n", []string{"duration", "unit"}},
+		{"bad duration", "drops:\n  lifetime: soon\n", []string{"soon"}},
+		{"text as number", "drops:\n  gift_rain:\n    claims_to_end: many\n", []string{"many"}},
+		{"decimal where whole expected", "drops:\n  gift_rain:\n    claims_to_end: 2.5\n", []string{"2.5"}},
+		{"three decimals", "grinch:\n  attack:\n    heavy_damage: 5.255\n", []string{"grinch.attack.heavy_damage", "two decimals"}},
+		{"milestones out of order", "grinch:\n  defense:\n    boss_hp_after: 80\n", []string{"boss HP milestones must fall from 100 toward 0"}},
+		{"several problems", "drops:\n  lifetime: 0s\ngrinch:\n  fight_duration: 0s\n", []string{"drops.lifetime", "grinch.fight_duration"}},
+		{"unknown key and bad range together", "bogus: 1\ndrops:\n  lifetime: 0s\n", []string{"bogus", "drops.lifetime"}},
+		{"not a mapping", "- one\n- two\n", []string{"cannot unmarshal"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Parse([]byte(tt.text))
+			if err == nil {
+				t.Fatal("Parse() = nil error")
+			}
+			for _, want := range tt.want {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("error %q does not mention %q", err, want)
+				}
+			}
+		})
+	}
+}
+
+func TestLoadAndFromEnv(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "tuning.yaml")
+	if err := os.WriteFile(path, []byte("drops:\n  gift_rain:\n    claims_to_end: 3\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv(EnvVar, "")
+	if got, err := FromEnv(); err != nil || !reflect.DeepEqual(got, core.DefaultTuning()) {
+		t.Fatalf("unset FromEnv = %+v, %v", got, err)
+	}
+	t.Setenv(EnvVar, path)
+	got, err := FromEnv()
+	if err != nil || got.Drops.GiftRain.ClaimsToEnd != 3 {
+		t.Fatalf("FromEnv = %+v, %v", got, err)
+	}
+
+	missing := filepath.Join(dir, "missing.yaml")
+	t.Setenv(EnvVar, missing)
+	if _, err := FromEnv(); err == nil || !strings.Contains(err.Error(), missing) {
+		t.Fatalf("missing file error = %v, want it to name %s", err, missing)
+	}
+
+	bad := filepath.Join(dir, "bad.yaml")
+	if err := os.WriteFile(bad, []byte("drops:\n  lifetime: 0s\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(bad); err == nil || !strings.Contains(err.Error(), bad) || !strings.Contains(err.Error(), "drops.lifetime") {
+		t.Fatalf("invalid file error = %v, want the file and the key path", err)
+	}
+}

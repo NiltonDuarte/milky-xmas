@@ -45,7 +45,7 @@ func TestGrinchSQLite(t *testing.T) {
 	}
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
 	newEncounter := func(store *giftstore.SQLite) *app.GrinchEncounter {
-		return app.NewGrinchEncounter(store, "guild", "guild:channel", func() time.Time { return now }, func(int) int { return 0 })
+		return app.NewGrinchEncounter(store, "guild", "guild:channel", core.DefaultTuning().Grinch, func() time.Time { return now }, func(int) int { return 0 })
 	}
 	store, other := open(), open()
 	first, second := newEncounter(store), newEncounter(other)
@@ -96,7 +96,7 @@ func TestGrinchSQLite(t *testing.T) {
 	group.Wait()
 	display.updateError = errors.New("edit failed")
 	state, err := first.Sync(t.Context(), display)
-	if !errors.Is(err, display.updateError) || state.Phase != core.GrinchDefense || state.Health() != 75 || len(state.Accepted) != 28 {
+	if !errors.Is(err, display.updateError) || state.Phase != core.GrinchDefense || state.Health(core.DefaultTuning().Grinch) != 75 || len(state.Accepted) != 28 {
 		t.Fatalf("state after concurrent attacks = %+v, %v", state, err)
 	}
 	if err := store.Close(); err != nil {
@@ -105,15 +105,15 @@ func TestGrinchSQLite(t *testing.T) {
 	display.updateError = nil
 	restarted := newEncounter(open())
 	recovered, err := restarted.Sync(t.Context(), display)
-	if err != nil || recovered.ID != fight.ID || recovered.MessageID != fight.MessageID || recovered.Health() != 75 || display.updated != 4 {
+	if err != nil || recovered.ID != fight.ID || recovered.MessageID != fight.MessageID || recovered.Health(core.DefaultTuning().Grinch) != 75 || display.updated != 4 {
 		t.Fatalf("recovered state = %+v, %v, %d edits", recovered, err, display.updated)
 	}
 	var total float64
-	for _, score := range recovered.Leaderboard() {
+	for _, score := range recovered.Leaderboard(core.DefaultTuning().Grinch) {
 		total += score.Points
 	}
-	if len(recovered.Leaderboard()) != 3 || total != 25 {
-		t.Fatalf("leaderboard after reopening SQLite = %+v", recovered.Leaderboard())
+	if len(recovered.Leaderboard(core.DefaultTuning().Grinch)) != 3 || total != 25 {
+		t.Fatalf("leaderboard after reopening SQLite = %+v", recovered.Leaderboard(core.DefaultTuning().Grinch))
 	}
 	for i := range 5 {
 		group.Go(func() {
@@ -127,7 +127,7 @@ func TestGrinchSQLite(t *testing.T) {
 	}
 	group.Wait()
 	state, err = restarted.Sync(t.Context(), display)
-	if err != nil || state.Phase != core.GrinchDefense || state.Health() != 65 || state.Defenses != 1 {
+	if err != nil || state.Phase != core.GrinchDefense || state.Health(core.DefaultTuning().Grinch) != 65 || state.Defenses != 1 {
 		t.Fatalf("state after concurrent defenses = %+v, %v", state, err)
 	}
 }
@@ -139,7 +139,7 @@ func TestGrinchUncertainAnnouncement(t *testing.T) {
 	}
 	defer store.Close()
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
-	encounter := app.NewGrinchEncounter(store, "guild", "guild:channel", func() time.Time { return now }, func(int) int { return 0 })
+	encounter := app.NewGrinchEncounter(store, "guild", "guild:channel", core.DefaultTuning().Grinch, func() time.Time { return now }, func(int) int { return 0 })
 	display := &grinchDisplayFixture{now: now, sendError: errors.New("send uncertain")}
 	if ok, err := encounter.Spawn(t.Context(), now, false, display); ok || !errors.Is(err, display.sendError) {
 		t.Fatalf("first spawn = %v, %v", ok, err)

@@ -5,13 +5,21 @@ import (
 	"time"
 )
 
-const (
-	GrinchJoinDuration   = time.Minute
-	GrinchDuration       = time.Minute
-	GrinchSnowballSlot   = 4
-	GrinchSnowballEarned = "❄️ You earned 1 Snowball!"
-	GrinchSnowflakeHit   = "Snowflake! You lost 10% of your maximum HP."
-)
+// GrinchSnowballSlot is the fixed fifth button of the final attack row.
+const GrinchSnowballSlot = 4
+
+// SnowballEarned is the reply for the final row's Snowball button.
+func (rules GrinchRules) SnowballEarned() string {
+	if rules.FinalSnowballReward == 1 {
+		return "❄️ You earned 1 Snowball!"
+	}
+	return fmt.Sprintf("❄️ You earned %d Snowballs!", rules.FinalSnowballReward)
+}
+
+// SnowflakeHit is the reply for a missed defense.
+func (rules GrinchRules) SnowflakeHit() string {
+	return fmt.Sprintf("Snowflake! You lost %d%% of your maximum HP.", rules.DefenseMissHPLoss)
+}
 
 type GrinchPhase string
 
@@ -67,9 +75,9 @@ type Grinch struct {
 	Dirty          bool
 }
 
-func (g Grinch) Health() float64 {
+func (g Grinch) Health(rules GrinchRules) float64 {
 	if g.Phase == GrinchDefense {
-		return 75 - float64(g.Defenses*30)/float64(g.defensePlayerCount())
+		return float64(rules.SnowballsBossHP)/100 - float64(g.Defenses*rules.DefenseTotal())/(100*float64(g.defensePlayerCount()))
 	}
 	return float64(g.HP) / 100
 }
@@ -82,39 +90,39 @@ func (g Grinch) defensePlayerCount() int {
 	return max(1, len(g.Participants))
 }
 
-func (g Grinch) CanSpawn(now, activity time.Time, roll int, manual bool) bool {
+func (g Grinch) CanSpawn(rules GrinchRules, now, activity time.Time, roll int, manual bool) bool {
 	if g.ID != "" && g.EndedAt.IsZero() {
 		return false
 	}
 	if manual {
 		return true
 	}
-	return !activity.IsZero() && !activity.After(now) && now.Sub(activity) <= 10*time.Minute &&
-		(g.EndedAt.IsZero() || now.Sub(g.EndedAt) >= 30*time.Minute) && roll >= 0 && roll < 10
+	return !activity.IsZero() && !activity.After(now) && now.Sub(activity) <= rules.ActivityWindow &&
+		(g.EndedAt.IsZero() || now.Sub(g.EndedAt) >= rules.CooldownAfterFight) && roll >= 0 && roll < rules.SpawnChancePercent
 }
 
-func (g Grinch) Deadline() time.Time {
+func (g Grinch) Deadline(rules GrinchRules) time.Time {
 	switch g.Phase {
 	case GrinchPending:
-		return g.StartedAt.Add(GrinchDuration)
+		return g.StartedAt.Add(rules.FightDuration)
 	case GrinchDefense, GrinchAttack, GrinchFinalAttack:
 		if g.TimedAt.IsZero() {
 			// Older encounters started their countdown when combat began.
-			return g.StartedAt.Add(GrinchDuration)
+			return g.StartedAt.Add(rules.FightDuration)
 		}
-		return g.TimedAt.Add(GrinchDuration)
+		return g.TimedAt.Add(rules.FightDuration)
 	default:
 		return time.Time{}
 	}
 }
 
-func (g *Grinch) Advance(now time.Time) bool {
+func (g *Grinch) Advance(rules GrinchRules, now time.Time) bool {
 	if g.ID == "" || !g.EndedAt.IsZero() {
 		return false
 	}
 	started := g.Phase == GrinchLobby
 	if started {
-		deadline := g.StartedAt.Add(GrinchJoinDuration)
+		deadline := g.StartedAt.Add(rules.RegistrationDuration)
 		if now.Before(deadline) {
 			return false
 		}
@@ -130,16 +138,16 @@ func (g *Grinch) Advance(now time.Time) bool {
 		g.Phase, g.Dirty = GrinchSnowballs, true
 		return true
 	}
-	if deadline := g.Deadline(); !deadline.IsZero() && !now.Before(deadline) {
-		g.end(GrinchEscaped, deadline)
+	if deadline := g.Deadline(rules); !deadline.IsZero() && !now.Before(deadline) {
+		g.end(rules, GrinchEscaped, deadline)
 		return true
 	}
 	return started
 }
 
-func (g *Grinch) end(phase GrinchPhase, at time.Time) {
+func (g *Grinch) end(rules GrinchRules, phase GrinchPhase, at time.Time) {
 	if g.Phase == GrinchDefense {
-		g.HP = 7500 - g.Defenses*3000/g.defensePlayerCount()
+		g.HP = rules.SnowballsBossHP - g.Defenses*rules.DefenseTotal()/g.defensePlayerCount()
 	}
 	g.Phase, g.EndedAt, g.Dirty = phase, at, true
 }
@@ -157,30 +165,30 @@ func (g Grinch) hasSurvivor() bool {
 	return false
 }
 
-func (g Grinch) CanJoin(member string, at time.Time) bool {
-	deadline := g.Deadline()
+func (g Grinch) CanJoin(rules GrinchRules, member string, at time.Time) bool {
+	deadline := g.Deadline(rules)
 	return g.Joined != nil && !g.Joined[member] && g.EndedAt.IsZero() &&
-		(g.Phase != GrinchLobby || at.Before(g.StartedAt.Add(GrinchJoinDuration))) &&
+		(g.Phase != GrinchLobby || at.Before(g.StartedAt.Add(rules.RegistrationDuration))) &&
 		(deadline.IsZero() || at.Before(deadline))
 }
 
-func (g *Grinch) Move(move GrinchMove) string {
+func (g *Grinch) Move(rules GrinchRules, move GrinchMove) string {
 	if g.Accepted[move.RequestID] {
 		return "This action was already counted."
 	}
-	deadline := g.Deadline()
+	deadline := g.Deadline(rules)
 	if !g.EndedAt.IsZero() || (!deadline.IsZero() && !move.At.Before(deadline)) {
 		return "This part of the fight has ended."
 	}
 	if move.Phase == GrinchLobby {
-		if g.Joined == nil || move.Slot != 0 || (g.Phase == GrinchLobby && !move.At.Before(g.StartedAt.Add(GrinchJoinDuration))) {
+		if g.Joined == nil || move.Slot != 0 || (g.Phase == GrinchLobby && !move.At.Before(g.StartedAt.Add(rules.RegistrationDuration))) {
 			return "This fight is no longer accepting players."
 		}
 		if g.Joined[move.Member] {
 			return "✅ You already joined this fight."
 		}
 		g.Joined[move.Member], g.Accepted[move.RequestID], g.Dirty = true, true, true
-		if g.Phase == GrinchLobby && len(g.Joined) == 3 {
+		if g.Phase == GrinchLobby && len(g.Joined) >= rules.EarlyStartPlayers {
 			g.Phase, g.StartedAt = GrinchSnowballs, move.At
 		}
 		if g.Phase == GrinchLobby {
@@ -208,10 +216,11 @@ func (g *Grinch) Move(move GrinchMove) string {
 		if g.Joined == nil {
 			g.Participants[move.Member] = true
 		}
-		g.HP -= 100
-		damage.Hundredths = 100
-		reply = "Snowball hit for 1 HP."
-		if g.HP == 7500 {
+		applied := min(rules.SnowballDamage, g.HP-rules.SnowballsBossHP)
+		g.HP -= applied
+		damage.Hundredths = applied
+		reply = fmt.Sprintf("Snowball hit for %s HP.", FormatHundredths(applied))
+		if g.HP == rules.SnowballsBossHP {
 			g.DefensePlayers = len(g.Joined)
 			if g.DefensePlayers == 0 {
 				g.DefensePlayers = g.defensePlayerCount()
@@ -226,17 +235,17 @@ func (g *Grinch) Move(move GrinchMove) string {
 			return "That defense tile is unavailable."
 		}
 		if g.Board&(1<<move.Slot) == 0 {
-			g.PlayerDamage[move.Member] += 10
-			reply = GrinchSnowflakeHit
-			if g.PlayerDamage[move.Member] == 100 && !g.hasSurvivor() {
-				g.end(GrinchDefeat, move.At)
+			g.PlayerDamage[move.Member] += rules.DefenseMissHPLoss
+			reply = rules.SnowflakeHit()
+			if g.PlayerDamage[move.Member] >= 100 && !g.hasSurvivor() {
+				g.end(rules, GrinchDefeat, move.At)
 			}
 		} else {
 			g.Defenses++
 			damage.Defenses = 1
 			reply = "Safe defense! The Grinch lost HP."
 			if g.Defenses == g.defensePlayerCount() {
-				g.Phase, g.HP, g.Board = GrinchAttack, 4500, move.NextBoard
+				g.Phase, g.HP, g.Board = GrinchAttack, rules.DefenseBossHP, move.NextBoard
 			}
 		}
 		if g.Phase == GrinchDefense {
@@ -251,15 +260,15 @@ func (g *Grinch) Move(move GrinchMove) string {
 		if move.Slot < 0 || move.Slot >= 8 {
 			return "That attack tile is unavailable."
 		}
-		hit := 500
+		hit := rules.AttackDamage
 		if g.Board&(1<<move.Slot) != 0 {
-			hit = 525
+			hit = rules.AttackHeavyDamage
 		}
-		damageApplied := min(g.HP-500, hit)
+		damageApplied := min(g.HP-rules.AttackBossHP, hit)
 		g.HP -= damageApplied
 		damage.Hundredths = damageApplied
 		reply = "Attack hit!"
-		if g.HP == 500 {
+		if g.HP == rules.AttackBossHP {
 			g.Phase, g.FinalBoard, g.FinalRound = GrinchFinalAttack, move.FinalBoard, 1
 		}
 	case GrinchFinalAttack:
@@ -270,9 +279,9 @@ func (g *Grinch) Move(move GrinchMove) string {
 			return "Choose a button on the final row."
 		}
 		if move.Slot == GrinchSnowballSlot {
-			reply = GrinchSnowballEarned
+			reply = rules.SnowballEarned()
 		} else if g.FinalBoard&(1<<move.Slot) != 0 {
-			if move.GiftPoints < 1 || move.GiftPoints > 5 {
+			if move.GiftPoints < rules.GiftPointsMin || move.GiftPoints > rules.GiftPointsMax {
 				return "Could not award gift points."
 			}
 			if g.Gifts == nil {
@@ -281,11 +290,11 @@ func (g *Grinch) Move(move GrinchMove) string {
 			g.Gifts[move.Member] += move.GiftPoints
 			reply = fmt.Sprintf("🎁 You earned %d gift points!", move.GiftPoints)
 		} else {
-			g.HP = max(0, g.HP-100)
-			damage.Hundredths = 200
-			reply = "Final attack hit! You earned 2 damage points."
+			g.HP = max(0, g.HP-rules.FinalHitDamage)
+			damage.Hundredths = rules.FinalHitScore
+			reply = fmt.Sprintf("Final attack hit! You earned %s damage points.", FormatHundredths(rules.FinalHitScore))
 			if g.HP == 0 {
-				g.end(GrinchWon, move.At)
+				g.end(rules, GrinchWon, move.At)
 			}
 		}
 		g.FinalBoard, g.FinalRound = move.FinalBoard, g.FinalRound+1
