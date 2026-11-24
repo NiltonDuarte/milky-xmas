@@ -2,6 +2,7 @@ package web
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/gifttext"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
+	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
 
 const fixtureServerID = "local"
@@ -27,6 +29,7 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 	if len(activity) == 1 && activity[0] != nil {
 		drops = activity[0]
 	}
+	tree := app.NewTree(&app.MemoryTreeStore{}, time.Now)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -69,6 +72,13 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 			case "/send":
 				replyGiftTransfer(w, r, service, args)
 				return
+			case "/water":
+				if len(args) != 0 {
+					http.Error(w, "Use /water.", http.StatusBadRequest)
+					return
+				}
+				replyWater(w, r, tree)
+				return
 			case "/" + gifttext.HelpCommand:
 				if len(args) != 0 {
 					http.Error(w, "Use /helpmemilky.", http.StatusBadRequest)
@@ -98,7 +108,7 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 		}
 		reply, err := service.Reply(command)
 		if err != nil {
-			http.Error(w, "Unknown command. Try /"+app.HelloCommand+", /daily claim, /advent view, /grinch view, /send gift, /aura check, /look in-your-stocking, or /helpmemilky.", http.StatusBadRequest)
+			http.Error(w, "Unknown command. Try /"+app.HelloCommand+", /daily claim, /advent view, /grinch view, /send gift, /aura check, /look in-your-stocking, /water, or /helpmemilky.", http.StatusBadRequest)
 			return
 		}
 
@@ -177,4 +187,24 @@ func replyInventory(w http.ResponseWriter, r *http.Request, service app.Service)
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	io.WriteString(w, gifttext.Inventory(items))
+}
+
+func replyWater(w http.ResponseWriter, r *http.Request, tree *app.Tree) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	member := app.Member{ServerID: fixtureServerID, UserID: fixtureUserID}
+	mention := func(userID string) string { return userID }
+	updated, err := tree.Water(r.Context(), member)
+	if err == nil {
+		io.WriteString(w, gifttext.Watered(member.UserID, updated, tree.Now(), mention))
+		return
+	}
+	if errors.Is(err, core.ErrTreeEventOver) {
+		io.WriteString(w, gifttext.TreeEventOver(updated, tree.Now(), mention))
+		return
+	}
+	if reply := gifttext.TreeRejection(err); reply != "" {
+		io.WriteString(w, reply)
+		return
+	}
+	http.Error(w, gifttext.TreeUnavailable, http.StatusInternalServerError)
 }

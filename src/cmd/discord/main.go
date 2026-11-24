@@ -52,5 +52,5 @@ func run(ctx context.Context, token, guildID, path string) error {
 	return discord.Run(ctx, token, guildID, app.NewService(store, time.Now, rand.IntN), app.NewGuildSetup(store),
 		func(server, scope string) *app.GrinchEncounter {
 			return app.NewGrinchEncounter(store, server, scope, time.Now, rand.IntN)
-		})
+		}, app.NewTree(store, time.Now))
 }

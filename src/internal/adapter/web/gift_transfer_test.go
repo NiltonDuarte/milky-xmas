@@ -113,3 +113,24 @@ func TestHelpInChat(t *testing.T) {
 		}
 	}
 }
+
+func TestWaterInChat(t *testing.T) {
+	handler := web.NewHandler(app.NewService(&giftfixture.Store{}, time.Now, func(int) int { return 0 }), nil)
+	post := func(command string) (int, string) {
+		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader("command="+url.QueryEscape(command)))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		return recorder.Code, recorder.Body.String()
+	}
+	if code, body := post("/water"); code != http.StatusOK || !strings.Contains(body, "fixture watered the tree! +2%") ||
+		!strings.Contains(body, "💧 Water level: 12%") || !strings.Contains(body, "1. fixture — 1") {
+		t.Fatalf("first /water = %d %q", code, body)
+	}
+	if code, body := post("/water"); code != http.StatusOK || !strings.Contains(body, "You already watered the tree") {
+		t.Fatalf("second /water = %d %q", code, body)
+	}
+	if code, body := post("/water now"); code != http.StatusBadRequest || !strings.Contains(body, "Use /water.") {
+		t.Fatalf("/water now = %d %q", code, body)
+	}
+}
