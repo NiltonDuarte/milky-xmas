@@ -145,6 +145,7 @@ type Tuning struct {
 	Gifts  GiftTuning
 	Drops  DropTuning
 	Grinch GrinchRules
+	Tree   TreeRules
 }
 
 // The default numbers, documented in docs/activity-drops-numbers.md and
@@ -206,6 +207,7 @@ func DefaultTuning() Tuning {
 			LossCoal:                 1,
 			LossYellowPerGroupMember: 1,
 		},
+		Tree: DefaultTreeRules(),
 	}
 }
 
@@ -308,6 +310,19 @@ func (tuning Tuning) Validate() error {
 		if reward.value < 0 {
 			bad(reward.path, "must not be negative, got %d", reward.value)
 		}
+	}
+
+	tree := tuning.Tree
+	if tree.StartLevel < 0 || tree.StartLevel > TreeMaxLevel {
+		bad("tree.start_level", "must be between 0 and %d, got %d", TreeMaxLevel, tree.StartLevel)
+	}
+	if tree.WaterPoints < 1 || tree.WaterPoints > TreeMaxLevel {
+		bad("tree.water_points", "must be between 1 and %d, got %d", TreeMaxLevel, tree.WaterPoints)
+	}
+	positive("tree.decay_interval", tree.DecayInterval)
+	atLeastZero("tree.water_cooldown", tree.WaterCooldown)
+	if tree.EventEnd.IsZero() {
+		bad("tree.event_end", "must be a date and time")
 	}
 	return errors.Join(problems...)
 }

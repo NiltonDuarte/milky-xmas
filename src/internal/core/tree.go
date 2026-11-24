@@ -7,20 +7,45 @@ import (
 	"time"
 )
 
+// TreeMaxLevel is a full tree, in percent of water. It is structural and not tunable.
+const TreeMaxLevel = 100
+
+// The default numbers of the tree, documented in the README.
 const (
-	TreeMaxLevel      = 100
 	TreeStartLevel    = 10
 	TreeWaterPoints   = 2
 	TreeDecayInterval = time.Hour
 	TreeWaterCooldown = time.Hour
 )
 
-// TreeEventEnd is when the event ends: January 5, 2027 at 01:00 UTC. The tree stops decaying and
-// cannot be watered from then on.
+// TreeEventEnd is when the event ends by default: January 5, 2027 at 01:00 UTC. The tree stops
+// decaying and cannot be watered from then on.
 var TreeEventEnd = time.Date(2027, time.January, 5, 1, 0, 0, 0, time.UTC)
 
-// TreeEventOver reports whether the event has ended.
-func TreeEventOver(now time.Time) bool { return !now.Before(TreeEventEnd) }
+// TreeRules holds the adjustable numbers of the Christmas tree.
+type TreeRules struct {
+	// StartLevel is the water level, in percent, of a tree nobody has touched yet.
+	StartLevel int
+	// WaterPoints is the percent of water a watering adds.
+	WaterPoints int
+	// DecayInterval is how long the tree takes to lose one point of water.
+	DecayInterval time.Duration
+	// WaterCooldown is how long a player waits between waterings.
+	WaterCooldown time.Duration
+	// EventEnd is when the tree stops decaying and cannot be watered any more.
+	EventEnd time.Time
+}
+
+// DefaultTreeRules returns the numbers the tree uses without a tuning file.
+func DefaultTreeRules() TreeRules {
+	return TreeRules{
+		StartLevel: TreeStartLevel, WaterPoints: TreeWaterPoints,
+		DecayInterval: TreeDecayInterval, WaterCooldown: TreeWaterCooldown, EventEnd: TreeEventEnd,
+	}
+}
+
+// EventOver reports whether the event has ended.
+func (rules TreeRules) EventOver(now time.Time) bool { return !now.Before(rules.EventEnd) }
 
 var (
 	ErrTreeFull      = errors.New("the tree is already full of water")
@@ -35,7 +60,7 @@ func (e TreeCooldownError) Error() string { return ErrTreeCooldown.Error() }
 func (e TreeCooldownError) Unwrap() error { return ErrTreeCooldown }
 
 // Tree is the server's Christmas tree. The zero value is a tree that has not been touched yet.
-// Its water level falls by one point every TreeDecayInterval and each watering adds TreeWaterPoints.
+// Its water level falls by one point every DecayInterval and each watering adds WaterPoints.
 type Tree struct {
 	Level int
 	// Since is when Level was last current. Decay counts whole intervals from here.
@@ -45,17 +70,17 @@ type Tree struct {
 }
 
 // At returns the tree as it stands at now, after any decay.
-func (t Tree) At(now time.Time) Tree {
-	if TreeEventOver(now) {
-		now = TreeEventEnd // The tree keeps the level it had when the event ended.
+func (t Tree) At(rules TreeRules, now time.Time) Tree {
+	if rules.EventOver(now) {
+		now = rules.EventEnd // The tree keeps the level it had when the event ended.
 	}
 	if t.Since.IsZero() {
-		t.Level, t.Since = TreeStartLevel, now
+		t.Level, t.Since = rules.StartLevel, now
 		return t
 	}
-	if hours := int(now.Sub(t.Since) / TreeDecayInterval); hours > 0 {
-		t.Level = max(0, t.Level-hours)
-		t.Since = t.Since.Add(time.Duration(hours) * TreeDecayInterval)
+	if intervals := int(now.Sub(t.Since) / rules.DecayInterval); intervals > 0 {
+		t.Level = max(0, t.Level-intervals)
+		t.Since = t.Since.Add(time.Duration(intervals) * rules.DecayInterval)
 		if t.Level == 0 {
 			t.Since = now // A dry tree does not owe water for the time it spent dry.
 		}
@@ -64,20 +89,20 @@ func (t Tree) At(now time.Time) Tree {
 }
 
 // Water adds a watering by the member and returns the next tree. It does not change the receiver's maps.
-func (t Tree) Water(now time.Time, member string) (Tree, error) {
-	next := t.At(now)
-	if TreeEventOver(now) {
+func (t Tree) Water(rules TreeRules, now time.Time, member string) (Tree, error) {
+	next := t.At(rules, now)
+	if rules.EventOver(now) {
 		return next, ErrTreeEventOver
 	}
 	if next.Level >= TreeMaxLevel {
 		return next, ErrTreeFull
 	}
-	if last, ok := t.Waterings[member]; ok && now.Sub(last) < TreeWaterCooldown {
-		return next, TreeCooldownError{Remaining: TreeWaterCooldown - now.Sub(last)}
+	if last, ok := t.Waterings[member]; ok && now.Sub(last) < rules.WaterCooldown {
+		return next, TreeCooldownError{Remaining: rules.WaterCooldown - now.Sub(last)}
 	}
 	waterings := make(map[string]time.Time, len(t.Waterings)+1)
 	for other, at := range t.Waterings {
-		if now.Sub(at) < TreeWaterCooldown { // Older entries no longer matter.
+		if now.Sub(at) < rules.WaterCooldown { // Older entries no longer matter.
 			waterings[other] = at
 		}
 	}
@@ -87,7 +112,7 @@ func (t Tree) Water(now time.Time, member string) (Tree, error) {
 		waters[other] = count
 	}
 	waters[member]++
-	next.Level = min(TreeMaxLevel, next.Level+TreeWaterPoints)
+	next.Level = min(TreeMaxLevel, next.Level+rules.WaterPoints)
 	next.Since = now
 	next.Waterings, next.Waters = waterings, waters
 	return next, nil

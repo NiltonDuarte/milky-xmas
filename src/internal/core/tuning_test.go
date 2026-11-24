@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 	"testing"
@@ -40,6 +41,13 @@ func TestTuningValidate(t *testing.T) {
 		{"miss loss", func(x *Tuning) { x.Grinch.DefenseMissHPLoss = 0 }, []string{"grinch.defense.miss_hp_loss_percent"}},
 		{"gift points", func(x *Tuning) { x.Grinch.GiftPointsMin, x.Grinch.GiftPointsMax = 3, 2 }, []string{"grinch.final_attack.gift_points.max"}},
 		{"negative reward", func(x *Tuning) { x.Grinch.LossCoal = -1 }, []string{"grinch.loss_rewards.coal"}},
+		{"tree start level above 100", func(x *Tuning) { x.Tree.StartLevel = 101 }, []string{"tree.start_level"}},
+		{"tree start level may be zero", func(x *Tuning) { x.Tree.StartLevel = 0 }, nil},
+		{"tree water points", func(x *Tuning) { x.Tree.WaterPoints = 0 }, []string{"tree.water_points"}},
+		{"tree decay interval", func(x *Tuning) { x.Tree.DecayInterval = 0 }, []string{"tree.decay_interval"}},
+		{"tree cooldown negative", func(x *Tuning) { x.Tree.WaterCooldown = -time.Minute }, []string{"tree.water_cooldown"}},
+		{"tree cooldown may be zero", func(x *Tuning) { x.Tree.WaterCooldown = 0 }, nil},
+		{"tree event end", func(x *Tuning) { x.Tree.EventEnd = time.Time{} }, []string{"tree.event_end"}},
 		{"several problems", func(x *Tuning) { x.Drops.Lifetime = 0; x.Grinch.FightDuration = 0 }, []string{"drops.lifetime", "grinch.fight_duration"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -115,7 +123,7 @@ func TestGrinchFightWithChangedTuning(t *testing.T) {
 	rules.EarlyStartPlayers = 2
 	rules.FinalSnowballReward = 3
 	rules.LossCoal, rules.LossYellowPerGroupMember = 2, 2
-	if err := (Tuning{Gifts: DefaultTuning().Gifts, Drops: DefaultTuning().Drops, Grinch: rules}).Validate(); err != nil {
+	if err := (Tuning{Gifts: DefaultTuning().Gifts, Drops: DefaultTuning().Drops, Grinch: rules, Tree: DefaultTreeRules()}).Validate(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -226,5 +234,33 @@ func TestGrinchChangedSpawnAndLossRewards(t *testing.T) {
 		if reward != (GrinchReward{Coal: 2, YellowSnowballs: 6}) {
 			t.Errorf("%s reward = %+v", member, reward)
 		}
+	}
+}
+
+func TestTreeRulesChangeTheTree(t *testing.T) {
+	rules := DefaultTreeRules()
+	rules.StartLevel, rules.WaterPoints = 40, 7
+	rules.DecayInterval, rules.WaterCooldown = 30*time.Minute, 10*time.Minute
+	rules.EventEnd = treeStart.Add(10 * time.Hour)
+
+	if got := (Tree{}).At(rules, treeStart); got.Level != 40 {
+		t.Fatalf("new tree level = %d, want the configured 40", got.Level)
+	}
+	watered, err := Tree{}.Water(rules, treeStart, "alice")
+	if err != nil || watered.Level != 47 {
+		t.Fatalf("watering = %+v, %v, want 47", watered, err)
+	}
+	if got := watered.At(rules, treeStart.Add(90*time.Minute)).Level; got != 44 {
+		t.Fatalf("level after 90 minutes = %d, want 44 (three 30 minute intervals)", got)
+	}
+	var cooldown TreeCooldownError
+	if _, err := watered.Water(rules, treeStart.Add(4*time.Minute), "alice"); !errors.As(err, &cooldown) || cooldown.Remaining != 6*time.Minute {
+		t.Fatalf("early watering = %v, want a 6 minute cooldown", err)
+	}
+	if _, err := watered.Water(rules, treeStart.Add(10*time.Minute), "alice"); err != nil {
+		t.Fatalf("watering after the cooldown = %v", err)
+	}
+	if _, err := watered.Water(rules, rules.EventEnd, "bob"); !errors.Is(err, ErrTreeEventOver) {
+		t.Fatalf("watering at the configured end = %v, want the event over error", err)
 	}
 }

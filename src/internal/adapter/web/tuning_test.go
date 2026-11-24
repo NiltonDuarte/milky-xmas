@@ -81,3 +81,24 @@ func TestLocalChatAppliesTunedGrinchFight(t *testing.T) {
 		t.Fatalf("view after ten snowballs = %q, want the defense phase at 90 HP", got)
 	}
 }
+
+func TestLocalChatAppliesTunedTree(t *testing.T) {
+	tuning := core.DefaultTuning()
+	tuning.Tree.StartLevel, tuning.Tree.WaterPoints = 20, 5
+	tuning.Tree.DecayInterval, tuning.Tree.WaterCooldown = 30*time.Minute, 0
+	send := tunedChat(t, tuning)
+
+	if got := send("/water"); !strings.Contains(got, "+5%") || !strings.Contains(got, "Water level: 25%") ||
+		!strings.Contains(got, "loses 1% every 30 minutes") {
+		t.Fatalf("first watering = %q, want +5%%, 25%% water, and a 30 minute decay", got)
+	}
+	if got := send("/water"); !strings.Contains(got, "Water level: 30%") {
+		t.Fatalf("second watering without a cooldown = %q, want 30%% water", got)
+	}
+
+	tuning.Tree.EventEnd = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	send = tunedChat(t, tuning)
+	if got := send("/water"); !strings.Contains(got, "The event is over") {
+		t.Fatalf("watering after the configured end = %q, want the event over reply", got)
+	}
+}

@@ -18,7 +18,7 @@ func TestTreePersistsAndChecksRevision(t *testing.T) {
 		t.Fatalf("missing tree = %+v, %d, %v", tree, revision, err)
 	}
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
-	first, err := core.Tree{}.Water(now, "alice")
+	first, err := core.Tree{}.Water(core.DefaultTreeRules(), now, "alice")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func TestTreePersistsAndChecksRevision(t *testing.T) {
 	if saved, err := store.SaveTree(t.Context(), "s", 0, first); saved || err != nil {
 		t.Fatalf("stale first save = %v, %v", saved, err)
 	}
-	second, err := first.Water(now.Add(time.Hour), "bob")
+	second, err := first.Water(core.DefaultTreeRules(), now.Add(time.Hour), "bob")
 	if err != nil {
 		t.Fatal(err)
 	}

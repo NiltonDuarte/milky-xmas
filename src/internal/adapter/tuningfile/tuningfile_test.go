@@ -78,6 +78,9 @@ func TestParseRejectsBadFiles(t *testing.T) {
 		{"decimal where whole expected", "drops:\n  gift_rain:\n    claims_to_end: 2.5\n", []string{"2.5"}},
 		{"three decimals", "grinch:\n  attack:\n    heavy_damage: 5.255\n", []string{"grinch.attack.heavy_damage", "two decimals"}},
 		{"milestones out of order", "grinch:\n  defense:\n    boss_hp_after: 80\n", []string{"boss HP milestones must fall from 100 toward 0"}},
+		{"tree decay interval as a bare number", "tree:\n  decay_interval: 60\n", []string{"duration", "unit"}},
+		{"tree event end that is not a date", "tree:\n  event_end: someday\n", []string{"someday", "date and time"}},
+		{"tree water points out of range", "tree:\n  water_points: 0\n", []string{"tree.water_points"}},
 		{"several problems", "drops:\n  lifetime: 0s\ngrinch:\n  fight_duration: 0s\n", []string{"drops.lifetime", "grinch.fight_duration"}},
 		{"unknown key and bad range together", "bogus: 1\ndrops:\n  lifetime: 0s\n", []string{"bogus", "drops.lifetime"}},
 		{"not a mapping", "- one\n- two\n", []string{"cannot unmarshal"}},
@@ -125,5 +128,21 @@ func TestLoadAndFromEnv(t *testing.T) {
 	}
 	if _, err := Load(bad); err == nil || !strings.Contains(err.Error(), bad) || !strings.Contains(err.Error(), "drops.lifetime") {
 		t.Fatalf("invalid file error = %v, want the file and the key path", err)
+	}
+}
+
+func TestParseTreeNumbers(t *testing.T) {
+	for name, end := range map[string]string{"plain": "2026-12-25T18:30:00-03:00", "quoted": `"2026-12-25T21:30:00Z"`} {
+		got, err := Parse([]byte("tree:\n  start_level: 30\n  water_points: 4\n  decay_interval: 30m\n  water_cooldown: 0s\n  event_end: " + end + "\n"))
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		want := core.TreeRules{
+			StartLevel: 30, WaterPoints: 4, DecayInterval: 30 * time.Minute, WaterCooldown: 0,
+			EventEnd: time.Date(2026, 12, 25, 21, 30, 0, 0, time.UTC),
+		}
+		if !reflect.DeepEqual(got.Tree, want) {
+			t.Errorf("%s: tree = %+v, want %+v", name, got.Tree, want)
+		}
 	}
 }

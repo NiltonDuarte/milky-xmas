@@ -14,7 +14,7 @@
 # - Referência dos números: docs/activity-drops-numbers.md e docs/grinch-fight-numbers.md.
 #
 # Não são ajustáveis aqui: 8 botões por drop e por tabuleiro, a linha final de 5
-# botões, e o HP total do boss (100%).
+# botões, o HP total do boss (100%) e o nível máximo de água da árvore (100%).
 
 gifts:
   # Chances de raridade do gift em %. Os três somam 100.
@@ -88,3 +88,11 @@ grinch:
   loss_rewards:
     coal: 1
     yellow_snowballs_per_group_member: 1   # Yellow Snowballs = nº de inscritos x este valor
+
+# Árvore de Natal compartilhada (/water). Os níveis de água são % do nível máximo (100).
+tree:
+  start_level: 10         # nível de uma árvore que ninguém regou ainda
+  water_points: 2         # % de água que cada rega soma
+  decay_interval: 1h      # a árvore perde 1% de água a cada intervalo
+  water_cooldown: 1h      # espera de cada jogador entre regas
+  event_end: 2027-01-05T01:00:00Z   # data e hora UTC do fim do evento: a árvore para de secar e de ser regada

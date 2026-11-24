@@ -58,5 +58,5 @@ func run(ctx context.Context, token, guildID, path string, tuning core.Tuning) e
 	return discord.Run(ctx, token, guildID, app.NewService(store, time.Now, rand.IntN).WithTuning(tuning), app.NewGuildSetup(store),
 		func(server, scope string) *app.GrinchEncounter {
 			return app.NewGrinchEncounter(store, server, scope, tuning.Grinch, time.Now, rand.IntN)
-		}, app.NewTree(store, time.Now))
+		}, app.NewTree(store, time.Now).WithRules(tuning.Tree))
 }

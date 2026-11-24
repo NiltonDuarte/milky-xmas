@@ -50,11 +50,11 @@ func (b bot) handleWater(session *discordgo.Session, interaction *discordgo.Inte
 		name, image := treeImage(core.TreeStage(tree.Level))
 		data.Embeds = []*discordgo.MessageEmbed{
 			{Image: &discordgo.MessageEmbedImage{URL: "attachment://" + name}},
-			{Description: gifttext.Watered(member.UserID, tree, b.tree.Now(), mention)},
+			{Description: gifttext.Watered(member.UserID, tree, b.tree.Rules(), b.tree.Now(), mention)},
 		}
 		data.Files = []*discordgo.File{{Name: name, ContentType: "image/jpeg", Reader: bytes.NewReader(image)}}
 	case errors.Is(err, core.ErrTreeEventOver):
-		data.Content, data.Flags = gifttext.TreeEventOver(tree, b.tree.Now(), mention), discordgo.MessageFlagsEphemeral
+		data.Content, data.Flags = gifttext.TreeEventOver(tree, b.tree.Rules(), b.tree.Now(), mention), discordgo.MessageFlagsEphemeral
 	case reply != "":
 		data.Content, data.Flags = reply, discordgo.MessageFlagsEphemeral
 	default:

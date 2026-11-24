@@ -20,11 +20,23 @@ type TreeStore interface {
 type Tree struct {
 	store TreeStore
 	now   func() time.Time
+	rules core.TreeRules
 }
 
+// NewTree uses the default tree numbers. Use WithRules to apply a tuning file.
 func NewTree(store TreeStore, now func() time.Time) *Tree {
-	return &Tree{store: store, now: now}
+	return &Tree{store: store, now: now, rules: core.DefaultTreeRules()}
 }
+
+// WithRules returns a tree use case that applies the given numbers instead of the defaults.
+func (tree *Tree) WithRules(rules core.TreeRules) *Tree {
+	copied := *tree
+	copied.rules = rules
+	return &copied
+}
+
+// Rules are the tree numbers this use case applies, for adapters that show them.
+func (tree *Tree) Rules() core.TreeRules { return tree.rules }
 
 // Now is the use case's current time, for adapters that show the tree.
 func (tree *Tree) Now() time.Time { return tree.now().UTC() }
@@ -32,7 +44,7 @@ func (tree *Tree) Now() time.Time { return tree.now().UTC() }
 // View returns the server's tree as it stands now, without changing it.
 func (tree *Tree) View(ctx context.Context, server string) (core.Tree, error) {
 	stored, _, err := tree.store.LoadTree(ctx, server)
-	return stored.At(tree.now().UTC()), err
+	return stored.At(tree.rules, tree.now().UTC()), err
 }
 
 // Water adds the member's watering. On a refusal it returns the current tree with the error.
@@ -46,7 +58,7 @@ func (tree *Tree) Water(ctx context.Context, member Member) (core.Tree, error) {
 		if err != nil {
 			return core.Tree{}, fmt.Errorf("load tree: %w", err)
 		}
-		next, err := stored.Water(now, member.UserID)
+		next, err := stored.Water(tree.rules, now, member.UserID)
 		if err != nil {
 			return next, err
 		}

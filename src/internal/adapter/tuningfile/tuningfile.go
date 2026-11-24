@@ -91,6 +91,21 @@ func (d *duration) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
+// timestamp accepts a date and time such as 2027-01-05T01:00:00Z.
+type timestamp time.Time
+
+func (ts *timestamp) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.ScalarNode || (node.Tag != "!!timestamp" && node.Tag != "!!str") {
+		return fmt.Errorf("line %d: a date and time must look like 2027-01-05T01:00:00Z", node.Line)
+	}
+	parsed, err := time.Parse(time.RFC3339, node.Value)
+	if err != nil {
+		return fmt.Errorf("line %d: %q is not a date and time such as 2027-01-05T01:00:00Z", node.Line, node.Value)
+	}
+	*ts = timestamp(parsed.UTC())
+	return nil
+}
+
 // whole accepts only integers. The YAML decoder would otherwise cut 2.5 down to 2.
 type whole int64
 
@@ -172,6 +187,13 @@ type document struct {
 			YellowSnowballsPerGroupMember whole `yaml:"yellow_snowballs_per_group_member"`
 		} `yaml:"loss_rewards"`
 	} `yaml:"grinch"`
+	Tree struct {
+		StartLevel    whole     `yaml:"start_level"`
+		WaterPoints   whole     `yaml:"water_points"`
+		DecayInterval duration  `yaml:"decay_interval"`
+		WaterCooldown duration  `yaml:"water_cooldown"`
+		EventEnd      timestamp `yaml:"event_end"`
+	} `yaml:"tree"`
 }
 
 // percent writes hundredths of HP as a percentage, for the file.
@@ -210,6 +232,10 @@ func defaultsDocument() document {
 	doc.Grinch.FinalAttack.GiftPoints.Min, doc.Grinch.FinalAttack.GiftPoints.Max = whole(g.GiftPointsMin), whole(g.GiftPointsMax)
 	doc.Grinch.FinalAttack.SnowballsReward = whole(g.FinalSnowballReward)
 	doc.Grinch.LossRewards.Coal, doc.Grinch.LossRewards.YellowSnowballsPerGroupMember = whole(g.LossCoal), whole(g.LossYellowPerGroupMember)
+	tree := d.Tree
+	doc.Tree.StartLevel, doc.Tree.WaterPoints = whole(tree.StartLevel), whole(tree.WaterPoints)
+	doc.Tree.DecayInterval, doc.Tree.WaterCooldown = duration(tree.DecayInterval), duration(tree.WaterCooldown)
+	doc.Tree.EventEnd = timestamp(tree.EventEnd)
 	return doc
 }
 
@@ -259,6 +285,11 @@ func (doc document) tuning() (core.Tuning, error) {
 		FinalSnowballReward:      int64(g.FinalAttack.SnowballsReward),
 		LossCoal:                 int64(g.LossRewards.Coal),
 		LossYellowPerGroupMember: int64(g.LossRewards.YellowSnowballsPerGroupMember),
+	}
+	t.Tree = core.TreeRules{
+		StartLevel: int(doc.Tree.StartLevel), WaterPoints: int(doc.Tree.WaterPoints),
+		DecayInterval: time.Duration(doc.Tree.DecayInterval), WaterCooldown: time.Duration(doc.Tree.WaterCooldown),
+		EventEnd: time.Time(doc.Tree.EventEnd),
 	}
 	return t, errors.Join(problems...)
 }
