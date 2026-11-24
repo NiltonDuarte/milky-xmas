@@ -47,3 +47,32 @@ func TestAwardGift(t *testing.T) {
 		t.Fatalf("full award = %+v, %v", updated, err)
 	}
 }
+
+func TestActiveDropRarityBoost(t *testing.T) {
+	for _, tt := range []struct {
+		roll, good int
+		want       GiftRarity
+	}{
+		{69, 49, NormalGift}, {70, 49, RareGift}, {95, 49, EpicGift},
+		{49, 50, NormalGift}, {50, 50, RareGift}, {84, 50, RareGift}, {85, 50, EpicGift},
+		{70, 100, RareGift}, {99, 100, EpicGift},
+	} {
+		if got := ActiveDropRarity(tt.roll, tt.good); got != tt.want {
+			t.Errorf("ActiveDropRarity(%d, %d) = %s, want %s", tt.roll, tt.good, got, tt.want)
+		}
+	}
+}
+
+func TestRainCoalAndAwardCoal(t *testing.T) {
+	if !RainPrizeIsCoal(0) || !RainPrizeIsCoal(RainCoalPercent-1) || RainPrizeIsCoal(RainCoalPercent) {
+		t.Error("coal chance is not the first 25 of 100 rolls")
+	}
+	record, err := AwardCoal(GiftRecord{Inventory: Inventory{Coal: 2, Normal: 1}, Aura: Aura{Bad: 5}})
+	if err != nil || record.Inventory.Coal != 3 || record.Inventory.Normal != 1 || record.Aura.Bad != 5 {
+		t.Fatalf("AwardCoal = %+v, %v", record, err)
+	}
+	full := GiftRecord{Inventory: Inventory{Coal: math.MaxInt64}}
+	if got, err := AwardCoal(full); !errors.Is(err, ErrCoalCapacity) || got != full {
+		t.Fatalf("full AwardCoal = %+v, %v", got, err)
+	}
+}

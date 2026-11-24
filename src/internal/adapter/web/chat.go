@@ -2,7 +2,6 @@ package web
 
 import (
 	_ "embed"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -128,26 +127,35 @@ func replyActivityMessage(w http.ResponseWriter, r *http.Request, drops *app.Act
 }
 
 func replyActivityClaim(w http.ResponseWriter, r *http.Request, drops *app.ActivityDrops, args []string) {
-	if len(args) != 2 || args[0] != "collect" {
-		http.Error(w, "Use /drop collect <id>.", http.StatusBadRequest)
+	if len(args) != 2 || (args[0] != "collect" && args[0] != "expire") {
+		http.Error(w, "Use /drop collect <id> or /drop expire <id>.", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	mention := func(userID string) string { return userID }
+	if args[0] == "expire" {
+		// The local chat has no clock, so this ends a drop as if its time ran out.
+		summary, ok := drops.Close(args[1])
+		if !ok {
+			io.WriteString(w, gifttext.DropRejection(app.ErrDropUnavailable))
+			return
+		}
+		io.WriteString(w, gifttext.DropExpired(summary.Claims, mention))
 		return
 	}
 	award, err := drops.Claim(r.Context(), app.GiftDropClaim{Member: app.Member{ServerID: fixtureServerID, UserID: fixtureUserID}, DropID: args[1]})
 	if err != nil {
-		switch {
-		case errors.Is(err, app.ErrDropCooldown):
-			io.WriteString(w, "You cannot collect another gift yet.")
-		case errors.Is(err, app.ErrDropCollected):
-			io.WriteString(w, "You already collected a gift from this drop.")
-		case errors.Is(err, app.ErrDropUnavailable):
-			io.WriteString(w, "This gift drop is no longer available.")
-		default:
-			http.Error(w, "Could not collect this gift. Try again.", http.StatusInternalServerError)
+		if reply := gifttext.DropRejection(err); reply != "" {
+			io.WriteString(w, reply)
+			return
 		}
+		http.Error(w, "Could not collect this gift. Try again.", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprintf(w, "You collected a %s gift.", award.Rarity)
+	io.WriteString(w, gifttext.DropCollected(award))
+	if award.Finished != nil {
+		io.WriteString(w, "\n"+gifttext.DropExpired(award.Finished.Claims, mention))
+	}
 }
 
 func replyDailyClaim(w http.ResponseWriter, r *http.Request, service app.Service) {
