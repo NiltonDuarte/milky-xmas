@@ -12,6 +12,7 @@ Moderators need a way to hand out gifts, and the daily claim, inventory, and aur
 - Show the stocking image above the inventory in Discord.
 - Attach the Grinch image to the encounter announcement in Discord.
 - Add Max's image to the final message when the Grinch survives.
+- Add `/helpmemilky` to list the commands available to the player, including moderator commands only for members with the permission.
 - Show the "bad good" image above the aura line in Discord.
 - Change the snowball notification to `<recipient>❕  <sender> has thrown a <type> at you. 🥶` with the snowball image.
 

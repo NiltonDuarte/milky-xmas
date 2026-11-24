@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/gifttext"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 	"github.com/bwmarrin/discordgo"
 )
@@ -87,6 +88,7 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 		adventCommand(),
 		grinchCommand(),
 		thrownCommand(),
+		helpCommand(),
 		setupCommand(),
 	}
 	wanted := make(map[string]bool, len(commands))
@@ -167,6 +169,11 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 	}
 
 	switch data.Name {
+	case gifttext.HelpCommand:
+		if len(data.Options) == 0 {
+			b.handleHelp(session, event.Interaction)
+		}
+		return
 	case thrownCommandName:
 		b.handleThrownSnowball(session, event.Interaction, data)
 		return

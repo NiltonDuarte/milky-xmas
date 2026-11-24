@@ -70,6 +70,15 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 			case "/send":
 				replyGiftTransfer(w, r, service, args)
 				return
+			case "/" + gifttext.HelpCommand:
+				if len(args) != 0 {
+					http.Error(w, "Use /helpmemilky.", http.StatusBadRequest)
+					return
+				}
+				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+				// The local chat player can use the moderator tools.
+				io.WriteString(w, gifttext.Help(gifttext.HelpAccess{Moderator: true}))
+				return
 			case "/give":
 				replyGiveGift(w, r, service, args)
 				return
@@ -90,7 +99,7 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 		}
 		reply, err := service.Reply(command)
 		if err != nil {
-			http.Error(w, "Unknown command. Try /"+app.HelloCommand+", /daily claim, /advent view, /grinch view, /send gift, /aura check, or /look in-your-stocking.", http.StatusBadRequest)
+			http.Error(w, "Unknown command. Try /"+app.HelloCommand+", /daily claim, /advent view, /grinch view, /send gift, /aura check, /look in-your-stocking, or /helpmemilky.", http.StatusBadRequest)
 			return
 		}
 

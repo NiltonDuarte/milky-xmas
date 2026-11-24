@@ -34,8 +34,8 @@ func TestChatCommands(t *testing.T) {
 		status                     int
 	}{
 		{name: "hello", input: "/hello", status: http.StatusOK, reply: "Hello, world!"},
-		{name: "unknown", input: "/unknown", status: http.StatusBadRequest, reply: "Unknown command. Try /hello, /daily claim, /advent view, /grinch view, /send gift, /aura check, or /look in-your-stocking."},
-		{name: "missing slash", input: "hello", status: http.StatusBadRequest, reply: "Unknown command. Try /hello, /daily claim, /advent view, /grinch view, /send gift, /aura check, or /look in-your-stocking."},
+		{name: "unknown", input: "/unknown", status: http.StatusBadRequest, reply: "Unknown command. Try /hello, /daily claim, /advent view, /grinch view, /send gift, /aura check, /look in-your-stocking, or /helpmemilky."},
+		{name: "missing slash", input: "hello", status: http.StatusBadRequest, reply: "Unknown command. Try /hello, /daily claim, /advent view, /grinch view, /send gift, /aura check, /look in-your-stocking, or /helpmemilky."},
 		{name: "hello after error", input: "/hello", status: http.StatusOK, reply: "Hello, world!"},
 		{name: "foreign origin", input: "/hello", origin: "https://example.org", status: http.StatusForbidden},
 	} {

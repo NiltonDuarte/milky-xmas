@@ -14,6 +14,7 @@
 - [x] 2.5 Attach the stocking image to the Discord inventory reply and test the embeds.
 - [x] 2.6 Attach the Grinch image to the announcement and test the posted message.
 - [x] 2.7 Show Max's image on the final message when the Grinch escapes or defeats the players, and test all three outcomes.
+- [x] 2.8 Add `/helpmemilky` to both adapters with permission-based sections, and test each access level.
 
 ## 3. Verification
 

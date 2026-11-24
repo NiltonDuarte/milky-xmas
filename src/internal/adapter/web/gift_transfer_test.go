@@ -92,3 +92,24 @@ func TestGiveGiftInChat(t *testing.T) {
 		}
 	}
 }
+
+func TestHelpInChat(t *testing.T) {
+	handler := web.NewHandler(app.NewService(&giftfixture.Store{}, time.Now, func(int) int { return 0 }), nil)
+	for _, step := range []struct {
+		command string
+		code    int
+		contain string
+	}{
+		{"/helpmemilky", http.StatusOK, "/look in-your-stocking"},
+		{"/helpmemilky", http.StatusOK, "/give gift"},
+		{"/helpmemilky now", http.StatusBadRequest, "Use /helpmemilky."},
+	} {
+		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader("command="+url.QueryEscape(step.command)))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		if recorder.Code != step.code || !strings.Contains(recorder.Body.String(), step.contain) {
+			t.Errorf("%s = %d %q", step.command, recorder.Code, recorder.Body.String())
+		}
+	}
+}
