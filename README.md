@@ -123,3 +123,5 @@ In the Discord test server, enable a channel and chat until a drop appears. Chec
 In Discord, `/advent view` shows the calendar image with 24 numbered buttons. Click a number to open that door once. The button becomes ❌ and stays disabled. Doors that are not available yet, or after December 24 UTC, are disabled. `/advent open <day>` still works, and the local chat still lists the doors in text.
 
 In the Discord test server, run `/advent view` and click today's number, then check the ❌, that the gift total went up, and that the button no longer responds. Run `/advent view` again to see the ❌ persist, and try a number from a later day to confirm it is disabled.
+
+**Temporary test window:** until November 29, 2026 (UTC), every Advent door is available, so the calendar can be tested before December. Doors opened in the window are stored separately and do not count in December, but gifts awarded during the test stay in inventories. Remove the window from `core/advent.go` afterwards.

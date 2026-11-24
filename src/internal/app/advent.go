@@ -25,7 +25,7 @@ type AdventOpening struct {
 
 func (service Service) ViewAdvent(ctx context.Context, member Member) (core.AdventCalendar, error) {
 	now := service.now().UTC()
-	opened, err := service.advent.AdventDoors(ctx, member, now.Year())
+	opened, err := service.advent.AdventDoors(ctx, member, core.AdventYearKey(now))
 	if err != nil {
 		return core.AdventCalendar{}, err
 	}
@@ -38,7 +38,7 @@ func (service Service) OpenAdvent(ctx context.Context, member Member, day int) (
 	if status != core.DoorAvailable {
 		return AdventOpening{Status: status}, nil
 	}
-	awarded, total, err := service.advent.OpenAdventDoor(ctx, member, now.Year(), day)
+	awarded, total, err := service.advent.OpenAdventDoor(ctx, member, core.AdventYearKey(now), day)
 	if err != nil {
 		return AdventOpening{}, err
 	}
