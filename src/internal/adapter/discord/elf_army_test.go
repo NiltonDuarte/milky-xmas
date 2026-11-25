@@ -1,12 +1,14 @@
 package discord
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -90,5 +92,39 @@ func TestElfButtonReportsAFailedRoleChangePrivately(t *testing.T) {
 	}
 	if len(replies) != 1 || !strings.Contains(replies[0], "Could not add you to the elf army") {
 		t.Fatalf("replies = %q, want the failure to reach the player", replies)
+	}
+}
+
+// When the acknowledgement call fails after Discord may have received it, the player must not be
+// left with a "thinking…" message, and no game work may run.
+func TestPrivateReplyClearsAnUncertainAcknowledgement(t *testing.T) {
+	session, err := discordgo.New("Bot fixture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var events, replies []string
+	session.Client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/callback"):
+			events = append(events, "ack")
+			return nil, context.DeadlineExceeded
+		case strings.HasSuffix(r.URL.Path, "/messages/@original"):
+			var edit discordgo.WebhookEdit
+			if err := json.NewDecoder(r.Body).Decode(&edit); err != nil || edit.Content == nil {
+				t.Fatalf("reply edit = %+v, %v", edit, err)
+			}
+			events = append(events, "edit")
+			replies = append(replies, *edit.Content)
+			return fakeResponse(http.StatusOK, `{"id":"501"}`), nil
+		}
+		t.Fatalf("unexpected request %s %s", r.Method, r.URL)
+		return nil, nil
+	})
+	worked := false
+	respondPrivately(session, &discordgo.Interaction{ID: "300", Token: "token", AppID: "100", GuildID: "200",
+		Member: &discordgo.Member{User: &discordgo.User{ID: "alice"}}},
+		func(context.Context, app.Member) string { worked = true; return "done" })
+	if worked || !slices.Equal(events, []string{"ack", "edit"}) || len(replies) != 1 || !strings.Contains(replies[0], "slow to answer") {
+		t.Fatalf("worked = %v, events = %q, replies = %q", worked, events, replies)
 	}
 }

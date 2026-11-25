@@ -37,6 +37,7 @@ func respondPrivatelyWith(session *discordgo.Session, interaction *discordgo.Int
 	cancel()
 	if err != nil {
 		logInteractionError(interaction.ID, "acknowledge command", err)
+		clearUncertainAcknowledgement(session, interaction)
 		return
 	}
 
@@ -84,4 +85,23 @@ func attachmentsFor(files []*discordgo.File) *[]*discordgo.MessageAttachment {
 		attachments[i] = &discordgo.MessageAttachment{ID: strconv.Itoa(i)}
 	}
 	return &attachments
+}
+
+// clearUncertainAcknowledgement ends a "thinking…" reply that may exist even though the
+// acknowledgement call failed: when our request timed out, Discord can still have received it.
+// The edit does no game work, so it cannot repeat an action. If the acknowledgement never arrived,
+// the edit fails and the player sees Discord's own "did not respond" notice.
+func clearUncertainAcknowledgement(session *discordgo.Session, interaction *discordgo.Interaction) {
+	text := "Discord was slow to answer. Please try the command again."
+	for attempt := 0; attempt < 2; attempt++ {
+		if attempt > 0 {
+			time.Sleep(time.Second)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		_, err := session.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{Content: &text}, discordgo.WithContext(ctx))
+		cancel()
+		if err == nil {
+			return
+		}
+	}
 }

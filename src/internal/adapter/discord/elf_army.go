@@ -14,6 +14,8 @@ const (
 	elfRoleName   = "elfs"
 	elfButtonID   = "elfs:join"
 	elfButtonText = "Join the elf army 🛷"
+	// elfRoleColor is Christmas green.
+	elfRoleColor = 0x165B33
 )
 
 // elfArmyComponents is the button row under the Christmas introduction.
@@ -34,8 +36,8 @@ func ensureElfRole(ctx context.Context, session *discordgo.Session, guild string
 			return role.ID, nil
 		}
 	}
-	mentionable := true
-	role, err := session.GuildRoleCreate(guild, &discordgo.RoleParams{Name: elfRoleName, Mentionable: &mentionable},
+	mentionable, color := true, elfRoleColor
+	role, err := session.GuildRoleCreate(guild, &discordgo.RoleParams{Name: elfRoleName, Mentionable: &mentionable, Color: &color},
 		discordgo.WithContext(ctx))
 	if err != nil {
 		return "", fmt.Errorf("create the %s role: %w", elfRoleName, err)

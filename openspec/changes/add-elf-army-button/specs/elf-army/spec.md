@@ -35,4 +35,20 @@ The Christmas introduction SHALL carry a button labeled "Join the elf army 🛷"
 - **WHEN** a player clicks the button
 - **THEN** the private reply says the player could not be added and what a moderator should check
 
+### Requirement: The elfs role gates nothing
+
+The `elfs` role SHALL exist only so the community can tag its members. No command SHALL require it, and no moderator command SHALL depend on it.
+
+#### Scenario: Player without the role
+
+- **GIVEN** a player who never joined the elf army, in a channel where commands are enabled
+- **WHEN** they use any command that is not for moderators
+- **THEN** it works exactly as it does for an elf
+
+#### Scenario: Moderator without the role
+
+- **GIVEN** a moderator who is not an elf
+- **WHEN** they use a moderator command (`/give`, `/grinch summon`, `/setup`)
+- **THEN** it works, because those commands depend on Discord's Manage Messages and Manage Server permissions only
+
 This applies to Discord only. The local chat has no roles.
