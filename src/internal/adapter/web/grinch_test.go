@@ -28,17 +28,19 @@ func TestLocalGrinch(t *testing.T) {
 			t.Fatalf("%s: %d %q, want %q", command, response.Code, response.Body, want)
 		}
 	}
-	send("/grinch summon", "🎅 0 joined")
-	send("/grinch join", "🎅 1 joined")
-	send("/grinch join", "🎅 1 joined")
+	send("/grinch summon", "🎅 0 ready")
+	send("/grinch join", "🎅 1 ready")
+	send("/grinch join", "🎅 1 ready")
 	now = now.Add(time.Minute)
 	send("/grinch view", "100.00/100% HP\nsnowballs")
 	for range 24 {
 		send("/grinch hit 1", "HP\nsnowballs")
 	}
 	send("/grinch hit 1", "75.00/100% HP\ndefense")
+	send("/grinch view", "👽 The Grinch\n👽 “")
+	send("/grinch view", "⚔️ The players\n⚔️ fixture · 1.00 dmg")
 	// The deterministic board is 0b01010101. Slot 2 is an unsafe defense.
-	send("/grinch hit 2", "HP\ndefense")
+	send("/grinch hit 2", "was hit by a snowball: -10% HP")
 	send("/grinch hit 2", "45.00/100% HP\nattack")
 	for range 7 {
 		send("/grinch hit 1", "HP\nattack")
@@ -52,16 +54,16 @@ func TestLocalGrinch(t *testing.T) {
 	for range 4 {
 		send("/grinch hit 2", "HP\nfinal")
 	}
-	send("/grinch hit 2", "Damage leaderboard\n1. fixture — 105.00 pts\n\nGift leaderboard\n1. fixture — 2 pts")
+	send("/grinch hit 2", "Damage leaderboard\n1. fixture — 100.00 dmg\n\nGift leaderboard\n1. fixture — 2 pts\n\nSnowball leaderboard\n1. fixture — 2 snowballs")
 	send("/grinch view", "👽 Grinch · 0.00/100% HP")
 	send("/look in-your-stocking", "❄️ Snowballs: 2 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0")
 	now = now.Add(time.Second)
-	send("/grinch summon", "🎅 0 joined")
-	send("/grinch join", "🎅 1 joined")
-	send("/grinch join", "🎅 1 joined")
+	send("/grinch summon", "🎅 0 ready")
+	send("/grinch join", "🎅 1 ready")
+	send("/grinch join", "🎅 1 ready")
 	now = now.Add(time.Minute)
 	send("/grinch view", "100.00/100% HP\nsnowballs")
-	now = now.Add(2 * time.Minute)
+	now = now.Add(100 * time.Second)
 	send("/grinch hit 1", "99.00/100% HP\nsnowballs")
 	for range 23 {
 		send("/grinch hit 1", "HP\nsnowballs")
@@ -70,4 +72,13 @@ func TestLocalGrinch(t *testing.T) {
 	now = now.Add(time.Minute)
 	send("/grinch view", "75.00/100% HP\nescaped")
 	send("/look in-your-stocking", "❄️ Snowballs: 2 | 🟡 Yellow Snowballs: 1\n🌑 Coal: 1")
+
+	// A group that does not bring the Grinch down to 75% in two minutes loses.
+	now = now.Add(time.Second)
+	send("/grinch summon", "🎅 0 ready")
+	send("/grinch join", "🎅 1 ready")
+	now = now.Add(time.Minute)
+	send("/grinch hit 1", "99.00/100% HP\nsnowballs")
+	now = now.Add(2 * time.Minute)
+	send("/grinch view", "99.00/100% HP\nescaped")
 }

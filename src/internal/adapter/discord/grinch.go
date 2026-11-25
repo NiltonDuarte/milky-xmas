@@ -9,7 +9,6 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -24,7 +23,6 @@ type grinchBot struct {
 	channel      string
 	encounter    *app.GrinchEncounter
 	lastActivity atomic.Int64
-	registration sync.Map
 }
 
 func grinchCommand() *discordgo.ApplicationCommand {
@@ -135,17 +133,14 @@ func (b *grinchBot) button(s *discordgo.Session, i *discordgo.Interaction) {
 		at = time.Now()
 	}
 	switch parts[2] {
-	case "registration", string(core.GrinchLobby):
-		// Existing encounter messages may still carry the old public Join ID.
+	case "start":
 		if len(parts) == 4 && parts[3] == "0" {
-			b.registrationButton(s, i, parts[1], i.Message.ID, "", at)
+			b.startButton(s, i, parts[1], i.Message.ID, at)
 		}
 		return
-	case "join":
-		if len(parts) == 5 && i.Message.Flags&discordgo.MessageFlagsEphemeral != 0 {
-			b.registrationButton(s, i, parts[1], parts[3], parts[4], at)
-		}
-		return
+	case string(core.GrinchSnowballs), string(core.GrinchDefense), string(core.GrinchAttack), string(core.GrinchFinalAttack):
+	default:
+		return // Not a button of the current fight message.
 	}
 	slot, err := strconv.Atoi(parts[3])
 	if err != nil {
@@ -158,30 +153,42 @@ func (b *grinchBot) button(s *discordgo.Session, i *discordgo.Interaction) {
 			return
 		}
 	}
-	playContext, stopPlay := context.WithTimeout(context.Background(), time.Second)
+	// Acknowledge before any work: Discord wants the first response within three seconds of the
+	// click, and the store can be busy. The result shows in the fight message, and a failure is a
+	// private follow-up.
+	if !acknowledgeGrinchButton(s, i, &discordgo.InteractionResponse{Type: discordgo.InteractionResponseDeferredMessageUpdate}) {
+		return
+	}
+	playContext, stopPlay := context.WithTimeout(context.Background(), 2*time.Second)
 	_, _, err = b.encounter.Play(playContext, parts[1], i.Message.ID, core.GrinchMove{
 		Phase: core.GrinchPhase(parts[2]), Slot: slot, DefenseRound: round, FinalRound: round, Member: i.Member.User.ID, RequestID: i.ID, At: at,
 	})
 	stopPlay()
-	response := &discordgo.InteractionResponse{Type: discordgo.InteractionResponseDeferredMessageUpdate}
 	if err != nil {
 		logInteractionError(i.ID, "play Grinch action", err)
-		response = &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{Flags: discordgo.MessageFlagsEphemeral, Content: "Could not record your action. Try again."},
-		}
+		privateFollowup(s, i, "Could not record your action. Try again.")
 	}
-	acknowledgeGrinchButton(s, i, response)
 }
 
+// acknowledgeGrinchButton sends the first response of an interaction.
 func acknowledgeGrinchButton(s *discordgo.Session, i *discordgo.Interaction, response *discordgo.InteractionResponse) bool {
-	ackContext, stopAck := context.WithTimeout(context.Background(), 1750*time.Millisecond)
+	ackContext, stopAck := context.WithTimeout(context.Background(), 2500*time.Millisecond)
 	defer stopAck()
 	if err := s.InteractionRespond(i, response, discordgo.WithContext(ackContext)); err != nil {
 		logInteractionError(i.ID, "acknowledge Grinch action", err)
 		return false
 	}
 	return true
+}
+
+// privateFollowup tells the player something after the interaction was acknowledged.
+func privateFollowup(s *discordgo.Session, i *discordgo.Interaction, text string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := s.FollowupMessageCreate(i, true, &discordgo.WebhookParams{Content: text, Flags: discordgo.MessageFlagsEphemeral},
+		discordgo.WithContext(ctx)); err != nil {
+		logInteractionError(i.ID, "send Grinch follow-up", err)
+	}
 }
 
 const grinchImageName = "grinch.jpg"
@@ -209,11 +216,11 @@ type grinchDisplay struct {
 func (display grinchDisplay) Announce(ctx context.Context, state core.Grinch) (string, time.Time, error) {
 	state.Phase = core.GrinchLobby
 	state.StartedAt = time.Now()
-	content, components := grinchMessage(display.rules, state)
 	message, err := display.session.ChannelMessageSendComplex(display.channel, &discordgo.MessageSend{
-		Content: content, Components: components,
-		Embeds: []*discordgo.MessageEmbed{{Image: &discordgo.MessageEmbedImage{URL: "attachment://" + grinchImageName}}},
-		Files:  []*discordgo.File{{Name: grinchImageName, ContentType: "image/jpeg", Reader: bytes.NewReader(grinchImage)}},
+		Components:      grinchView(display.rules, state, []string{grinchImageName}, false, false),
+		Flags:           discordgo.MessageFlagsIsComponentsV2,
+		Files:           []*discordgo.File{{Name: grinchImageName, ContentType: "image/jpeg", Reader: bytes.NewReader(grinchImage)}},
+		AllowedMentions: &discordgo.MessageAllowedMentions{},
 	}, discordgo.WithContext(ctx), discordgo.WithRetryOnRatelimit(false), discordgo.WithRestRetries(0))
 	if err != nil {
 		return "", time.Time{}, err
@@ -226,39 +233,48 @@ func (display grinchDisplay) Announce(ctx context.Context, state core.Grinch) (s
 }
 
 func (display grinchDisplay) Update(ctx context.Context, state core.Grinch) error {
-	content, components := grinchMessage(display.rules, state)
-	edit := &discordgo.MessageEdit{
-		ID: state.MessageID, Channel: display.channel, Content: &content, Components: &components,
-		AllowedMentions: &discordgo.MessageAllowedMentions{Parse: []discordgo.AllowedMentionType{}},
-	}
-	var overflow bool
-	if !state.EndedAt.IsZero() && state.Phase != core.GrinchCancelled {
-		var extra string
-		content, extra = grinchLeaderboards(content, state.Leaderboard(display.rules), state.GiftLeaderboard())
-		overflow = extra != ""
+	images := []string{grinchImageName}
+	var files []*discordgo.File
+	final := !state.EndedAt.IsZero() && state.Phase != core.GrinchCancelled
+	_, overflow := grinchStandings(display.rules, state)
+	overflow = final && overflow
+	if final {
 		// Re-send the images with the final message. Replacing the attachments also drops stale ones,
 		// so the Grinch image and, when the Grinch survived, Max's image are uploaded again.
-		images := []grinchPicture{{grinchImageName, grinchImage}}
+		pictures := []grinchPicture{{grinchImageName, grinchImage}}
 		if state.Phase != core.GrinchWon {
-			images = append(images, grinchPicture{maxImageName, maxImage})
+			// The Grinch survived: Max's picture replaces his.
+			pictures, images = []grinchPicture{{maxImageName, maxImage}}, []string{maxImageName}
 		}
-		embeds := make([]*discordgo.MessageEmbed, 0, len(images))
-		for _, image := range images {
-			embeds = append(embeds, &discordgo.MessageEmbed{Image: &discordgo.MessageEmbedImage{URL: "attachment://" + image.name}})
-			edit.Files = append(edit.Files, &discordgo.File{Name: image.name, ContentType: "image/jpeg", Reader: bytes.NewReader(image.data)})
+		for _, picture := range pictures {
+			files = append(files, &discordgo.File{Name: picture.name, ContentType: "image/jpeg", Reader: bytes.NewReader(picture.data)})
 		}
-		edit.Embeds = &embeds
 		if overflow {
-			edit.Files = append(edit.Files, &discordgo.File{Name: "grinch-leaderboard.txt", Reader: strings.NewReader(extra)})
+			files = append(files, &discordgo.File{Name: grinchStandingsFile, Reader: strings.NewReader(grinchStandingsText(display.rules, state))})
 		}
-		edit.Attachments = attachmentsFor(edit.Files)
 	}
-	_, err := display.session.ChannelMessageEditComplex(edit, discordgo.WithContext(ctx))
+	edit := func(files []*discordgo.File, images []string, attach, denied bool) *discordgo.MessageEdit {
+		components := grinchView(display.rules, state, images, attach, denied)
+		edit := &discordgo.MessageEdit{
+			ID: state.MessageID, Channel: display.channel, Components: &components, Flags: discordgo.MessageFlagsIsComponentsV2,
+			AllowedMentions: &discordgo.MessageAllowedMentions{Parse: []discordgo.AllowedMentionType{}},
+		}
+		if len(files) > 0 {
+			edit.Files, edit.Attachments = files, attachmentsFor(files)
+		}
+		return edit
+	}
+	_, err := display.session.ChannelMessageEditComplex(edit(files, images, overflow, false), discordgo.WithContext(ctx))
 	var denied *discordgo.RESTError
 	if overflow && errors.As(err, &denied) && denied.Message != nil && denied.Message.Code == 50013 {
-		content = strings.TrimSuffix(content, "\nFull standings are attached.") + "\nFull standings require permission to attach files."
-		edit.Attachments, edit.Files, edit.Embeds = nil, nil, nil // Keep the announcement's existing image.
-		_, err = display.session.ChannelMessageEditComplex(edit, discordgo.WithContext(ctx))
+		// Without permission to attach files nothing can be uploaded. The announcement's picture is the
+		// Grinch's, so it stays only when he lost the fight. When he won, Max's picture cannot be shown
+		// and the message has no picture rather than the Grinch's.
+		var kept []string
+		if state.Phase == core.GrinchWon {
+			kept = []string{grinchImageName}
+		}
+		_, err = display.session.ChannelMessageEditComplex(edit(nil, kept, false, true), discordgo.WithContext(ctx))
 	}
 	var rest *discordgo.RESTError
 	if errors.As(err, &rest) && rest.Message != nil && rest.Message.Code == 10008 {
@@ -267,56 +283,24 @@ func (display grinchDisplay) Update(ctx context.Context, state core.Grinch) erro
 	return err
 }
 
-func grinchLeaderboards(content string, damage, gifts []core.GrinchScore) (string, string) {
-	if len(damage) == 0 && len(gifts) == 0 {
-		return content, ""
-	}
-	var standings strings.Builder
-	overflow := false
-	for _, section := range []struct {
-		title  string
-		format string
-		scores []core.GrinchScore
-	}{
-		{"Damage leaderboard", "%.2f", damage},
-		{"Gift leaderboard", "%.0f", gifts},
-	} {
-		if len(section.scores) == 0 {
-			continue
-		}
-		content += "\n\n**" + section.title + "**"
-		fmt.Fprintf(&standings, "%s\n", section.title)
-		limit := min(len(content)+820, 1900)
-		for index, score := range section.scores {
-			points := fmt.Sprintf(section.format, score.Points)
-			line := fmt.Sprintf("\n%d. <@%s> — %s pts", index+1, score.Member, points)
-			fmt.Fprintf(&standings, "%d. Discord user %s — %s pts\n", index+1, score.Member, points)
-			if len(content)+len(line) <= limit {
-				content += line
-			} else {
-				overflow = true
-			}
-		}
-		fmt.Fprintln(&standings)
-	}
-	if overflow {
-		return content + "\nFull standings are attached.", standings.String()
-	}
-	return content, ""
-}
-
 func grinchMessage(rules core.GrinchRules, state core.Grinch) (string, []discordgo.MessageComponent) {
 	content := grinchtext.Health(state.Health(rules))
 	if state.Phase == core.GrinchCancelled {
-		return "The Grinch encounter was cancelled because no one joined.", []discordgo.MessageComponent{}
+		return "The Grinch encounter was cancelled because no one pressed Start.", []discordgo.MessageComponent{}
 	}
+	// Players press Start to begin the fight. The combat screen has no Join button.
 	join := discordgo.ActionsRow{Components: []discordgo.MessageComponent{
-		discordgo.Button{Label: "Open registration", Emoji: &discordgo.ComponentEmoji{Name: "🎅"}, Style: discordgo.SuccessButton,
-			CustomID: "grinch:" + state.ID + ":registration:0"},
+		discordgo.Button{Label: "Start", Emoji: &discordgo.ComponentEmoji{Name: "🎅"}, Style: discordgo.SuccessButton,
+			CustomID: "grinch:" + state.ID + ":start:0"},
 	}}
 	if state.Phase == core.GrinchLobby {
-		return fmt.Sprintf("%s\n🎄 **The Grinch is coming!**\nOpen registration with 🎅 before <t:%d:R>. **%d/%d to start early**.",
-				content, state.StartedAt.Add(rules.RegistrationDuration).Unix(), len(state.Joined), rules.EarlyStartPlayers),
+		if state.CountdownAt.IsZero() {
+			return fmt.Sprintf("%s\n🎄 **The Grinch is coming!**\nPress **Start** to begin the fight. It starts %s after the first press, or right away when %d players press it. **%d/%d to start early**.",
+					content, spanText(rules.RegistrationDuration), rules.EarlyStartPlayers, len(state.Joined), rules.EarlyStartPlayers),
+				[]discordgo.MessageComponent{join}
+		}
+		return fmt.Sprintf("%s\n🎄 **The Grinch is coming!**\nThe fight starts <t:%d:R>. Press **Start** to join it. **%d/%d to start early**.",
+				content, state.LobbyDeadline(rules).Unix(), len(state.Joined), rules.EarlyStartPlayers),
 			[]discordgo.MessageComponent{join}
 	}
 	if !state.EndedAt.IsZero() {
@@ -341,7 +325,7 @@ func grinchMessage(rules core.GrinchRules, state core.Grinch) (string, []discord
 	switch state.Phase {
 	case core.GrinchSnowballs:
 		milestone := core.FormatHundredths(rules.SnowballsBossHP)
-		content += fmt.Sprintf("\nThrow snowballs until the Grinch reaches **%s HP**. The %s timer starts at %s HP.", milestone, timerName(rules.FightDuration), milestone)
+		content += fmt.Sprintf("\nThrow snowballs to bring the Grinch down to **%s HP** before time runs out, or he wins. Then the %s timer starts.", milestone, timerName(rules.FightDuration))
 		rows = []discordgo.MessageComponent{discordgo.ActionsRow{Components: []discordgo.MessageComponent{button(0, "☃️", "Attack")}}}
 	case core.GrinchDefense, core.GrinchAttack:
 		on, off := "🎄", "❄️"
@@ -367,8 +351,8 @@ func grinchMessage(rules core.GrinchRules, state core.Grinch) (string, []discord
 			rows = append(rows, discordgo.ActionsRow{Components: columns})
 		}
 	case core.GrinchFinalAttack:
-		content += fmt.Sprintf("\n⚔️ Attack for %s damage points, pick 🎁 for %s gift points, or pick ❄️ for %s.",
-			core.FormatHundredths(rules.FinalHitScore), giftPointRange(rules), snowballReward(rules))
+		content += fmt.Sprintf("\n⚔️ Attack for %s damage, pick 🎁 for %s gift points, or pick ❄️ for %s.",
+			core.FormatHundredths(rules.FinalHitDamage), giftPointRange(rules), snowballReward(rules))
 		if state.FinalRound == 0 {
 			rows = []discordgo.MessageComponent{discordgo.ActionsRow{Components: []discordgo.MessageComponent{button(0, "⚔️", "Attack"), button(core.GrinchSnowballSlot, "❄️", "Snowball")}}}
 			break
@@ -392,10 +376,21 @@ func grinchMessage(rules core.GrinchRules, state core.Grinch) (string, []discord
 		rows = []discordgo.MessageComponent{}
 	}
 	if state.Joined != nil {
-		content += fmt.Sprintf("\n🎅 **%d joined**", len(state.Joined))
-		rows = append(rows, join)
+		content += fmt.Sprintf("\n🎅 **%d players**", len(state.Joined)) // There is no Join button. Anyone can attack.
 	}
 	return content, rows
+}
+
+// spanText words a duration for a sentence: "1 minute", "90 seconds".
+func spanText(d time.Duration) string {
+	if d%time.Minute == 0 {
+		if minutes := int(d / time.Minute); minutes == 1 {
+			return "1 minute"
+		} else {
+			return fmt.Sprintf("%d minutes", minutes)
+		}
+	}
+	return fmt.Sprintf("%d seconds", int(d.Round(time.Second)/time.Second))
 }
 
 // timerName words a duration for the countdown hint: "one-minute", "90-second".

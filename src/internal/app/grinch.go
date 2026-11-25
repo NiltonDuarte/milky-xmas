@@ -94,7 +94,6 @@ func (e *GrinchEncounter) Spawn(ctx context.Context, activity time.Time, manual 
 		}
 		g.MessageID, g.StartedAt, g.Phase = message, started, core.GrinchLobby
 		g.Joined = make(map[string]bool)
-		g.Participants = make(map[string]bool)
 		g.PlayerDamage = make(map[string]int)
 		g.DamageDealt = make(map[string]core.GrinchDamage)
 		g.Accepted = make(map[string]bool)
@@ -107,6 +106,7 @@ func (e *GrinchEncounter) Spawn(ctx context.Context, activity time.Time, manual 
 func (e *GrinchEncounter) Play(ctx context.Context, id, message string, move core.GrinchMove) (core.Grinch, string, error) {
 	var reply string
 	next := uint8(e.random(254) + 1) // Both emoji types appear.
+	move.Roll = e.random(1_000_000)  // Picks the Grinch's line.
 	if move.Phase == core.GrinchAttack || move.Phase == core.GrinchFinalAttack {
 		move.FinalBoard = uint8(e.random(14) + 1) // Both attack and gift tiles.
 	}
@@ -133,11 +133,6 @@ func (e *GrinchEncounter) Play(ctx context.Context, id, message string, move cor
 		return advanced || accepted, nil
 	})
 	return state, reply, err
-}
-
-func (e *GrinchEncounter) CanJoin(ctx context.Context, id, message, member string, at time.Time) (bool, error) {
-	state, _, err := e.store.LoadGrinch(ctx, e.scope)
-	return err == nil && state.ID == id && state.MessageID == message && state.CanJoin(e.rules, member, at), err
 }
 
 func (e *GrinchEncounter) RefreshBoard(ctx context.Context, display GrinchDisplay) (core.Grinch, error) {

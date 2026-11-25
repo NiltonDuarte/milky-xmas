@@ -53,13 +53,16 @@ grinch:
     cooldown_after_fight: 30m   # intervalo mínimo depois do fim de uma luta
 
   registration:
-    duration: 1m            # tempo para se inscrever
-    early_start_players: 3  # com este número de inscritos a luta começa na hora
+    start_window: 1m        # tempo que o anúncio espera o primeiro clique em Start; sem clique, a luta é cancelada
+    duration: 1m            # contagem regressiva que começa no primeiro clique em Start
+    early_start_players: 3  # com este número de jogadores que apertaram Start a luta começa na hora
 
   fight_duration: 1m        # relógio de combate, começa quando o boss chega ao HP de snowballs.boss_hp_after
 
-  # Fase 1: cliques de snowball (sem relógio).
+  # Fase 1: cliques de snowball. O grupo tem este tempo para baixar o boss até boss_hp_after;
+  # se o tempo acabar antes, o boss vence.
   snowballs:
+    duration: 2m            # tempo para baixar o boss até boss_hp_after
     damage: 1               # HP do boss por clique
     boss_hp_after: 75       # a fase termina quando o boss chega a este HP
 
@@ -78,7 +81,7 @@ grinch:
   # Fase 4: ataque final, até o boss chegar a 0.
   final_attack:
     hit_damage: 1           # HP do boss tirado por ⚔️
-    hit_score: 2            # pontos de dano que ⚔️ dá no placar
+    hit_score: 2            # pontos que ⚔️ dá ao jogador (guardados para uso futuro; o ranking de dano mostra só o dano)
     gift_points:            # 🎁 dá pontos de presente sorteados nesta faixa
       min: 1
       max: 5

@@ -75,10 +75,11 @@ func TestGrinchDeadlines(t *testing.T) {
 		t.Fatal("unexpected activity or roll eligibility")
 	}
 	fight = Grinch{ID: "fight", Phase: GrinchSnowballs, StartedAt: now, HP: 10000}
-	if fight.CanSpawn(testRules, now, now, 0, true) || fight.Advance(testRules, now.Add(2*time.Minute)) || fight.Phase != GrinchSnowballs {
-		t.Fatalf("untimed snowball phase left %+v", fight)
+	if fight.CanSpawn(testRules, now, now, 0, true) || !fight.Deadline(testRules).Equal(now.Add(2*time.Minute)) ||
+		fight.Advance(testRules, now.Add(2*time.Minute-time.Nanosecond)) || fight.Phase != GrinchSnowballs {
+		t.Fatalf("the snowball phase did not last two minutes: %+v", fight)
 	}
-	threshold := now.Add(3 * time.Minute)
+	threshold := now.Add(110 * time.Second)
 	fight.HP = 7600
 	fight.Joined = map[string]bool{"alice": true}
 	fight.Accepted = map[string]bool{}
@@ -100,37 +101,76 @@ func TestGrinchRegistration(t *testing.T) {
 	start := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
 	fight := Grinch{
 		ID: "fight", Phase: GrinchLobby, HP: 10000, StartedAt: start,
-		Joined: map[string]bool{}, Participants: map[string]bool{}, Accepted: map[string]bool{},
+		Joined: map[string]bool{}, Accepted: map[string]bool{},
 	}
-	deadline := start.Add(time.Minute)
+	// The countdown starts at the first Start press, not at the announcement.
+	pressed := start.Add(30 * time.Second)
+	deadline := pressed.Add(time.Minute)
+	if fight.Advance(testRules, start.Add(59*time.Second)) || !fight.CountdownAt.IsZero() {
+		t.Fatal("the fight changed before anyone pressed Start")
+	}
+	join := GrinchMove{Phase: GrinchLobby, Member: "alice", RequestID: "join", At: pressed}
+	fight.Move(testRules, join)
+	if !fight.CountdownAt.Equal(pressed) || !fight.LobbyDeadline(testRules).Equal(deadline) {
+		t.Fatalf("countdown = %v, deadline = %v, want it to start at the press and end at %v", fight.CountdownAt, fight.LobbyDeadline(testRules), deadline)
+	}
 	if fight.Advance(testRules, deadline.Add(-time.Nanosecond)) {
 		t.Fatal("registration closed early")
 	}
-	join := GrinchMove{Phase: GrinchLobby, Member: "alice", RequestID: "join", At: deadline.Add(-time.Nanosecond)}
+	join.RequestID, join.At = "repeat", deadline.Add(-time.Nanosecond)
 	fight.Move(testRules, join)
-	join.RequestID = "repeat"
-	fight.Move(testRules, join)
-	if len(fight.Joined) != 1 || len(fight.Accepted) != 1 {
-		t.Fatal("registration was counted more than once")
+	if len(fight.Joined) != 1 || len(fight.Accepted) != 1 || !fight.CountdownAt.Equal(pressed) {
+		t.Fatal("registration was counted more than once or restarted the countdown")
 	}
 	join.Member, join.RequestID, join.At = "bob", "late", deadline
 	fight.Move(testRules, join)
 	if len(fight.Joined) != 1 || !fight.Advance(testRules, deadline) || fight.Phase != GrinchSnowballs || fight.StartedAt != deadline {
 		t.Fatalf("incorrect registration cutoff: %+v", fight)
 	}
+	// Anyone can take part once the fight has started: a player who did not press Start attacks and is in.
 	hit := GrinchMove{Phase: GrinchSnowballs, Member: "bob", RequestID: "hit", At: deadline}
 	fight.Move(testRules, hit)
-	if fight.HP != 10000 {
-		t.Fatal("unregistered attack was counted")
+	if fight.HP != 9900 || !fight.Joined["bob"] {
+		t.Fatalf("an attack by a player who did not press Start: HP %d, players %v", fight.HP, fight.Joined)
 	}
-	hit.Member = "alice"
+	hit.Member, hit.RequestID = "alice", "hit2"
 	fight.Move(testRules, hit)
-	if fight.HP != 9900 || fight.Advance(testRules, deadline.Add(time.Minute)) || fight.Phase != GrinchSnowballs {
+	if fight.HP != 9800 || fight.Advance(testRules, deadline.Add(time.Minute)) || fight.Phase != GrinchSnowballs {
 		t.Fatalf("unexpected combat progress: %+v", fight)
 	}
+}
+
+func TestGrinchWaitsForTheFirstStartPress(t *testing.T) {
+	start := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
+	rules := testRules
+	rules.StartWindow = 5 * time.Minute
 	empty := Grinch{ID: "empty", Phase: GrinchLobby, StartedAt: start, HP: 10000}
-	if !empty.Advance(testRules, deadline) || empty.Phase != GrinchCancelled {
-		t.Fatalf("empty registration was not cancelled: %+v", empty)
+	if !empty.LobbyDeadline(rules).Equal(start.Add(5*time.Minute)) || empty.Advance(rules, start.Add(5*time.Minute-time.Nanosecond)) {
+		t.Fatal("the fight closed before the start window passed")
+	}
+	if !empty.Advance(rules, start.Add(5*time.Minute)) || empty.Phase != GrinchCancelled || !empty.EndedAt.Equal(start.Add(5*time.Minute)) {
+		t.Fatalf("a fight nobody started was not cancelled at the end of the window: %+v", empty)
+	}
+	// The window does not apply once someone pressed Start.
+	pressed := Grinch{ID: "p", Phase: GrinchLobby, StartedAt: start, HP: 10000, Joined: map[string]bool{}, Accepted: map[string]bool{}}
+	pressed.Move(rules, GrinchMove{Phase: GrinchLobby, Member: "alice", RequestID: "1", At: start.Add(4 * time.Minute)})
+	if got := pressed.LobbyDeadline(rules); !got.Equal(start.Add(5 * time.Minute)) {
+		t.Fatalf("deadline after a press = %v, want a minute after it", got)
+	}
+}
+
+func TestGrinchStartsAtOnceWhenEnoughPlayersPressStart(t *testing.T) {
+	start := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
+	fight := Grinch{ID: "fight", Phase: GrinchLobby, HP: 10000, StartedAt: start, Joined: map[string]bool{}, Accepted: map[string]bool{}}
+	for i, member := range []string{"alice", "bob", "carol"} {
+		at := start.Add(time.Duration(i+1) * 5 * time.Second)
+		fight.Move(testRules, GrinchMove{Phase: GrinchLobby, Member: member, RequestID: member, At: at})
+		if want := i < 2; (fight.Phase == GrinchLobby) != want {
+			t.Fatalf("after %d presses the phase is %s", i+1, fight.Phase)
+		}
+	}
+	if fight.Phase != GrinchSnowballs || !fight.StartedAt.Equal(start.Add(15*time.Second)) {
+		t.Fatalf("the third press did not start the fight at once: %+v", fight)
 	}
 }
 
@@ -150,7 +190,7 @@ func TestGrinchDefeat(t *testing.T) {
 	if fight.Phase != GrinchDefeat || fight.Health(testRules) != 75 || fight.EndedAt != now.Add(time.Second) {
 		t.Fatalf("fight did not end immediately after the last elimination: %+v", fight)
 	}
-	solo := Grinch{ID: "solo", Phase: GrinchDefense, StartedAt: now, HP: 7500, Board: 1,
+	solo := Grinch{ID: "solo", Phase: GrinchDefense, StartedAt: now, TimedAt: now, DefensePlayers: 1, HP: 7500, Board: 1,
 		Joined: map[string]bool{"alice": true}, Accepted: map[string]bool{}, PlayerDamage: map[string]int{},
 	}
 	for i := range 10 {
@@ -189,7 +229,7 @@ func TestGrinchLeaderboardCountsAppliedDamage(t *testing.T) {
 	fight.HP = 600
 	hit(GrinchAttack, 0, "alice", "ice")
 	hit(GrinchFinalAttack, 0, "bob", "final")
-	want := []GrinchScore{{"bob", 22}, {"alice", 12}, {"carol", 0}}
+	want := []GrinchScore{{"bob", 21}, {"alice", 12}, {"carol", 0}}
 	got := fight.Leaderboard(testRules)
 	if len(got) != len(want) {
 		t.Fatalf("leaderboard = %+v", got)
@@ -215,7 +255,7 @@ func TestGrinchLeaderboardPreservesFractionalDefenseDamage(t *testing.T) {
 
 func TestGrinchFinalGiftRow(t *testing.T) {
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
-	fight := Grinch{Phase: GrinchFinalAttack, StartedAt: now, HP: 500, FinalRound: 1, FinalBoard: 1,
+	fight := Grinch{Phase: GrinchFinalAttack, StartedAt: now, TimedAt: now, HP: 500, FinalRound: 1, FinalBoard: 1,
 		Joined: map[string]bool{"alice": true}, Accepted: map[string]bool{}, DamageDealt: map[string]GrinchDamage{},
 	}
 	move := GrinchMove{Phase: GrinchFinalAttack, Member: "alice", At: now, FinalRound: 1,
@@ -232,7 +272,7 @@ func TestGrinchFinalGiftRow(t *testing.T) {
 	}
 	move.RequestID, move.FinalRound = "attack", 2
 	fight.Move(testRules, move)
-	if fight.HP != 400 || fight.Leaderboard(testRules)[0].Points != 2 || fight.GiftLeaderboard()[0].Points != 5 {
+	if fight.HP != 400 || fight.Leaderboard(testRules)[0].Points != 1 || fight.GiftLeaderboard()[0].Points != 5 {
 		t.Fatalf("attack state = %+v", fight)
 	}
 }
@@ -296,3 +336,144 @@ func TestGrinchDefenseBoardRerollsAndRejectsStaleClicks(t *testing.T) {
 }
 
 var testRules = DefaultTuning().Grinch
+
+func TestGrinchCountsCollectedSnowballs(t *testing.T) {
+	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
+	rules := testRules
+	rules.FinalSnowballReward = 2
+	fight := Grinch{Phase: GrinchFinalAttack, StartedAt: now, TimedAt: now, HP: 500, FinalRound: 0,
+		Joined:   map[string]bool{"alice": true, "bob": true, "carol": true},
+		Accepted: map[string]bool{}, DamageDealt: map[string]GrinchDamage{},
+	}
+	pick := func(member, request string) {
+		fight.Move(rules, GrinchMove{Phase: GrinchFinalAttack, Member: member, At: now, FinalRound: fight.FinalRound,
+			RequestID: request, Slot: GrinchSnowballSlot, FinalBoard: 1})
+	}
+	pick("bob", "1")
+	pick("bob", "1") // The same click again is not counted.
+	pick("alice", "2")
+	pick("bob", "3")
+	got := fight.SnowballLeaderboard()
+	if len(got) != 3 || got[0] != (GrinchScore{"bob", 4}) || got[1] != (GrinchScore{"alice", 2}) || got[2] != (GrinchScore{"carol", 0}) {
+		t.Fatalf("snowball leaderboard = %+v, want bob 4, alice 2, carol 0", got)
+	}
+	if (Grinch{Joined: map[string]bool{"a": true}}).SnowballLeaderboard() != nil {
+		t.Error("an old fight without scores has a leaderboard")
+	}
+}
+
+func TestWithPointsKeepsOnlyScoringPlayersInOrder(t *testing.T) {
+	got := WithPoints([]GrinchScore{{"a", 3}, {"b", 0}, {"c", 0.5}, {"d", 0}})
+	if len(got) != 2 || got[0].Member != "a" || got[1].Member != "c" {
+		t.Fatalf("WithPoints = %+v, want a then c", got)
+	}
+	if got := WithPoints(nil); got == nil || len(got) != 0 {
+		t.Fatalf("WithPoints(nil) = %#v, want an empty list", got)
+	}
+}
+
+func TestGrinchSnowballTimerEndsTheFightWhenTimeRunsOut(t *testing.T) {
+	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
+	fight := Grinch{ID: "fight", Phase: GrinchSnowballs, StartedAt: now, HP: testRules.SnowballsBossHP + 100,
+		Joined: map[string]bool{"alice": true}, Accepted: map[string]bool{}, PlayerDamage: map[string]int{}, DamageDealt: map[string]GrinchDamage{}}
+	late := now.Add(testRules.SnowballsDuration)
+	if reply := fight.Move(testRules, GrinchMove{Phase: GrinchSnowballs, Member: "alice", RequestID: "late", At: late}); reply != "This part of the fight has ended." || fight.HP != testRules.SnowballsBossHP+100 {
+		t.Fatalf("a click after the timer = %q, HP %d, want it refused", reply, fight.HP)
+	}
+	if !fight.Advance(testRules, late) || fight.Phase != GrinchEscaped || !fight.EndedAt.Equal(late) {
+		t.Fatalf("the Grinch did not win when the timer ran out: %+v", fight)
+	}
+	// Reaching the milestone in time moves on, and the next timer starts from that click.
+	ontime := Grinch{ID: "fight", Phase: GrinchSnowballs, StartedAt: now, HP: testRules.SnowballsBossHP + 100,
+		Joined: map[string]bool{"alice": true}, Accepted: map[string]bool{}, PlayerDamage: map[string]int{}, DamageDealt: map[string]GrinchDamage{}}
+	click := now.Add(testRules.SnowballsDuration - time.Second)
+	ontime.Move(testRules, GrinchMove{Phase: GrinchSnowballs, Member: "alice", RequestID: "ontime", At: click})
+	if ontime.Phase != GrinchDefense || !ontime.Deadline(testRules).Equal(click.Add(testRules.FightDuration)) {
+		t.Fatalf("the milestone did not start the next timer: %+v", ontime)
+	}
+	// A longer timer can be tuned.
+	longer := testRules
+	longer.SnowballsDuration = 5 * time.Minute
+	slow := Grinch{ID: "fight", Phase: GrinchSnowballs, StartedAt: now, HP: 10000}
+	if slow.Advance(longer, now.Add(4*time.Minute)) || !slow.Advance(longer, now.Add(5*time.Minute)) || slow.Phase != GrinchEscaped {
+		t.Fatalf("tuned timer = %+v", slow)
+	}
+}
+
+func TestGrinchAnyoneCanTakePartAfterTheFightStarted(t *testing.T) {
+	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
+	rules := testRules
+	fight := Grinch{ID: "f", Phase: GrinchSnowballs, StartedAt: now, HP: rules.SnowballsBossHP + 2*rules.SnowballDamage,
+		Joined: map[string]bool{"alice": true}, Accepted: map[string]bool{}, PlayerDamage: map[string]int{}, DamageDealt: map[string]GrinchDamage{}}
+	hit := func(member, request string, phase GrinchPhase, at time.Time) string {
+		return fight.Move(rules, GrinchMove{Phase: phase, Member: member, RequestID: request, At: at, NextBoard: 0b0101, DefenseRound: fight.DefenseRound})
+	}
+
+	// A player who never pressed Start attacks and is in the fight.
+	hit("bob", "1", GrinchSnowballs, now)
+	if !fight.Joined["bob"] || fight.HP != rules.SnowballsBossHP+rules.SnowballDamage {
+		t.Fatalf("the attack of a new player: HP %d, players %v", fight.HP, fight.Joined)
+	}
+	// They count when the defense phase is sized, and their actions are scored.
+	hit("carol", "2", GrinchSnowballs, now)
+	if fight.Phase != GrinchDefense || fight.DefensePlayers != 3 || fight.DamageDealt["carol"].Hundredths != rules.SnowballDamage {
+		t.Fatalf("defense = %s with %d players, carol dealt %+v", fight.Phase, fight.DefensePlayers, fight.DamageDealt["carol"])
+	}
+	// A player who arrives during the defense phase takes part too and can be hit.
+	hit("dave", "3", GrinchDefense, now) // Slot 0 of the board is safe.
+	if !fight.Joined["dave"] || fight.Defenses != 1 {
+		t.Fatalf("a player who arrived in the defense phase: players %v, defenses %d", fight.Joined, fight.Defenses)
+	}
+	// An action that is refused does not put anyone in the fight.
+	fight.Move(rules, GrinchMove{Phase: GrinchDefense, Member: "erin", RequestID: "4", At: now, DefenseRound: fight.DefenseRound + 5})
+	fight.Move(rules, GrinchMove{Phase: GrinchSnowballs, Member: "erin", RequestID: "5", At: now})
+	if fight.Joined["erin"] || fight.Accepted["4"] || fight.Accepted["5"] {
+		t.Fatalf("a refused action registered the player: %v", fight.Joined)
+	}
+	// Everyone who took part gets the loss reward.
+	fight.Phase, fight.EndedAt = GrinchEscaped, now
+	rewards := fight.LossRewards(rules)
+	if len(rewards) != 4 || rewards["dave"].YellowSnowballs != 4*rules.LossYellowPerGroupMember {
+		t.Fatalf("loss rewards = %+v, want the four players who took part", rewards)
+	}
+}
+
+func TestGrinchDamageLeaderboardShowsDamageAndOnlyTheFinalAttackAwardsPoints(t *testing.T) {
+	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
+	rules := testRules
+	fight := Grinch{ID: "f", Phase: GrinchSnowballs, StartedAt: now, TimedAt: now, HP: rules.SnowballsBossHP + rules.SnowballDamage,
+		Joined: map[string]bool{"alice": true}, Accepted: map[string]bool{}, PlayerDamage: map[string]int{}, DamageDealt: map[string]GrinchDamage{}}
+	play := func(phase GrinchPhase, request string, slot int) {
+		fight.Move(rules, GrinchMove{Phase: phase, Member: "alice", RequestID: request, At: now, Slot: slot, NextBoard: 0b01, FinalBoard: 0b10,
+			DefenseRound: fight.DefenseRound, FinalRound: fight.FinalRound})
+	}
+
+	// The snowball, defense, and attack phases award no points.
+	play(GrinchSnowballs, "snowball", 0)
+	play(GrinchDefense, "defense", 0)
+	play(GrinchAttack, "attack", 0)
+	base := fight.DamageDealt["alice"]
+	if base.Points != 0 || base.Hundredths != rules.SnowballDamage+rules.AttackHeavyDamage || base.Defenses != 1 {
+		t.Fatalf("after the first phases: %+v, want damage from the snowball, the defense, and the attack, and no points", base)
+	}
+	// Each final hit removes FinalHitDamage and awards FinalHitScore. The leaderboard counts the damage.
+	fight.Phase, fight.HP, fight.FinalRound, fight.FinalBoard = GrinchFinalAttack, 500, 1, 0b10
+	for i := range 3 {
+		play(GrinchFinalAttack, "final"+string(rune('a'+i)), 0)
+	}
+	got := fight.DamageDealt["alice"]
+	if got.Hundredths != base.Hundredths+3*rules.FinalHitDamage || got.Points != 3*rules.FinalHitScore || rules.FinalHitScore == rules.FinalHitDamage {
+		t.Fatalf("after three final hits: %+v, want damage %d and points %d", got, base.Hundredths+3*rules.FinalHitDamage, 3*rules.FinalHitScore)
+	}
+	wantDamage := float64(got.Hundredths*fight.DefensePlayers+got.Defenses*rules.DefenseTotal()) / (100 * float64(fight.DefensePlayers))
+	if board := fight.Leaderboard(rules); len(board) != 1 || board[0].Points != wantDamage {
+		t.Fatalf("damage leaderboard = %+v, want only the damage, %v", board, wantDamage)
+	}
+	// The last hit removes only the HP the Grinch has left, but still awards the points.
+	fight.HP = 30
+	play(GrinchFinalAttack, "last", 0)
+	if fight.HP != 0 || fight.Phase != GrinchWon || fight.DamageDealt["alice"].Hundredths != base.Hundredths+3*rules.FinalHitDamage+30 ||
+		fight.DamageDealt["alice"].Points != 4*rules.FinalHitScore {
+		t.Fatalf("the killing hit: HP %d, phase %s, %+v", fight.HP, fight.Phase, fight.DamageDealt["alice"])
+	}
+}

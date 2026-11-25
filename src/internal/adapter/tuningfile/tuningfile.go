@@ -156,13 +156,15 @@ type document struct {
 			CooldownAfterFight duration `yaml:"cooldown_after_fight"`
 		} `yaml:"spawn"`
 		Registration struct {
+			StartWindow       duration `yaml:"start_window"`
 			Duration          duration `yaml:"duration"`
 			EarlyStartPlayers whole    `yaml:"early_start_players"`
 		} `yaml:"registration"`
 		FightDuration duration `yaml:"fight_duration"`
 		Snowballs     struct {
-			Damage      float64 `yaml:"damage"`
-			BossHPAfter float64 `yaml:"boss_hp_after"`
+			Duration    duration `yaml:"duration"`
+			Damage      float64  `yaml:"damage"`
+			BossHPAfter float64  `yaml:"boss_hp_after"`
 		} `yaml:"snowballs"`
 		Defense struct {
 			BossHPAfter       float64 `yaml:"boss_hp_after"`
@@ -222,8 +224,10 @@ func defaultsDocument() document {
 	g := d.Grinch
 	doc.Grinch.Spawn.CheckInterval, doc.Grinch.Spawn.ChancePercent = duration(g.SpawnCheckInterval), whole(g.SpawnChancePercent)
 	doc.Grinch.Spawn.ActivityWindow, doc.Grinch.Spawn.CooldownAfterFight = duration(g.ActivityWindow), duration(g.CooldownAfterFight)
+	doc.Grinch.Registration.StartWindow = duration(g.StartWindow)
 	doc.Grinch.Registration.Duration, doc.Grinch.Registration.EarlyStartPlayers = duration(g.RegistrationDuration), whole(g.EarlyStartPlayers)
 	doc.Grinch.FightDuration = duration(g.FightDuration)
+	doc.Grinch.Snowballs.Duration = duration(g.SnowballsDuration)
 	doc.Grinch.Snowballs.Damage, doc.Grinch.Snowballs.BossHPAfter = percent(g.SnowballDamage), percent(g.SnowballsBossHP)
 	doc.Grinch.Defense.BossHPAfter, doc.Grinch.Defense.MissHPLossPercent = percent(g.DefenseBossHP), whole(g.DefenseMissHPLoss)
 	doc.Grinch.Attack.Damage, doc.Grinch.Attack.HeavyDamage = percent(g.AttackDamage), percent(g.AttackHeavyDamage)
@@ -268,9 +272,11 @@ func (doc document) tuning() (core.Tuning, error) {
 		SpawnChancePercent:       int(g.Spawn.ChancePercent),
 		ActivityWindow:           time.Duration(g.Spawn.ActivityWindow),
 		CooldownAfterFight:       time.Duration(g.Spawn.CooldownAfterFight),
+		StartWindow:              time.Duration(g.Registration.StartWindow),
 		RegistrationDuration:     time.Duration(g.Registration.Duration),
 		EarlyStartPlayers:        int(g.Registration.EarlyStartPlayers),
 		FightDuration:            time.Duration(g.FightDuration),
+		SnowballsDuration:        time.Duration(g.Snowballs.Duration),
 		SnowballDamage:           hundredths("grinch.snowballs.damage", g.Snowballs.Damage),
 		SnowballsBossHP:          hundredths("grinch.snowballs.boss_hp_after", g.Snowballs.BossHPAfter),
 		DefenseBossHP:            hundredths("grinch.defense.boss_hp_after", g.Defense.BossHPAfter),

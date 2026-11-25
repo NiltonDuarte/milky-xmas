@@ -233,7 +233,7 @@ func logInteractionError(id, action string, err error) {
 		// The callback and webhook URLs contain the interaction token.
 		err = urlErr.Err
 	}
-	log.Printf("Discord interaction %s could not %s: %v", id, action, err)
+	log.Printf("Discord interaction %s could not %s after %s: %v", id, action, interactionAge(id), err)
 }
 
 func replyChannelDenied(session *discordgo.Session, interaction *discordgo.Interaction, text string) {
@@ -245,4 +245,15 @@ func replyChannelDenied(session *discordgo.Session, interaction *discordgo.Inter
 	}, discordgo.WithContext(ctx)); err != nil {
 		logInteractionError(interaction.ID, "show channel restriction", err)
 	}
+}
+
+// interactionAge is how long ago Discord created the interaction. Discord wants the first response
+// within three seconds of that moment, so the age of a failed response shows whether the time went
+// into delivery, our own work, or the response itself.
+func interactionAge(id string) time.Duration {
+	created, err := discordgo.SnowflakeTimestamp(id)
+	if err != nil {
+		return 0
+	}
+	return time.Since(created).Round(time.Millisecond)
 }

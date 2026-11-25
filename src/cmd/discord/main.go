@@ -14,6 +14,7 @@ import (
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/discord"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/giftstore"
+	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/logfile"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/tuningfile"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
@@ -36,6 +37,11 @@ func main() {
 	if path == "" {
 		log.Fatal("MILKY_GIFT_DB is required")
 	}
+	closeLog, err := logfile.Setup(strings.TrimSpace(os.Getenv(logfile.EnvVar)))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer closeLog()
 	tuning, err := tuningfile.FromEnv()
 	if err != nil {
 		log.Fatal(err)
@@ -44,7 +50,9 @@ func main() {
 	defer stop()
 
 	if err := run(ctx, token, guildID, path, tuning); err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		closeLog()
+		os.Exit(1)
 	}
 }
 

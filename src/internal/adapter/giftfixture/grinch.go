@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 	"maps"
+	"slices"
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
@@ -44,10 +45,12 @@ func (store *Store) SaveGrinch(ctx context.Context, scope string, version int64,
 
 func cloneGrinch(state core.Grinch) core.Grinch {
 	state.Joined = maps.Clone(state.Joined)
-	state.Participants = maps.Clone(state.Participants)
 	state.PlayerDamage = maps.Clone(state.PlayerDamage)
 	state.DamageDealt = maps.Clone(state.DamageDealt)
 	state.Gifts = maps.Clone(state.Gifts)
+	state.Snowballs = maps.Clone(state.Snowballs)
+	state.PlayerFeed = slices.Clone(state.PlayerFeed)
+	state.BossFeed = slices.Clone(state.BossFeed)
 	state.Accepted = maps.Clone(state.Accepted)
 	return state
 }

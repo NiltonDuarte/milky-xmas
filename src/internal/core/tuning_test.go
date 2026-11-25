@@ -32,6 +32,8 @@ func TestTuningValidate(t *testing.T) {
 		{"rain coal", func(x *Tuning) { x.Drops.GiftRain.CoalPercent = 101 }, []string{"drops.gift_rain.coal_percent"}},
 		{"spawn chance", func(x *Tuning) { x.Grinch.SpawnChancePercent = -1 }, []string{"grinch.spawn.chance_percent"}},
 		{"spawn interval", func(x *Tuning) { x.Grinch.SpawnCheckInterval = 0 }, []string{"grinch.spawn.check_interval"}},
+		{"start window", func(x *Tuning) { x.Grinch.StartWindow = 0 }, []string{"grinch.registration.start_window"}},
+		{"snowballs duration", func(x *Tuning) { x.Grinch.SnowballsDuration = 0 }, []string{"grinch.snowballs.duration"}},
 		{"early start", func(x *Tuning) { x.Grinch.EarlyStartPlayers = 0 }, []string{"grinch.registration.early_start_players"}},
 		{"defense above snowballs", func(x *Tuning) { x.Grinch.DefenseBossHP = 8000 },
 			[]string{"boss HP milestones must fall from 100 toward 0"}},
@@ -129,7 +131,7 @@ func TestGrinchFightWithChangedTuning(t *testing.T) {
 
 	start := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
 	fight := Grinch{ID: "fight", Phase: GrinchLobby, HP: GrinchBossHP, StartedAt: start,
-		Joined: map[string]bool{}, Participants: map[string]bool{}, PlayerDamage: map[string]int{}, Accepted: map[string]bool{},
+		Joined: map[string]bool{}, PlayerDamage: map[string]int{}, Accepted: map[string]bool{},
 		DamageDealt: map[string]GrinchDamage{}}
 	sequence := 0
 	move := func(phase GrinchPhase, slot int, member string, at time.Time) string {
@@ -196,7 +198,7 @@ func TestGrinchFightWithChangedTuning(t *testing.T) {
 	if reply := move(GrinchFinalAttack, 0, "b", at); reply != "🎁 You earned 2 gift points!" || fight.Gifts["b"] != 2 {
 		t.Errorf("gift reply = %q, %+v", reply, fight.Gifts)
 	}
-	if reply := move(GrinchFinalAttack, 1, "b", at); reply != "Final attack hit! You earned 3 damage points." {
+	if reply := move(GrinchFinalAttack, 1, "b", at); reply != "Final attack hit for 5 HP." {
 		t.Errorf("final hit reply = %q", reply)
 	}
 	if reply := move(GrinchFinalAttack, GrinchSnowballSlot, "b", at); reply != "❄️ You earned 3 Snowballs!" {

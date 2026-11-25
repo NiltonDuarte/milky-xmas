@@ -4,7 +4,7 @@ Referência de balanceamento. Os valores abaixo são os **padrões**. Para ajust
 
 Arquivos de origem: `src/internal/core/tuning.go` (padrões e validação), `core/grinch.go` (regras), `core/grinch_rewards.go` (recompensas), `core/grinch_scores.go` (placar), `app/grinch.go` (sorteios e orquestração), `adapter/discord/grinch.go` (botões e mensagem).
 
-> Os textos da luta que citam um número (por exemplo "75 HP", "2 damage points" e "n/3 to start early") seguem o valor configurado.
+> Os textos da luta que citam um número (por exemplo "75 HP", "1 damage" e "n/3 to start early") seguem o valor configurado.
 
 ## 1. Aparecimento do boss
 
@@ -18,21 +18,23 @@ Arquivos de origem: `src/internal/core/tuning.go` (padrões e validação), `cor
 | Só uma luta por vez | sim, enquanto houver uma ativa | `CanSpawn` |
 | Invocação por moderador (`/grinch summon`) | ignora a chance, a atividade e os 30 min, mas não cria uma segunda luta | `CanSpawn` |
 
-## 2. Inscrição (lobby)
+## 2. Start (lobby)
+
+O anúncio tem um botão **Start**. O primeiro clique começa a contagem regressiva, e quem aperta Start entra na luta.
 
 | Variável | Valor | Onde |
 | --- | --- | --- |
-| Tempo para se inscrever | **1 min** (`grinch.registration.duration`) | `core/grinch.go` |
-| Início antecipado | com **3 inscritos** a luta começa na hora (`grinch.registration.early_start_players`) | `Move`, fase lobby |
-| Ninguém se inscreve | a luta é cancelada, sem recompensa | `Advance` |
-| Entrar depois | permitido até o fim do relógio de combate (a luta já começou) | `CanJoin` |
+| Tempo para o primeiro Start | **1 min** depois do anúncio (`grinch.registration.start_window`). Sem clique, a luta é cancelada, sem recompensa | `LobbyDeadline`, `Advance` |
+| Contagem regressiva | **1 min** a partir do primeiro Start (`grinch.registration.duration`) | `LobbyDeadline`, `Move` |
+| Início antecipado | com **3 jogadores** que apertaram Start a luta começa na hora (`grinch.registration.early_start_players`) | `Move`, fase lobby |
+| Participar | não existe "entrar na luta": com a luta em andamento qualquer pessoa pode clicar nos botões de ataque e passa a participar no primeiro clique aceito. Um clique recusado não inscreve ninguém | `Move` |
 
 ## 3. Fases e dano
 
 ### Fase 1: Snowballs (☃️ Attack)
 - Cada clique de um inscrito tira **1% de HP** do boss (`grinch.snowballs.damage`).
 - Termina quando o boss chega a **75%** (`grinch.snowballs.boss_hp_after`), ou seja, depois de **25 cliques** no total, de qualquer jogador.
-- **Não há relógio** nesta fase.
+- O grupo tem **2 min** para chegar a 75%, contados do início do combate (`grinch.snowballs.duration`). Se o tempo acabar antes, o **boss vence** (a luta termina como fuga, com as recompensas de derrota).
 - Quando chega a 75%, o relógio de **1 min** começa (`TimedAt`) e a fase 2 abre. O número de jogadores nesse instante fica registrado (`DefensePlayers`).
 
 ### Relógio de combate
@@ -56,7 +58,7 @@ Arquivos de origem: `src/internal/core/tuning.go` (padrões e validação), `cor
 
 ### Fase 4: Ataque final (⚔️ / 🎁 / ❄️)
 - Uma linha de 5 botões: 4 casas que são ⚔️ ou 🎁 (sorteadas a cada clique, sempre com pelo menos um de cada) e um botão fixo ❄️ no fim.
-- **⚔️:** tira **1%** de HP do boss (`grinch.final_attack.hit_damage`) e dá **2 pontos de dano** ao jogador (`hit_score`).
+- **⚔️:** tira **1%** de HP do boss (`grinch.final_attack.hit_damage`) e dá **2 pontos** ao jogador (`hit_score`). Os pontos ficam guardados por jogador para uso futuro e **não aparecem no ranking de dano**, que mostra só o dano causado. **Só o ataque final dá pontos**: snowball, defesa e ataque não dão.
 - **🎁:** não tira HP. Dá **1 a 5 pontos de presente** (sorteio uniforme, `gift_points.min` e `max`) ao jogador.
 - **❄️:** não tira HP. Dá **1 Snowball** no inventário do jogador na hora (`snowballs_reward`).
 - O boss está com 5%, então **5 cliques em ⚔️** (de qualquer jogador) o derrotam. Isso é a **vitória**.
@@ -125,7 +127,7 @@ Arquivo: [`tuning.yaml`](../tuning.yaml), apontado por `MILKY_TUNING_CONFIG` (Di
 | Dano do 🧊 | `grinch.attack.heavy_damage` | `5.25` |
 | HP do boss ao fim do ataque | `grinch.attack.boss_hp_after` | `5` |
 | Dano do ⚔️ final | `grinch.final_attack.hit_damage` | `1` |
-| Pontos de dano do ⚔️ final | `grinch.final_attack.hit_score` | `2` |
+| Pontos do ⚔️ final (guardados) | `grinch.final_attack.hit_score` | `2` |
 | Pontos de presente do 🎁 | `grinch.final_attack.gift_points.min` e `max` | `1` e `5` |
 | Snowballs do ❄️ final | `grinch.final_attack.snowballs_reward` | `1` |
 | Coal por inscrito na fuga ou derrota | `grinch.loss_rewards.coal` | `1` |

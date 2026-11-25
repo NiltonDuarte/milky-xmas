@@ -93,9 +93,9 @@ func fixtureSummary(rules core.GrinchRules, state core.Grinch) string {
 	fmt.Fprintf(&message, "%s\n%s", grinchtext.Health(state.Health(rules)), state.Phase)
 	switch state.Phase {
 	case core.GrinchLobby:
-		fmt.Fprintf(&message, "\n🎅 %d joined", len(state.Joined))
+		fmt.Fprintf(&message, "\n🎅 %d ready", len(state.Joined))
 		if !state.Joined[fixtureUserID] {
-			fmt.Fprint(&message, " · /grinch join")
+			fmt.Fprint(&message, " · /grinch join to start")
 		}
 	case core.GrinchSnowballs:
 		fmt.Fprint(&message, "\n/grinch hit 1")
@@ -127,22 +127,36 @@ func fixtureSummary(rules core.GrinchRules, state core.Grinch) string {
 		fmt.Fprint(&message, "\n/grinch hit <tile>")
 	}
 	if state.EndedAt.IsZero() && state.Phase != core.GrinchLobby && state.Joined != nil {
-		fmt.Fprintf(&message, "\n🎅 %d joined", len(state.Joined))
+		mention := func(userID string) string { return userID }
+		if lines := grinchtext.BossLines(state.BossFeed, mention, grinchtext.BossEvents); len(lines) > 0 {
+			fmt.Fprint(&message, "\n\n👽 The Grinch\n"+strings.Join(lines, "\n"))
+		}
+		if lines := grinchtext.PlayerLines(state.PlayerFeed, mention, grinchtext.PlayerEvents); len(lines) > 0 {
+			fmt.Fprint(&message, "\n\n⚔️ The players\n"+strings.Join(lines, "\n"))
+		}
+		fmt.Fprintf(&message, "\n\n🎅 %d players", len(state.Joined))
 		if !state.Joined[fixtureUserID] {
 			fmt.Fprint(&message, " · /grinch join")
 		}
 	}
 	if !state.EndedAt.IsZero() && state.Phase != core.GrinchCancelled {
-		if scores := state.Leaderboard(rules); len(scores) > 0 {
+		if scores := core.WithPoints(state.Leaderboard(rules)); len(scores) > 0 {
 			fmt.Fprint(&message, "\n\nDamage leaderboard")
 			for index, score := range scores {
-				fmt.Fprintf(&message, "\n%d. %s — %.2f pts", index+1, score.Member, score.Points)
+				fmt.Fprintf(&message, "\n%d. %s — %.2f dmg", index+1, score.Member, score.Points)
 			}
 		}
-		if scores := state.GiftLeaderboard(); len(scores) > 0 {
-			fmt.Fprint(&message, "\n\nGift leaderboard")
-			for index, score := range scores {
-				fmt.Fprintf(&message, "\n%d. %s — %.0f pts", index+1, score.Member, score.Points)
+		for _, board := range []struct {
+			title  string
+			unit   string
+			scores []core.GrinchScore
+		}{{"Gift leaderboard", "pts", core.WithPoints(state.GiftLeaderboard())}, {"Snowball leaderboard", "snowballs", core.WithPoints(state.SnowballLeaderboard())}} {
+			if len(board.scores) == 0 {
+				continue
+			}
+			fmt.Fprint(&message, "\n\n"+board.title)
+			for index, score := range board.scores {
+				fmt.Fprintf(&message, "\n%d. %s — %.0f %s", index+1, score.Member, score.Points, board.unit)
 			}
 		}
 	}

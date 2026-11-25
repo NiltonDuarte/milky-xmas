@@ -146,3 +146,26 @@ func TestParseTreeNumbers(t *testing.T) {
 		}
 	}
 }
+
+func TestParseRegistrationStartWindow(t *testing.T) {
+	got, err := Parse([]byte("grinch:\n  registration:\n    start_window: 5m\n    duration: 90s\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Grinch.StartWindow != 5*time.Minute || got.Grinch.RegistrationDuration != 90*time.Second || got.Grinch.EarlyStartPlayers != 3 {
+		t.Fatalf("registration = %+v", got.Grinch)
+	}
+	if _, err := Parse([]byte("grinch:\n  registration:\n    start_window: 0s\n")); err == nil || !strings.Contains(err.Error(), "grinch.registration.start_window") {
+		t.Fatalf("zero start window error = %v", err)
+	}
+}
+
+func TestParseSnowballsDuration(t *testing.T) {
+	got, err := Parse([]byte("grinch:\n  snowballs:\n    duration: 3m\n"))
+	if err != nil || got.Grinch.SnowballsDuration != 3*time.Minute || got.Grinch.SnowballsBossHP != 7500 {
+		t.Fatalf("snowballs = %+v, %v", got.Grinch, err)
+	}
+	if _, err := Parse([]byte("grinch:\n  snowballs:\n    duration: 0s\n")); err == nil || !strings.Contains(err.Error(), "grinch.snowballs.duration") {
+		t.Fatalf("zero duration error = %v", err)
+	}
+}

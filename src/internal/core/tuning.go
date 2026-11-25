@@ -107,6 +107,9 @@ type GrinchRules struct {
 	ActivityWindow     time.Duration
 	CooldownAfterFight time.Duration
 
+	// StartWindow is how long the announcement waits for the first Start press before the fight is
+	// cancelled. RegistrationDuration is the countdown that begins at that press.
+	StartWindow          time.Duration
 	RegistrationDuration time.Duration
 	EarlyStartPlayers    int
 	// FightDuration is the combat clock that starts when the boss reaches SnowballsBossHP.
@@ -114,9 +117,11 @@ type GrinchRules struct {
 
 	// SnowballsBossHP, DefenseBossHP, and AttackBossHP are the boss HP at the end of each
 	// phase. The final attack ends at zero.
-	SnowballDamage  int
-	SnowballsBossHP int
-	DefenseBossHP   int
+	// SnowballsDuration is how long the group has to reach SnowballsBossHP. If it runs out the Grinch wins.
+	SnowballsDuration time.Duration
+	SnowballDamage    int
+	SnowballsBossHP   int
+	DefenseBossHP     int
 	// DefenseMissHPLoss is the share, in percent, of a player's maximum HP that a miss costs.
 	DefenseMissHPLoss int
 	AttackDamage      int
@@ -124,7 +129,8 @@ type GrinchRules struct {
 	AttackBossHP      int
 
 	FinalHitDamage int
-	// FinalHitScore is the damage points a final hit awards, regardless of its HP.
+	// FinalHitScore is the score points a final hit awards, regardless of the HP it removes. The
+	// points are kept for each player and no leaderboard shows them yet.
 	FinalHitScore       int
 	GiftPointsMin       int
 	GiftPointsMax       int
@@ -189,9 +195,11 @@ func DefaultTuning() Tuning {
 			SpawnChancePercent:       10,
 			ActivityWindow:           10 * time.Minute,
 			CooldownAfterFight:       30 * time.Minute,
+			StartWindow:              GrinchJoinDuration,
 			RegistrationDuration:     GrinchJoinDuration,
 			EarlyStartPlayers:        3,
 			FightDuration:            GrinchDuration,
+			SnowballsDuration:        2 * time.Minute,
 			SnowballDamage:           100,
 			SnowballsBossHP:          7500,
 			DefenseBossHP:            4500,
@@ -274,9 +282,11 @@ func (tuning Tuning) Validate() error {
 	percent("grinch.spawn.chance_percent", g.SpawnChancePercent)
 	atLeastZero("grinch.spawn.activity_window", g.ActivityWindow)
 	atLeastZero("grinch.spawn.cooldown_after_fight", g.CooldownAfterFight)
+	positive("grinch.registration.start_window", g.StartWindow)
 	positive("grinch.registration.duration", g.RegistrationDuration)
 	atLeast("grinch.registration.early_start_players", g.EarlyStartPlayers, 1)
 	positive("grinch.fight_duration", g.FightDuration)
+	positive("grinch.snowballs.duration", g.SnowballsDuration)
 
 	hundredths := func(path string, value int) {
 		if value <= 0 {
