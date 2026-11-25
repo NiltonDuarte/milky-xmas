@@ -23,28 +23,27 @@ func (recipient Recipient) canReceiveFrom(sender Member) bool {
 
 const CoalItem = "coal"
 
-// SendItem returns the increase to the sender's Good deeds for gifts or Bad deeds for Coal.
-func (service Service) SendItem(ctx context.Context, sender Member, recipient Recipient, item string, quantity int64) (int, error) {
+// SendItem sends gifts, which move the sender's aura toward good, or Coal, which moves it
+// toward bad.
+func (service Service) SendItem(ctx context.Context, sender Member, recipient Recipient, item string, quantity int64) error {
 	if item != CoalItem {
 		return service.SendGift(ctx, sender, recipient, core.GiftRarity(item), quantity)
 	}
-	transfer, err := service.transfer(ctx, sender, recipient, func(from, to core.GiftRecord) (core.GiftRecord, core.GiftRecord, error) {
+	_, err := service.transfer(ctx, sender, recipient, func(from, to core.GiftRecord) (core.GiftRecord, core.GiftRecord, error) {
 		return core.TransferCoal(from, to, quantity)
 	})
-	return transfer.auraIncrease.Bad, err
+	return err
 }
 
-// SendGift returns the Good deeds increase from the committed transfer.
-func (service Service) SendGift(ctx context.Context, sender Member, recipient Recipient, rarity core.GiftRarity, quantity int64) (int, error) {
-	transfer, err := service.transfer(ctx, sender, recipient, func(from, to core.GiftRecord) (core.GiftRecord, core.GiftRecord, error) {
+func (service Service) SendGift(ctx context.Context, sender Member, recipient Recipient, rarity core.GiftRarity, quantity int64) error {
+	_, err := service.transfer(ctx, sender, recipient, func(from, to core.GiftRecord) (core.GiftRecord, core.GiftRecord, error) {
 		return core.TransferGift(from, to, rarity, quantity)
 	})
-	return transfer.auraIncrease.Good, err
+	return err
 }
 
 type inventoryTransfer struct {
-	auraIncrease core.Aura
-	recipient    core.Inventory
+	recipient core.Inventory
 }
 
 func (service Service) transfer(ctx context.Context, sender Member, recipient Recipient, decide func(core.GiftRecord, core.GiftRecord) (core.GiftRecord, core.GiftRecord, error)) (inventoryTransfer, error) {
@@ -72,10 +71,7 @@ func (service Service) transfer(ctx context.Context, sender Member, recipient Re
 			return inventoryTransfer{}, fmt.Errorf("save inventory transfer: %w", err)
 		}
 		if saved {
-			return inventoryTransfer{
-				auraIncrease: core.Aura{Good: nextFrom.Aura.Good - from.Aura.Good, Bad: nextFrom.Aura.Bad - from.Aura.Bad},
-				recipient:    nextTo.Inventory,
-			}, nil
+			return inventoryTransfer{recipient: nextTo.Inventory}, nil
 		}
 	}
 	return inventoryTransfer{}, ctx.Err()

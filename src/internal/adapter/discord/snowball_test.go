@@ -132,11 +132,11 @@ func TestThrownSnowballInteraction(t *testing.T) {
 			if calls != len(paths) || err != nil || inventory != wantInventory {
 				t.Fatalf("throw requests = %d, recipient inventory = %+v, %v", calls, inventory, err)
 			}
-			wantBad := 0
+			var wantAura core.Aura
 			if step.yellow {
-				wantBad = 5
+				wantAura = -5
 			}
-			if aura, err := service.CheckAura(t.Context(), sender); err != nil || aura.Bad != wantBad {
+			if aura, err := service.CheckAura(t.Context(), sender); err != nil || aura != wantAura {
 				t.Fatalf("sender aura = %+v, %v", aura, err)
 			}
 			if inventory, err := service.ViewInventory(t.Context(), sender); err != nil || inventory != (core.Inventory{}) {

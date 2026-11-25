@@ -11,10 +11,10 @@ import (
 func TestThrowSnowball(t *testing.T) {
 	alice := Member{ServerID: "guild", UserID: "alice"}
 	bob := Member{ServerID: "guild", UserID: "bob"}
-	aliceStart := core.GiftRecord{Inventory: core.Inventory{Snowballs: 2, Coal: 1}, Aura: core.Aura{Bad: 10}}
+	aliceStart := core.GiftRecord{Inventory: core.Inventory{Snowballs: 2, Coal: 1}, Aura: -10}
 	store := &giftStoreFixture{records: map[Member]core.GiftRecord{
 		alice: aliceStart,
-		bob:   {Inventory: core.Inventory{Epic: 2, Coal: 3}, Aura: core.Aura{Good: 20}},
+		bob:   {Inventory: core.Inventory{Epic: 2, Coal: 3}, Aura: 20},
 	}}
 	service := Service{gifts: store}
 	for _, target := range []Recipient{

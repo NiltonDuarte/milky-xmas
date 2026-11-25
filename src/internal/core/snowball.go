@@ -41,6 +41,6 @@ func TransferYellowSnowball(sender, recipient GiftRecord) (GiftRecord, GiftRecor
 	}
 	sender.Inventory.YellowSnowballs--
 	recipient.Inventory.YellowSnowballs++
-	sender.Aura.Bad = increaseAura(sender.Aura.Bad, 1, 5)
+	sender.Aura = sender.Aura.Move(1, -5)
 	return sender, recipient, nil
 }

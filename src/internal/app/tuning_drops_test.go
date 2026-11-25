@@ -133,9 +133,9 @@ func TestRainCoalAndBoostOddsAreTuned(t *testing.T) {
 	tuning.Drops.RandomActiveOneIn = 1
 	drops, store = tunedDrops(t, &now, tuning, func(int) int { return 0 })
 	boosted := Member{ServerID: "g", UserID: "good"}
-	store.records[boosted] = core.GiftRecord{Aura: core.Aura{Good: 10}}
+	store.records[boosted] = core.GiftRecord{Aura: 10}
 	plain := Member{ServerID: "g", UserID: "plain"}
-	store.records[plain] = core.GiftRecord{Aura: core.Aura{Good: 9}}
+	store.records[plain] = core.GiftRecord{Aura: 9}
 	drop := drops.Observe("g", "c")
 	for slot, tt := range []struct {
 		member Member

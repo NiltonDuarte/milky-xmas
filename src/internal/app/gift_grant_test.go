@@ -21,7 +21,7 @@ func TestGiveGift(t *testing.T) {
 	}
 	items, _ := service.ViewInventory(t.Context(), player.Member)
 	aura, _ := service.CheckAura(t.Context(), player.Member)
-	if items.Rare != 5 || aura != (core.Aura{}) {
+	if items.Rare != 5 || aura != 0 {
 		t.Fatalf("recipient = %+v %+v", items, aura)
 	}
 	if modItems, _ := service.ViewInventory(t.Context(), mod); modItems != (core.Inventory{}) {

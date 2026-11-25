@@ -8,7 +8,7 @@ import (
 )
 
 func TestGrantGift(t *testing.T) {
-	base := GiftRecord{Inventory: Inventory{Normal: 1, Coal: 4}, Aura: Aura{Bad: 5, Good: 7}, LastClaim: time.Unix(10, 0)}
+	base := GiftRecord{Inventory: Inventory{Normal: 1, Coal: 4}, Aura: 2, LastClaim: time.Unix(10, 0)}
 	full := GiftRecord{Inventory: Inventory{Epic: math.MaxInt64}}
 	for _, test := range []struct {
 		name     string

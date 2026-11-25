@@ -49,9 +49,21 @@ func (inventory *Inventory) balance(rarity GiftRarity) *int64 {
 	}
 }
 
-type Aura struct {
-	Bad  int
-	Good int
+// Aura is where a player stands on one scale: negative values are bad deeds and positive
+// values are good deeds. A new player is neutral at zero.
+type Aura int
+
+const (
+	AuraMin Aura = -50
+	AuraMax Aura = 50
+)
+
+// Move shifts the aura by points for each of quantity items, toward good when points is
+// positive and toward bad when it is negative, without leaving the scale.
+func (aura Aura) Move(quantity int64, points int) Aura {
+	// Twenty items at five points or more each already cross the whole scale.
+	shift := Aura(min(quantity, 20)) * Aura(points)
+	return max(AuraMin, min(AuraMax, aura+shift))
 }
 
 type GiftRecord struct {

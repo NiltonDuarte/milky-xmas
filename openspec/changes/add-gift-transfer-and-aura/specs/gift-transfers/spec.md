@@ -36,13 +36,13 @@ The transferable inventory SHALL track normal, rare, and epic gifts per player a
 
 ### Requirement: Send a gift
 
-Both interfaces SHALL support `/send gift` with a different recipient in the same server, one of the three rarities, and a positive integer quantity. A successful send SHALL debit and credit the same rarity and quantity and increase the sender's Good deeds by 5, 10, or 30 percentage points per normal, rare, or epic gift, capped at 100%. The reply SHALL show the recipient and the actual Good deeds increase.
+Both interfaces SHALL support `/send gift` with a different recipient in the same server, one of the three rarities, and a positive integer quantity. A successful send SHALL debit and credit the same rarity and quantity and increase the sender's Good deeds by 5, 10, or 30 percentage points per normal, rare, or epic gift, capped at 100%. The reply SHALL name the recipient and say that Good deeds are going up, without a percentage.
 
 #### Scenario: Transfer multiple gifts
 
 - **GIVEN** a player has at least two rare gifts and both players have neutral aura
 - **WHEN** the player sends two rare gifts to the other player
-- **THEN** two rare gifts move between their inventories and the sender sees `Sent 2 🎁rare gifts to Bob. Your 😇 good deeds is 20% more high.` for a recipient named Bob
+- **THEN** two rare gifts move between their inventories and the sender sees `Sent 2 🎁 rare gifts to Bob. Your 😇 good deeds are going up.` for a recipient named Bob
 - **AND** the sender has 20% Good deeds and the recipient remains neutral
 
 #### Scenario: Reject an invalid transfer

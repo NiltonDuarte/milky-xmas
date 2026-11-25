@@ -34,8 +34,8 @@ func (odds RarityOdds) Roll(roll int) GiftRarity {
 // GiftTuning holds the rarity odds shared by the daily claim and the drops.
 type GiftTuning struct {
 	DailyRarity RarityOdds
-	// GoodDeedsThreshold is the Good deeds percentage at which BoostedRarity applies to a
-	// Random Active Drop.
+	// GoodDeedsThreshold is the aura, on the good side of the scale, from which BoostedRarity
+	// applies to a Random Active Drop.
 	GoodDeedsThreshold int
 	BoostedRarity      RarityOdds
 }
@@ -45,10 +45,10 @@ func (tuning GiftTuning) DailyGiftRarity(roll int) GiftRarity {
 	return tuning.DailyRarity.Roll(roll)
 }
 
-// ActiveDropRarity takes a uniform roll in [0, GiftRarityRolls). Players at or above the
-// Good deeds threshold have a better chance of rare and epic gifts.
-func (tuning GiftTuning) ActiveDropRarity(roll, goodDeeds int) GiftRarity {
-	if goodDeeds < tuning.GoodDeedsThreshold {
+// ActiveDropRarity takes a uniform roll in [0, GiftRarityRolls). Players whose aura is at or
+// above the threshold have a better chance of rare and epic gifts.
+func (tuning GiftTuning) ActiveDropRarity(roll int, aura Aura) GiftRarity {
+	if int(aura) < tuning.GoodDeedsThreshold {
 		return tuning.DailyRarity.Roll(roll)
 	}
 	return tuning.BoostedRarity.Roll(roll)
@@ -163,7 +163,7 @@ const (
 	GiftRainMessageRange    = 96
 	GiftRainClaimLimit      = 10
 	RainCoalPercent         = 25
-	GoodDeedsBoostThreshold = 50
+	GoodDeedsBoostThreshold = 25
 	GiftDropLifetime        = 10 * time.Minute
 	GiftRainClaimCooldown   = time.Minute
 
@@ -262,7 +262,9 @@ func (tuning Tuning) Validate() error {
 
 	gifts := tuning.Gifts
 	odds("gifts.daily_rarity", gifts.DailyRarity)
-	percent("gifts.good_deeds_boost.threshold", gifts.GoodDeedsThreshold)
+	if gifts.GoodDeedsThreshold < 0 || gifts.GoodDeedsThreshold > int(AuraMax) {
+		bad("gifts.good_deeds_boost.threshold", "must be between 0 and %d, got %d", AuraMax, gifts.GoodDeedsThreshold)
+	}
 	odds("gifts.good_deeds_boost.rarity", gifts.BoostedRarity)
 
 	drops := tuning.Drops

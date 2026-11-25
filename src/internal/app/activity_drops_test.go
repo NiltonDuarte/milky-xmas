@@ -177,8 +177,8 @@ func dropRandom(coal, rarity int, active bool) func(int) int {
 func TestActiveDropGoodDeedsBoostSlotsAndSummary(t *testing.T) {
 	store := &dropStoreFixture{records: make(map[Member]core.GiftRecord)}
 	alice, bob, carol := Member{ServerID: "g", UserID: "alice"}, Member{ServerID: "g", UserID: "bob"}, Member{ServerID: "g", UserID: "carol"}
-	store.records[alice] = core.GiftRecord{Aura: core.Aura{Good: 50}}
-	store.records[bob] = core.GiftRecord{Aura: core.Aura{Good: 49}}
+	store.records[alice] = core.GiftRecord{Aura: 25}
+	store.records[bob] = core.GiftRecord{Aura: 24}
 	drops := NewActivityDrops(NewService(store, time.Now, dropRandom(0, 80, true)))
 	drop := drops.Observe("g", "c")
 	if drop == nil || drop.Kind != core.RandomActiveDrop {
@@ -212,13 +212,13 @@ func TestActiveDropGoodDeedsBoostSlotsAndSummary(t *testing.T) {
 
 func TestActiveDropBoostChangesRarity(t *testing.T) {
 	for _, tt := range []struct {
-		good int
+		good core.Aura
 		roll int
 		want core.GiftRarity
-	}{{49, 50, core.NormalGift}, {50, 50, core.RareGift}, {50, 90, core.EpicGift}, {49, 90, core.RareGift}} {
+	}{{24, 50, core.NormalGift}, {25, 50, core.RareGift}, {25, 90, core.EpicGift}, {24, 90, core.RareGift}, {-50, 50, core.NormalGift}} {
 		store := &dropStoreFixture{records: make(map[Member]core.GiftRecord)}
 		player := Member{ServerID: "g", UserID: "p"}
-		store.records[player] = core.GiftRecord{Aura: core.Aura{Good: tt.good}}
+		store.records[player] = core.GiftRecord{Aura: tt.good}
 		drops := NewActivityDrops(NewService(store, time.Now, dropRandom(0, tt.roll, true)))
 		drop := drops.Observe("g", "c")
 		award, err := drops.Claim(t.Context(), GiftDropClaim{Member: player, DropID: drop.ID})

@@ -61,7 +61,7 @@ func (b bot) handleSendGift(session *discordgo.Session, interaction *discordgo.I
 	}
 	respondPrivately(session, interaction, func(ctx context.Context, member app.Member) string {
 		recipient, name, item, quantity := giftOptions(member.ServerID, sub.Options, data.Resolved, "quantity")
-		auraIncrease, err := b.service.SendItem(ctx, member, recipient, item, quantity)
+		err := b.service.SendItem(ctx, member, recipient, item, quantity)
 		if err != nil {
 			if reply := gifttext.TransferRejection(err); reply != "" {
 				return reply
@@ -69,7 +69,7 @@ func (b bot) handleSendGift(session *discordgo.Session, interaction *discordgo.I
 			logInteractionError(interaction.ID, "send gift", err)
 			return "Could not send your gifts. Try again."
 		}
-		return gifttext.Transfer(item, quantity, name, auraIncrease)
+		return gifttext.Transfer(item, quantity, name)
 	})
 }
 

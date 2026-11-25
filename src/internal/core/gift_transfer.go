@@ -29,7 +29,7 @@ func TransferGift(sender, recipient GiftRecord, rarity GiftRarity, quantity int6
 	case EpicGift:
 		points = 30
 	}
-	sender.Aura.Good = increaseAura(sender.Aura.Good, quantity, points)
+	sender.Aura = sender.Aura.Move(quantity, points)
 	return sender, recipient, nil
 }
 
@@ -49,11 +49,6 @@ func TransferCoal(sender, recipient GiftRecord, quantity int64) (GiftRecord, Gif
 	}
 	sender.Inventory.Coal -= quantity
 	recipient.Inventory.Coal += quantity
-	sender.Aura.Bad = increaseAura(sender.Aura.Bad, quantity, 5)
+	sender.Aura = sender.Aura.Move(quantity, -5)
 	return sender, recipient, nil
-}
-
-func increaseAura(value int, quantity int64, points int) int {
-	// At five points or more per item, 20 items already reach the cap.
-	return min(100, value+int(min(quantity, 20))*points)
 }

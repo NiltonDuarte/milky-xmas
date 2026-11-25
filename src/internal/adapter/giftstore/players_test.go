@@ -29,9 +29,8 @@ func TestGiftTransferAfterLegacyMigration(t *testing.T) {
 
 	store := openGiftPlayers(t, path)
 	service := app.NewService(store, func() time.Time { return now }, func(int) int { return 0 })
-	goodIncrease, err := service.SendGift(ctx, alice, app.Recipient{Member: bob}, core.NormalGift, 2)
-	if err != nil || goodIncrease != 10 {
-		t.Fatalf("send migrated gifts = %d, %v", goodIncrease, err)
+	if err := service.SendGift(ctx, alice, app.Recipient{Member: bob}, core.NormalGift, 2); err != nil {
+		t.Fatalf("send migrated gifts: %v", err)
 	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
@@ -40,11 +39,11 @@ func TestGiftTransferAfterLegacyMigration(t *testing.T) {
 	store = openGiftPlayers(t, path)
 	service = app.NewService(store, func() time.Time { return now }, func(int) int { return 0 })
 	got, err := service.CheckAura(ctx, alice)
-	if err != nil || got != (core.Aura{Good: 10}) {
+	if err != nil || got != 10 {
 		t.Fatalf("sender aura after restart = %+v, %v", got, err)
 	}
 	got, err = service.CheckAura(ctx, bob)
-	if err != nil || got != (core.Aura{}) {
+	if err != nil || got != 0 {
 		t.Fatalf("recipient aura after restart = %+v, %v", got, err)
 	}
 	claim, err := service.ClaimGift(ctx, alice)
@@ -58,7 +57,7 @@ func TestGiftTransferAfterLegacyMigration(t *testing.T) {
 
 	for _, member := range []app.Member{{ServerID: "another-guild", UserID: "alice"}, {ServerID: "guild", UserID: "new"}} {
 		aura, err := service.CheckAura(ctx, member)
-		if err != nil || aura != (core.Aura{}) {
+		if err != nil || aura != 0 {
 			t.Errorf("initial aura for %+v = %+v, %v", member, aura, err)
 		}
 	}
@@ -87,7 +86,7 @@ func TestGiftTransfersCompeteForLastGift(t *testing.T) {
 	for i, target := range targets {
 		go func() {
 			<-start
-			_, err := newService(stores[i]).SendGift(ctx, sender, app.Recipient{Member: target}, core.EpicGift, 1)
+			err := newService(stores[i]).SendGift(ctx, sender, app.Recipient{Member: target}, core.EpicGift, 1)
 			results <- err
 		}()
 	}
@@ -102,13 +101,13 @@ func TestGiftTransfersCompeteForLastGift(t *testing.T) {
 		}
 	}
 	record, err := stores[0].Load(ctx, sender)
-	if err != nil || success != 1 || record.Inventory.GiftTotal() != 0 || record.Aura.Good != 30 {
+	if err != nil || success != 1 || record.Inventory.GiftTotal() != 0 || record.Aura != 30 {
 		t.Errorf("sender = %+v, err = %v, successful transfers = %d", record, err, success)
 	}
 	var received int64
 	for _, target := range targets {
 		record, err := stores[0].Load(ctx, target)
-		if err != nil || record.Aura != (core.Aura{}) {
+		if err != nil || record.Aura != 0 {
 			t.Errorf("recipient = %+v, err = %v", record, err)
 		}
 		received += record.Inventory.Epic
@@ -132,11 +131,11 @@ func TestGiftTransferRollsBackSenderWhenRecipientWriteFails(t *testing.T) {
 	if _, err := service.ClaimGift(ctx, from); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.SendGift(ctx, from, app.Recipient{Member: to}, core.NormalGift, 1); err == nil {
+	if err := service.SendGift(ctx, from, app.Recipient{Member: to}, core.NormalGift, 1); err == nil {
 		t.Fatal("send succeeded despite storage failure")
 	}
 	sender, err := store.Load(ctx, from)
-	if err != nil || sender.Inventory.Normal != 1 || sender.Aura != (core.Aura{}) {
+	if err != nil || sender.Inventory.Normal != 1 || sender.Aura != 0 {
 		t.Errorf("sender after rollback = %+v, %v", sender, err)
 	}
 	recipient, err := store.Load(ctx, to)
@@ -144,8 +143,11 @@ func TestGiftTransferRollsBackSenderWhenRecipientWriteFails(t *testing.T) {
 		t.Errorf("recipient after rollback = %+v, %v", recipient, err)
 	}
 	execGiftSQL(t, path, "DROP TRIGGER reject_recipient")
-	if goodIncrease, err := service.SendGift(ctx, from, app.Recipient{Member: to}, core.NormalGift, 1); err != nil || goodIncrease != 5 {
-		t.Errorf("send after storage recovered = %d, %v", goodIncrease, err)
+	if err := service.SendGift(ctx, from, app.Recipient{Member: to}, core.NormalGift, 1); err != nil {
+		t.Errorf("send after storage recovered: %v", err)
+	}
+	if aura, err := service.CheckAura(ctx, from); err != nil || aura != 5 {
+		t.Errorf("aura after storage recovered = %d, %v", aura, err)
 	}
 }
 
@@ -198,7 +200,7 @@ func TestInventoryUpgradeAndTransfer(t *testing.T) {
 	check(service, bob, core.Inventory{})
 
 	previous, err := store.Load(ctx, alice)
-	if err != nil || previous.Aura != (core.Aura{Bad: 4, Good: 5}) || !previous.LastClaim.Equal(now.Add(-time.Hour)) {
+	if err != nil || previous.Aura != 0 /* the old Bad and Good counters are not carried over */ || !previous.LastClaim.Equal(now.Add(-time.Hour)) {
 		t.Fatalf("migrated record = %+v, %v", previous, err)
 	}
 	next := previous
@@ -207,7 +209,7 @@ func TestInventoryUpgradeAndTransfer(t *testing.T) {
 	if saved, err := store.Save(ctx, app.GiftUpdate{Member: alice, Previous: previous, Next: next}); err != nil || !saved {
 		t.Fatalf("save inventory = %v, %v", saved, err)
 	}
-	if _, err := service.SendGift(ctx, alice, app.Recipient{Member: bob}, core.RareGift, 1); err != nil {
+	if err := service.SendGift(ctx, alice, app.Recipient{Member: bob}, core.RareGift, 1); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Close(); err != nil {

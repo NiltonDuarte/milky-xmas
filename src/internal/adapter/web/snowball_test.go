@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/giftfixture"
+	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/gifttext"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/web"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
@@ -33,7 +34,7 @@ func TestThrownSnowballInChat(t *testing.T) {
 		{"/throw snowball Bob", http.StatusBadRequest, "You don't have a Snowball to throw."},
 		{"/throw snowball Bob yellow", http.StatusOK, "You have thrown a 🟡 yellow snowball at Bob. 🥶\nBob❕  fixture has thrown a 🟡 yellow snowball at you. 🥶"},
 		{"/throw snowball Bob yellow", http.StatusBadRequest, "You don't have a Yellow Snowball to throw."},
-		{"/aura check", http.StatusOK, "```\n😈 Bad 5%  |  0% Good 😇\n```"},
+		{"/aura check", http.StatusOK, gifttext.Aura(-5)},
 	} {
 		form := url.Values{"command": {step.command}}
 		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(form.Encode()))

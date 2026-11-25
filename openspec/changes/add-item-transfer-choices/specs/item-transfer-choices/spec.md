@@ -25,7 +25,7 @@ Let players transfer earned Coal and Yellow Snowballs using the existing social 
 
 ### Requirement: Send Coal
 
-`/send gift` SHALL offer Coal alongside the three gift rarities. A Coal send SHALL move the specified positive quantity between inventories and add five percentage points per Coal to the sender's Bad deeds up to 100%. The reply SHALL show the actual Bad deeds increase. Insufficient Coal SHALL leave both inventories and auras unchanged.
+`/send gift` SHALL offer Coal alongside the three gift rarities. A Coal send SHALL move the specified positive quantity between inventories and add five percentage points per Coal to the sender's Bad deeds up to 100%. The reply SHALL warn that Bad deeds are increasing, without a percentage. Insufficient Coal SHALL leave both inventories and auras unchanged.
 
 #### Scenario: Send two Coal
 
@@ -38,7 +38,7 @@ Let players transfer earned Coal and Yellow Snowballs using the existing social 
 
 - **GIVEN** a sender at 95% Bad deeds owns two Coal
 - **WHEN** they send both Coal
-- **THEN** the reply reports a five percentage point gain and the sender reaches 100% Bad deeds
+- **THEN** the reply warns that Bad deeds are increasing and the sender reaches 100% Bad deeds
 
 #### Scenario: Send more Coal than owned
 

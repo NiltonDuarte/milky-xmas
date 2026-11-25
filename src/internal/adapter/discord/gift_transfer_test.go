@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/giftfixture"
+	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/gifttext"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 	"github.com/bwmarrin/discordgo"
@@ -87,18 +88,18 @@ func TestGiftTransferAuraAndSocksInteractions(t *testing.T) {
 		data    discordgo.ApplicationCommandInteractionData
 		content string
 	}{
-		{alice.UserID, aura, "```\n😈 Bad 0%  |  0% Good 😇\n```"},
+		{alice.UserID, aura, gifttext.Aura(0)},
 		{alice.UserID, socks, "## 🧦 Your inventory\n```\n🎁 Gifts: 0 - normal | 2 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 2\n```"},
 		{alice.UserID, send("600", true, 1, "rare"), "Choose another player in this server."},
 		{alice.UserID, send(bob.UserID, false, 1.5, "rare"), "Enter a positive whole number of items."},
-		{alice.UserID, send(bob.UserID, false, 1, "rare"), "Sent 1 🎁rare gift to Bob. Your 😇 good deeds is 10% more high."},
-		{alice.UserID, send(bob.UserID, false, 1, "rare"), "Sent 1 🎁rare gift to Bob. Your 😇 good deeds is 10% more high."},
-		{alice.UserID, aura, "```\n😈 Bad 0%  |  20% Good 😇\n```"},
-		{bob.UserID, aura, "```\n😈 Bad 0%  |  0% Good 😇\n```"},
+		{alice.UserID, send(bob.UserID, false, 1, "rare"), "Sent 1 🎁 rare gift to Bob. Your 😇 good deeds are going up."},
+		{alice.UserID, send(bob.UserID, false, 1, "rare"), "Sent 1 🎁 rare gift to Bob. Your 😇 good deeds are going up."},
+		{alice.UserID, aura, gifttext.Aura(20)},
+		{bob.UserID, aura, gifttext.Aura(0)},
 		{alice.UserID, socks, "## 🧦 Your inventory\n```\n🎁 Gifts: 0 - normal | 0 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 2\n```"},
 		{bob.UserID, socks, "## 🧦 Your inventory\n```\n🎁 Gifts: 0 - normal | 2 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0\n```"},
-		{alice.UserID, send(bob.UserID, false, 2, "coal"), "Sent 2 🌑 Coal to Bob. Your 😈 bad deeds increased by 10%."},
-		{alice.UserID, aura, "```\n😈 Bad 10%  |  20% Good 😇\n```"},
+		{alice.UserID, send(bob.UserID, false, 2, "coal"), "Sent 2 🌑 Coal to Bob. Your 😈 bad deeds are increasing. Beware!"},
+		{alice.UserID, aura, gifttext.Aura(10)},
 	} {
 		session, err := discordgo.New("Bot fixture")
 		if err != nil {
@@ -151,7 +152,7 @@ func TestGiftTransferAuraAndSocksInteractions(t *testing.T) {
 		}
 	}
 	record, err := store.Load(t.Context(), bob)
-	if err != nil || record.Inventory.Rare != 2 || record.Inventory.Coal != 2 || record.Aura != (core.Aura{}) {
+	if err != nil || record.Inventory.Rare != 2 || record.Inventory.Coal != 2 || record.Aura != 0 {
 		t.Fatalf("recipient record = %+v, %v", record, err)
 	}
 }

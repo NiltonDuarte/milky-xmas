@@ -26,7 +26,7 @@ gifts:
     epic: 5
   # Bônus do Random Active Drop para quem tem Good deeds altos.
   good_deeds_boost:
-    threshold: 50     # Good deeds (%) a partir do qual o bônus vale
+    threshold: 25     # aura (de -50 a +50) a partir da qual o bônus vale
     rarity:           # chances em %, somam 100
       normal: 50
       rare: 35

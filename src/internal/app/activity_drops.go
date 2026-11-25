@@ -212,7 +212,7 @@ func (drops *ActivityDrops) Claim(ctx context.Context, claim GiftDropClaim) (Gif
 			result.Rarity = drops.service.tuning.Gifts.DailyGiftRarity(rarityRoll)
 			next, err = core.AwardGift(record, result.Rarity)
 		default:
-			result.Rarity = drops.service.tuning.Gifts.ActiveDropRarity(rarityRoll, record.Aura.Good)
+			result.Rarity = drops.service.tuning.Gifts.ActiveDropRarity(rarityRoll, record.Aura)
 			next, err = core.AwardGift(record, result.Rarity)
 		}
 		if err != nil {

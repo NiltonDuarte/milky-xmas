@@ -52,11 +52,11 @@ In the test server, invoke `/daily claim`. Check that you see the same success m
 
 ## Gift transfers and aura
 
-Daily claims award one rarity per claim with a 70% chance of normal, 25% rare, and 5% epic. Daily gifts saved before this update become normal gifts. Each gift sent adds 5, 10, or 30 percentage points to the sender's Good deeds, respectively, up to 100%. In `/send gift`, choose Coal to transfer Coal and increase the sender's Bad deeds by five percentage points per item, capped at 100%. Bad deeds appears on the left and Good deeds on the right. Both start at 0%.
+Daily claims award one rarity per claim with a 70% chance of normal, 25% rare, and 5% epic. Daily gifts saved before this update become normal gifts. Aura is a single scale from -50 (bad deeds) to +50 (good deeds), and everyone starts neutral at 0. Each gift sent moves the sender 5, 10, or 30 points toward good, respectively. In `/send gift`, choose Coal to transfer Coal, which moves the sender 5 points per item toward bad. The aura never leaves the scale. `/aura check` draws the scale with a marker on your place and the number under it. Upgrading from the earlier separate Bad and Good percentages resets everyone to 0.
 
-In the local chat, run `/aura check`, then `/daily claim`. Use the rarity shown in the reply to send one gift, for example `/send gift friend normal 1`. Check that the confirmation and a new `/aura check` show the expected Good deeds value. Try sending more than you claimed and check that the aura stays the same. The browser plays as `fixture`, and `friend` is a simulated recipient. A claim after giving away your last gift still shows the original cooldown.
+In the local chat, run `/aura check`, then `/daily claim`. Use the rarity shown in the reply to send one gift, for example `/send gift friend normal 1`. Check that the confirmation and a new `/aura check` show the expected aura. Try sending more than you claimed and check that the aura stays the same. The browser plays as `fixture`, and `friend` is a simulated recipient. A claim after giving away your last gift still shows the original cooldown.
 
-In the Discord test server, use two human accounts with application command permissions. With the first account, run `/aura check`, claim gifts, then select the second account, the awarded rarity, and quantity 1 under `/send gift`. Check that both command results are private. The first account's Good deeds increases and the second account's aura stays neutral. With the second account, send the same gift back to verify it was credited. Try selecting yourself or a bot to check that the transfer is rejected. Restart the bot with the same SQLite database and confirm that both accounts keep their aura and current balances.
+In the Discord test server, use two human accounts with application command permissions. With the first account, run `/aura check`, claim gifts, then select the second account, the awarded rarity, and quantity 1 under `/send gift`. Check that both command results are private. The first account's aura moves toward good and the second account's aura stays neutral. With the second account, send the same gift back to verify it was credited. Try selecting yourself or a bot to check that the transfer is rejected. Restart the bot with the same SQLite database and confirm that both accounts keep their aura and current balances.
 
 ## Socks inventory
 
@@ -68,7 +68,7 @@ In the Discord test server, invoke `/look in-your-stocking` and check that only 
 
 ## Throw a snowball
 
-In the Discord test server, use `/throw snowball` and select another player. Then choose the type, Normal or Yellow Snowball; the type is required, like the player. Each type appears only when you own one. A throw moves one snowball of that type from your inventory to the recipient's, and a Yellow Snowball also adds five percentage points to your Bad deeds, up to 100%. The sender sees a private confirmation and the bot mentions the recipient in the same channel with their new Snowball total. The recipient can run `/look in-your-stocking` to check the balance. If you have none to throw, or the recipient's inventory is full, the throw is refused and nothing moves. If the bot cannot post in that channel, the inventory still changes and the sender sees a delivery warning.
+In the Discord test server, use `/throw snowball` and select another player. Then choose the type, Normal or Yellow Snowball; the type is required, like the player. Each type appears only when you own one. A throw moves one snowball of that type from your inventory to the recipient's, and a Yellow Snowball also moves your aura 5 points toward bad. The sender sees a private confirmation and the bot mentions the recipient in the same channel with their new Snowball total. The recipient can run `/look in-your-stocking` to check the balance. If you have none to throw, or the recipient's inventory is full, the throw is refused and nothing moves. If the bot cannot post in that channel, the inventory still changes and the sender sees a delivery warning.
 
 In the local chat, give yourself Snowballs first (they come from the Grinch fight rewards), then run `/throw snowball friend`. The transcript shows the confirmation and simulated notification, and a throw without a Snowball is refused. Use `/throw snowball friend yellow` to throw a Yellow Snowball from your inventory. Use `/send gift friend coal 1` to transfer Coal.
 
@@ -100,7 +100,7 @@ In the local chat, use `/grinch summon`, then `/grinch join` to press Start. Any
 
 Moderators with Manage Messages or Administrator can run `/give gift <recipient> <amount> <rarity>` to add normal, rare, or epic gifts to a player. It does not use the moderator's inventory and does not change aura or cooldowns. Reply is private. In the local chat, run `/give gift friend 3 rare`; the browser acts as the moderator.
 
-`/daily claim`, `/look in-your-stocking`, and `/aura check` use a heading and code block. In Discord, `/aura check` shows the bad good image above `😈 Bad n%  |  n% Good 😇`. The local chat shows the text only.
+`/daily claim`, `/look in-your-stocking`, and `/aura check` use a heading and code block. In Discord, `/aura check` shows the bad good image above the aura scale. The local chat shows the text only.
 
 In the Discord test server, check that a member without Manage Messages cannot see `/give` or is refused, that a moderator's grant appears in the recipient's `/look in-your-stocking`, and that the aura image appears above the aura line.
 
@@ -114,7 +114,7 @@ Run `/helpmemilky` to list the commands you can use. In Discord, moderator comma
 
 ## Activity drop updates
 
-The Random Active Drop shows the Grinch and Max image and the Gift Rain shows the gift rain image. A player with Good deeds of 50% or more has better odds of rare and epic gifts from the Random Active Drop. The button a player opens is disabled. A Gift Rain ends after ten collections and each has a 25% chance of Coal. When a drop ends or expires after ten minutes, its message is edited to say so and to list who collected what. Drops are kept in memory, so a restart leaves an open drop's message as it was.
+The Random Active Drop shows the Grinch and Max image and the Gift Rain shows the gift rain image. A player with an aura of +25 or more has better odds of rare and epic gifts from the Random Active Drop. The button a player opens is disabled. A Gift Rain ends after ten collections and each has a 25% chance of Coal. When a drop ends or expires after ten minutes, its message is edited to say so and to list who collected what. Drops are kept in memory, so a restart leaves an open drop's message as it was.
 
 In the Discord test server, enable a channel and chat until a drop appears. Check the image, that your clicked button is disabled, that a second account cannot open the same button, and that the final list appears after ten minutes. For a Gift Rain, collect ten times across accounts (one collection per minute each) and check the end and the Coal prizes. In the local chat, use `/message <text>` to trigger drops, `/drop collect <id>`, and `/drop expire <id>`.
 

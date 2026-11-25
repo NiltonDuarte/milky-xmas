@@ -35,28 +35,28 @@ func TestDailyGiftRarity(t *testing.T) {
 }
 
 func TestTransferGift(t *testing.T) {
-	sender := GiftRecord{Inventory: Inventory{Normal: 2, Rare: 2, Epic: 2}, Aura: Aura{Bad: 15}}
-	recipient := GiftRecord{Inventory: Inventory{Normal: 1}, Aura: Aura{Good: 30}}
+	sender := GiftRecord{Inventory: Inventory{Normal: 2, Rare: 2, Epic: 2}, Aura: -15}
+	recipient := GiftRecord{Inventory: Inventory{Normal: 1}, Aura: 30}
 	for _, tt := range []struct {
 		rarity GiftRarity
 		from   Inventory
 		to     Inventory
-		good   int
+		aura   Aura
 	}{
-		{NormalGift, Inventory{Rare: 2, Epic: 2}, Inventory{Normal: 3}, 10},
-		{RareGift, Inventory{Normal: 2, Epic: 2}, Inventory{Normal: 1, Rare: 2}, 20},
-		{EpicGift, Inventory{Normal: 2, Rare: 2}, Inventory{Normal: 1, Epic: 2}, 60},
+		{NormalGift, Inventory{Rare: 2, Epic: 2}, Inventory{Normal: 3}, -5},
+		{RareGift, Inventory{Normal: 2, Epic: 2}, Inventory{Normal: 1, Rare: 2}, 5},
+		{EpicGift, Inventory{Normal: 2, Rare: 2}, Inventory{Normal: 1, Epic: 2}, 45},
 	} {
 		t.Run(string(tt.rarity), func(t *testing.T) {
 			from, to, err := TransferGift(sender, recipient, tt.rarity, 2)
-			if err != nil || from.Inventory != tt.from || to.Inventory != tt.to || from.Aura != (Aura{Bad: 15, Good: tt.good}) || to.Aura != recipient.Aura {
+			if err != nil || from.Inventory != tt.from || to.Inventory != tt.to || from.Aura != tt.aura || to.Aura != recipient.Aura {
 				t.Fatalf("transfer = %+v, %+v, %v", from, to, err)
 			}
 		})
 	}
-	sender.Aura.Good = 90
+	sender.Aura = 40
 	from, _, err := TransferGift(sender, recipient, EpicGift, 1)
-	if err != nil || from.Aura != (Aura{Bad: 15, Good: 100}) {
+	if err != nil || from.Aura != AuraMax {
 		t.Fatalf("capped transfer = %+v, %v", from, err)
 	}
 	recipients := GiftRecord{Inventory: Inventory{Normal: math.MaxInt64}}
@@ -74,6 +74,22 @@ func TestTransferGift(t *testing.T) {
 		from, to, err := TransferGift(sender, tt.target, tt.rarity, tt.quantity)
 		if !errors.Is(err, tt.want) || from != sender || to != tt.target {
 			t.Errorf("invalid transfer = %+v, %+v, %v; want %v without changes", from, to, err, tt.want)
+		}
+	}
+}
+
+func TestAuraMoveStaysOnTheScale(t *testing.T) {
+	for _, tt := range []struct {
+		from     Aura
+		quantity int64
+		points   int
+		want     Aura
+	}{
+		{0, 1, 5, 5}, {0, 1, -5, -5}, {5, 3, -5, -10}, {45, 1, 30, AuraMax}, {-48, 2, -5, AuraMin},
+		{AuraMin, math.MaxInt64, 30, AuraMax}, {AuraMax, math.MaxInt64, -5, AuraMin},
+	} {
+		if got := tt.from.Move(tt.quantity, tt.points); got != tt.want {
+			t.Errorf("Aura(%d).Move(%d, %d) = %d, want %d", tt.from, tt.quantity, tt.points, got, tt.want)
 		}
 	}
 }

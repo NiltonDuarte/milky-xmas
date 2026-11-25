@@ -49,8 +49,7 @@ func initSchema(ctx context.Context, db *sql.DB) error {
 			normal INTEGER NOT NULL DEFAULT 0 CHECK (normal >= 0),
 			rare INTEGER NOT NULL DEFAULT 0 CHECK (rare >= 0),
 			epic INTEGER NOT NULL DEFAULT 0 CHECK (epic >= 0),
-			bad INTEGER NOT NULL DEFAULT 0 CHECK (bad BETWEEN 0 AND 100),
-			good INTEGER NOT NULL DEFAULT 0 CHECK (good BETWEEN 0 AND 100),
+			aura INTEGER NOT NULL DEFAULT 0 CHECK (aura BETWEEN -50 AND 50),
 			last_claim TEXT NOT NULL DEFAULT '',
 			PRIMARY KEY (server_id, user_id)
 		);
@@ -111,6 +110,23 @@ func initSchema(ctx context.Context, db *sql.DB) error {
 	if !hasYellowSnowballs {
 		_, err = tx.ExecContext(ctx, `
 			ALTER TABLE gift_players ADD COLUMN yellow_snowballs INTEGER NOT NULL DEFAULT 0 CHECK (yellow_snowballs >= 0)
+		`)
+		if err != nil {
+			return err
+		}
+	}
+	// The single aura scale replaced the separate Bad and Good columns. Everyone starts neutral;
+	// databases created before it keep the old columns unused.
+	var hasAura bool
+	err = tx.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM pragma_table_info('gift_players') WHERE name = 'aura')
+	`).Scan(&hasAura)
+	if err != nil {
+		return err
+	}
+	if !hasAura {
+		_, err = tx.ExecContext(ctx, `
+			ALTER TABLE gift_players ADD COLUMN aura INTEGER NOT NULL DEFAULT 0 CHECK (aura BETWEEN -50 AND 50)
 		`)
 		if err != nil {
 			return err

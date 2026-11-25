@@ -22,7 +22,7 @@ func replyGiftTransfer(w http.ResponseWriter, r *http.Request, service app.Servi
 	item := args[2]
 	sender := app.Member{ServerID: fixtureServerID, UserID: fixtureUserID}
 	recipient := app.Recipient{Member: app.Member{ServerID: fixtureServerID, UserID: args[1]}}
-	auraIncrease, err := service.SendItem(r.Context(), sender, recipient, item, quantity)
+	err = service.SendItem(r.Context(), sender, recipient, item, quantity)
 	if err != nil {
 		if reply := gifttext.TransferRejection(err); reply != "" {
 			http.Error(w, reply, http.StatusBadRequest)
@@ -32,7 +32,7 @@ func replyGiftTransfer(w http.ResponseWriter, r *http.Request, service app.Servi
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	io.WriteString(w, gifttext.Transfer(item, quantity, args[1], auraIncrease))
+	io.WriteString(w, gifttext.Transfer(item, quantity, args[1]))
 }
 
 func replyAura(w http.ResponseWriter, r *http.Request, service app.Service, args []string) {

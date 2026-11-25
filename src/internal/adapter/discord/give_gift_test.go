@@ -38,8 +38,8 @@ func TestGiveGiftInteraction(t *testing.T) {
 		content string
 	}{
 		{0, give("500", false, 3, "rare"), "You need Manage Messages permission to give gifts."},
-		{moderator, give("500", false, 3, "rare"), "Gave 3 🎁rare gifts to Bob."},
-		{discordgo.PermissionAdministrator, give("500", false, 1, "epic"), "Gave 1 🎁epic gift to Bob."},
+		{moderator, give("500", false, 3, "rare"), "Gave 3 🎁 rare gifts to Bob."},
+		{discordgo.PermissionAdministrator, give("500", false, 1, "epic"), "Gave 1 🎁 epic gift to Bob."},
 		{moderator, give("500", false, 0, "rare"), "Enter a positive whole number of items."},
 		{moderator, give("500", false, 1, "mythic"), "Choose normal, rare, epic, or coal."},
 		{moderator, give("600", true, 1, "rare"), "Choose another player in this server."},
@@ -80,7 +80,7 @@ func TestGiveGiftInteraction(t *testing.T) {
 		}
 	}
 	record, err := store.Load(t.Context(), app.Member{ServerID: "200", UserID: "500"})
-	if err != nil || record.Inventory.Rare != 3 || record.Inventory.Epic != 1 || record.Aura != (core.Aura{}) {
+	if err != nil || record.Inventory.Rare != 3 || record.Inventory.Epic != 1 || record.Aura != 0 {
 		t.Fatalf("recipient record = %+v, %v", record, err)
 	}
 	if mod, _ := store.Load(t.Context(), app.Member{ServerID: "200", UserID: "mod"}); mod != (core.GiftRecord{}) {
