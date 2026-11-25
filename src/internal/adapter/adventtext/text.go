@@ -8,11 +8,12 @@ import (
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
 
+// Calendar lists the doors in the player's own order, for the local chat.
 func Calendar(calendar core.AdventCalendar) string {
 	var text strings.Builder
-	fmt.Fprintf(&text, "Advent %d · December 1–24 UTC · Advent gifts: %d", calendar.Year, calendar.Total)
-	for i, status := range calendar.Doors {
-		fmt.Fprintf(&text, "\n%02d · %s", i+1, status)
+	text.WriteString(Header(calendar))
+	for _, door := range calendar.Order {
+		fmt.Fprintf(&text, "\n%02d · %s", door+1, calendar.Doors[door])
 	}
 	return text.String()
 }
@@ -26,10 +27,7 @@ func Opening(day int, opening app.AdventOpening) string {
 	case core.DoorExpired:
 		return "This Advent calendar closed at the end of December 24 UTC."
 	case core.DoorOpened:
-		if opening.Awarded {
-			return fmt.Sprintf("🎁 You opened door %d! Advent gifts: %d.", day, opening.Total)
-		}
-		return fmt.Sprintf("Door %d is already open. Advent gifts: %d.", day, opening.Total)
+		return fmt.Sprintf("**🎁 Door %d**\n\n%s", day, Content(opening.Item))
 	default:
 		return "Could not open the Advent door. Try again."
 	}
@@ -37,5 +35,5 @@ func Opening(day int, opening app.AdventOpening) string {
 
 // Header is the line above the Advent buttons.
 func Header(calendar core.AdventCalendar) string {
-	return fmt.Sprintf("🎄 Advent %d · December 1–24 UTC · Advent gifts: %d", calendar.Year, calendar.Total)
+	return fmt.Sprintf("🎄 Advent %d · December 1–24 UTC", calendar.Year)
 }

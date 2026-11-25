@@ -124,9 +124,11 @@ type GrinchRules struct {
 	DefenseBossHP     int
 	// DefenseMissHPLoss is the share, in percent, of a player's maximum HP that a miss costs.
 	DefenseMissHPLoss int
-	AttackDamage      int
-	AttackHeavyDamage int
-	AttackBossHP      int
+	// DefenseMaxDefenses caps the safe defenses the group needs: one per player up to this.
+	DefenseMaxDefenses int
+	AttackDamage       int
+	AttackHeavyDamage  int
+	AttackBossHP       int
 
 	FinalHitDamage int
 	// FinalHitScore is the score points a final hit awards, regardless of the HP it removes. The
@@ -200,14 +202,15 @@ func DefaultTuning() Tuning {
 			EarlyStartPlayers:        3,
 			FightDuration:            GrinchDuration,
 			SnowballsDuration:        2 * time.Minute,
-			SnowballDamage:           100,
+			SnowballDamage:           417,
 			SnowballsBossHP:          7500,
 			DefenseBossHP:            4500,
 			DefenseMissHPLoss:        10,
-			AttackDamage:             500,
-			AttackHeavyDamage:        525,
+			DefenseMaxDefenses:       6,
+			AttackDamage:             667,
+			AttackHeavyDamage:        700,
 			AttackBossHP:             500,
-			FinalHitDamage:           100,
+			FinalHitDamage:           84,
 			FinalHitScore:            200,
 			GiftPointsMin:            1,
 			GiftPointsMax:            5,
@@ -307,6 +310,7 @@ func (tuning Tuning) Validate() error {
 	if g.DefenseMissHPLoss < 1 || g.DefenseMissHPLoss > 100 {
 		bad("grinch.defense.miss_hp_loss_percent", "must be between 1 and 100, got %d", g.DefenseMissHPLoss)
 	}
+	atLeast("grinch.defense.max_defenses", g.DefenseMaxDefenses, 1)
 	atLeast("grinch.final_attack.gift_points.min", g.GiftPointsMin, 1)
 	if g.GiftPointsMax < g.GiftPointsMin {
 		bad("grinch.final_attack.gift_points.max", "must be at least min (%d), got %d", g.GiftPointsMin, g.GiftPointsMax)

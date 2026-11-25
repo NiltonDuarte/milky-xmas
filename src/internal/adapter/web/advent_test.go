@@ -17,11 +17,11 @@ func TestAdventInChat(t *testing.T) {
 	now := time.Date(2026, 12, 4, 0, 0, 0, 0, time.UTC)
 	handler := web.NewHandler(app.NewService(&giftfixture.Store{}, func() time.Time { return now }, func(int) int { return 4 }), nil)
 	for _, step := range []struct{ command, reply string }{
-		{"/advent view", "04 · available\n05 · locked"},
+		{"/advent view", "04 · available"},
 		{"/advent open 5", "Door 5 unlocks on December 5"},
-		{"/advent open 1", "You opened door 1! Advent gifts: 1."},
-		{"/advent open 1", "Door 1 is already open."},
-		{"/advent view", "01 · opened\n02 · available"},
+		{"/advent open 1", "**🎁 Door 1**"},
+		{"/advent open 1", "**🎁 Door 1**"},
+		{"/advent view", "01 · opened"},
 		{"/advent open 25", "Choose an Advent door from 1 to 24."},
 		{"/daily claim", "You collected 5 gifts 🎁."},
 	} {

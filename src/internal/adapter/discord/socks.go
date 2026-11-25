@@ -19,6 +19,6 @@ func (b bot) handleStocking(session *discordgo.Session, interaction *discordgo.I
 			logInteractionError(interaction.ID, "load inventory", err)
 			return privateReply{Content: gifttext.InventoryUnavailable}
 		}
-		return privateReply{Content: gifttext.Inventory(items), Image: &privateImage{Name: "stocking.jpg", Data: stockingImage}}
+		return privateReply{Content: gifttext.Inventory(items, true), Blocks: gifttext.InventorySections(items, true), Image: &privateImage{Name: "stocking.jpg", Data: stockingImage}}
 	})
 }

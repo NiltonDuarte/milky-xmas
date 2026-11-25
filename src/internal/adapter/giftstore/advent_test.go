@@ -44,18 +44,16 @@ func TestAdventPersistence(t *testing.T) {
 		}()
 	}
 	close(start)
-	awards := 0
+	var items []int
 	for range 2 {
 		got := <-results
-		if got.err != nil || got.opening.Status != core.DoorOpened || got.opening.Total != 1 {
+		if got.err != nil || got.opening.Status != core.DoorOpened {
 			t.Errorf("opening = %+v", got)
 		}
-		if got.opening.Awarded {
-			awards++
-		}
+		items = append(items, got.opening.Item)
 	}
-	if awards != 1 {
-		t.Errorf("awards = %d, want 1", awards)
+	if items[0] != items[1] {
+		t.Errorf("the same door showed different surprises: %v", items)
 	}
 	retry, err := service.ClaimGift(t.Context(), member)
 	if err != nil || retry.Collected || retry.Total != daily.Total || retry.NextClaim != daily.NextClaim {
@@ -69,23 +67,26 @@ func TestAdventPersistence(t *testing.T) {
 	}
 	reopened, service := open()
 	view, err := service.ViewAdvent(t.Context(), member)
-	if err != nil || view.Total != 1 || view.Doors[0] != core.DoorOpened {
+	if err != nil || view.Doors[0] != core.DoorOpened || view.Doors[1] != core.DoorAvailable {
 		t.Fatalf("calendar after restart = %+v, %v", view, err)
 	}
 	bob := app.Member{ServerID: "server", UserID: "bob"}
 	other, err := service.ViewAdvent(t.Context(), bob)
-	if err != nil || other.Total != 0 || other.Doors[0] != core.DoorAvailable {
+	if err != nil || other.Doors[0] != core.DoorAvailable || other.Order == view.Order {
 		t.Fatalf("other member calendar = %+v, %v", other, err)
 	}
 	now = now.AddDate(1, 0, 0)
-	award, err := service.OpenAdvent(t.Context(), member, 1)
-	if err != nil || !award.Awarded || award.Total != 1 {
-		t.Fatalf("next year opening = %+v, %v", award, err)
+	if next, err := service.ViewAdvent(t.Context(), member); err != nil || next.Doors[0] != core.DoorAvailable {
+		t.Fatalf("next year calendar = %+v, %v", next, err)
+	}
+	opening, err := service.OpenAdvent(t.Context(), member, 1)
+	if err != nil || opening.Status != core.DoorOpened {
+		t.Fatalf("next year opening = %+v, %v", opening, err)
 	}
 	if err := reopened.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if award, err := service.OpenAdvent(t.Context(), member, 2); err == nil || award.Awarded {
-		t.Fatalf("opening with failed storage = %+v, %v", award, err)
+	if opening, err := service.OpenAdvent(t.Context(), member, 2); err == nil || opening.Status == core.DoorOpened {
+		t.Fatalf("opening with failed storage = %+v, %v", opening, err)
 	}
 }

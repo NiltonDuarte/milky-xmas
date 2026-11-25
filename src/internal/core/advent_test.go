@@ -26,8 +26,9 @@ func TestAdventStatus(t *testing.T) {
 			t.Errorf("day %d at %s = %s, want %s", step.day, step.when, got, step.want)
 		}
 	}
-	view := AdventView(time.Date(2026, 12, 4, 0, 0, 0, 0, time.UTC), 1)
-	if view.Year != 2026 || view.Total != 1 || view.Doors[0] != DoorOpened ||
+	order := AdventOrder("player")
+	view := AdventView(time.Date(2026, 12, 4, 0, 0, 0, 0, time.UTC), 1, order)
+	if view.Year != 2026 || view.Order != order || view.Doors[0] != DoorOpened ||
 		view.Doors[1] != DoorAvailable || view.Doors[3] != DoorAvailable || view.Doors[4] != DoorLocked {
 		t.Errorf("calendar = %+v", view)
 	}
@@ -62,5 +63,28 @@ func TestAdventTestWindow(t *testing.T) {
 	}
 	if got := AdventStatus(time.Date(2026, 11, 25, 0, 0, 0, 0, time.UTC), 7, true); got != DoorOpened {
 		t.Errorf("opened door in the window = %s", got)
+	}
+}
+
+func TestAdventOrderIsAStableShufflePerSeed(t *testing.T) {
+	alice, bob := AdventOrder("buttons|server|alice|2026"), AdventOrder("buttons|server|bob|2026")
+	if alice != AdventOrder("buttons|server|alice|2026") {
+		t.Error("the same seed gave a different order")
+	}
+	var straight [AdventDays]int
+	for i := range straight {
+		straight[i] = i
+	}
+	if alice == bob || alice == straight || bob == straight {
+		t.Errorf("orders are not shuffled per player: %v and %v", alice, bob)
+	}
+	for _, order := range [][AdventDays]int{alice, bob} {
+		var seen uint32
+		for _, value := range order {
+			seen |= 1 << value
+		}
+		if seen != 1<<AdventDays-1 {
+			t.Errorf("order %v does not hold every number once", order)
+		}
 	}
 }

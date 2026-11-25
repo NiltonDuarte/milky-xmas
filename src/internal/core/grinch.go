@@ -229,7 +229,7 @@ func (g *Grinch) move(rules GrinchRules, move GrinchMove) string {
 		damage.Hundredths = applied
 		reply = fmt.Sprintf("Snowball hit for %s HP.", FormatHundredths(applied))
 		if g.HP == rules.SnowballsBossHP {
-			g.DefensePlayers = len(g.Joined)
+			g.DefensePlayers = min(len(g.Joined), rules.DefenseMaxDefenses)
 			g.Phase, g.Board, g.TimedAt, g.DefenseRound = GrinchDefense, move.NextBoard, move.At, 1
 			g.bossEvent(GrinchEvent{Kind: EventPhase, Phase: GrinchDefense, Roll: move.Roll})
 		}

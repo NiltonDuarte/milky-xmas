@@ -45,16 +45,9 @@ func TestRegisterCommands(t *testing.T) {
 				}
 			}
 			if command.Name == "advent" {
-				if len(command.Options) != 2 || command.Options[0].Name != "view" || command.Options[1].Name != "open" ||
-					command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand ||
-					command.Options[1].Type != discordgo.ApplicationCommandOptionSubCommand ||
-					len(command.Options[1].Options) != 1 {
+				if len(command.Options) != 1 || command.Options[0].Name != "view" ||
+					command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand {
 					t.Fatalf("unexpected Advent subcommands: %+v", command.Options)
-				}
-				day := command.Options[1].Options[0]
-				if day.Name != "day" || day.Type != discordgo.ApplicationCommandOptionInteger || !day.Required ||
-					day.MinValue == nil || *day.MinValue != 1 || day.MaxValue != 24 {
-					t.Errorf("unexpected day option: %+v", day)
 				}
 			}
 			switch command.Name {

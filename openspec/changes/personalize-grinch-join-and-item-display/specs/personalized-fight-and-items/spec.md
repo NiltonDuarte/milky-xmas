@@ -35,4 +35,4 @@ Both adapters SHALL show `/socks` on four lines, with a title, gift quantities, 
 
 - **GIVEN** a player owns one Coal and zero other items
 - **WHEN** they use `/socks`
-- **THEN** the reply shows the four lines `🧦 Your inventory`, `🎁 Gifts: 0 - normal | 0 rare | 0 epic`, `❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0`, and `🌑 Coal: 1`
+- **THEN** the reply shows columns with the gifts by rarity and both snowball kinds at 0, and Coal at 1, with no heading

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"maps"
 	"strconv"
 	"testing"
 	"time"
@@ -30,16 +31,17 @@ func TestGrinchCombat(t *testing.T) {
 				hit(GrinchSnowballs, 0, 0, start.Add(9*time.Second))
 			}
 			hit(GrinchSnowballs, 0, 0, start.Add(9*time.Second))
-			if fight.Phase != GrinchDefense || fight.Health(testRules) != 75 || fight.DefensePlayers != players {
+			if fight.Phase != GrinchDefense || fight.Health(testRules) != 75 || fight.DefensePlayers != min(players, 6) {
 				t.Fatalf("defense started at %+v", fight)
 			}
 			hit(GrinchDefense, 1, 0, start.Add(12*time.Second))
 			if fight.PlayerDamage["0"] != 10 || fight.Health(testRules) != 75 {
 				t.Fatalf("snowflake result: %+v", fight)
 			}
-			for i := range players {
+			// One safe defense per player, but never more than six.
+			for i := range min(players, 6) {
 				hit(GrinchDefense, 0, i, start.Add(15*time.Second))
-				if i == 0 && fight.Health(testRules) != 75-30/float64(players) {
+				if i == 0 && fight.Health(testRules) != 75-30/float64(min(players, 6)) {
 					t.Errorf("scaled damage left %v HP", fight.Health(testRules))
 				}
 			}
@@ -335,7 +337,15 @@ func TestGrinchDefenseBoardRerollsAndRejectsStaleClicks(t *testing.T) {
 	}
 }
 
-var testRules = DefaultTuning().Grinch
+// testRules keeps small hits, so the mechanics tests walk through each phase step by step. The
+// shipped damage is covered by TestGrinchDefaultsNeedAtMostSixHitsPerPhase.
+var testRules = stepRules()
+
+func stepRules() GrinchRules {
+	rules := DefaultTuning().Grinch
+	rules.SnowballDamage, rules.AttackDamage, rules.AttackHeavyDamage, rules.FinalHitDamage = 100, 500, 525, 100
+	return rules
+}
 
 func TestGrinchCountsCollectedSnowballs(t *testing.T) {
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
@@ -475,5 +485,44 @@ func TestGrinchDamageLeaderboardShowsDamageAndOnlyTheFinalAttackAwardsPoints(t *
 	if fight.HP != 0 || fight.Phase != GrinchWon || fight.DamageDealt["alice"].Hundredths != base.Hundredths+3*rules.FinalHitDamage+30 ||
 		fight.DamageDealt["alice"].Points != 4*rules.FinalHitScore {
 		t.Fatalf("the killing hit: HP %d, phase %s, %+v", fight.HP, fight.Phase, fight.DamageDealt["alice"])
+	}
+}
+
+// With the shipped numbers the group needs at most six hits in each phase, however many play.
+func TestGrinchDefaultsNeedAtMostSixHitsPerPhase(t *testing.T) {
+	rules := DefaultTuning().Grinch
+	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
+	for _, players := range []int{1, 3, 20} {
+		fight := Grinch{ID: "f", Phase: GrinchSnowballs, HP: GrinchBossHP, StartedAt: now,
+			Joined: map[string]bool{}, PlayerDamage: map[string]int{}, Accepted: map[string]bool{},
+		}
+		for player := range players {
+			fight.Joined[strconv.Itoa(player)] = true
+		}
+		hits := map[GrinchPhase]int{}
+		for sequence := 0; fight.Phase != GrinchWon && sequence < 100; sequence++ {
+			phase := fight.Phase
+			move := GrinchMove{Phase: phase, Member: strconv.Itoa(sequence % players), RequestID: strconv.Itoa(sequence), At: now,
+				NextBoard: 5, FinalBoard: 2, FinalRound: fight.FinalRound, DefenseRound: fight.DefenseRound}
+			if phase == GrinchDefense {
+				for fight.Board&(1<<move.Slot) == 0 {
+					move.Slot++
+				}
+			}
+			if phase == GrinchAttack {
+				for fight.Board&(1<<move.Slot) != 0 { // The weaker tile.
+					move.Slot++
+				}
+			}
+			fight.Move(rules, move)
+			if !fight.Accepted[move.RequestID] {
+				t.Fatalf("%d players: refused %+v in %+v", players, move, fight)
+			}
+			hits[phase]++
+		}
+		want := map[GrinchPhase]int{GrinchSnowballs: 6, GrinchDefense: min(players, 6), GrinchAttack: 6, GrinchFinalAttack: 6}
+		if fight.Phase != GrinchWon || !maps.Equal(hits, want) {
+			t.Errorf("%d players needed %v hits, want %v (phase %s, HP %d)", players, hits, want, fight.Phase, fight.HP)
+		}
 	}
 }

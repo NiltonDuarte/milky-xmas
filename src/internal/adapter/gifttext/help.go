@@ -22,7 +22,6 @@ func Help(access HelpAccess) string {
 		"/aura check                     See your Bad and Good deeds",
 		"/throw snowball <player>        Throw a snowball",
 		"/advent view                    See your Advent doors",
-		"/advent open <day>              Open an Advent door",
 		"/water                          Water the Christmas tree",
 		"/helpmemilky                    Show this list",
 	} {

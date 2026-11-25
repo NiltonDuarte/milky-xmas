@@ -4,7 +4,7 @@ Referência de balanceamento. Os valores abaixo são os **padrões**. Para ajust
 
 Arquivos de origem: `src/internal/core/tuning.go` (padrões e validação), `core/grinch.go` (regras), `core/grinch_rewards.go` (recompensas), `core/grinch_scores.go` (placar), `app/grinch.go` (sorteios e orquestração), `adapter/discord/grinch.go` (botões e mensagem).
 
-> Os textos da luta que citam um número (por exemplo "75 HP", "1 damage" e "n/3 to start early") seguem o valor configurado.
+> Os textos da luta que citam um número (por exemplo "75 HP", "0.84 damage" e "n/3 to start early") seguem o valor configurado.
 
 ## 1. Aparecimento do boss
 
@@ -32,10 +32,10 @@ O anúncio tem um botão **Start**. O primeiro clique começa a contagem regress
 ## 3. Fases e dano
 
 ### Fase 1: Snowballs (☃️ Attack)
-- Cada clique de um inscrito tira **1% de HP** do boss (`grinch.snowballs.damage`).
-- Termina quando o boss chega a **75%** (`grinch.snowballs.boss_hp_after`), ou seja, depois de **25 cliques** no total, de qualquer jogador.
+- Cada clique tira **4,17% de HP** do boss (`grinch.snowballs.damage`), qualquer que seja o número de jogadores.
+- Termina quando o boss chega a **75%** (`grinch.snowballs.boss_hp_after`), ou seja, depois de **6 cliques** no total, de qualquer jogador (o último é cortado no marco).
 - O grupo tem **2 min** para chegar a 75%, contados do início do combate (`grinch.snowballs.duration`). Se o tempo acabar antes, o **boss vence** (a luta termina como fuga, com as recompensas de derrota).
-- Quando chega a 75%, o relógio de **1 min** começa (`TimedAt`) e a fase 2 abre. O número de jogadores nesse instante fica registrado (`DefensePlayers`).
+- Quando chega a 75%, o relógio de **1 min** começa (`TimedAt`) e a fase 2 abre. O número de jogadores nesse instante, no máximo 6, fica registrado (`DefensePlayers`).
 
 ### Relógio de combate
 - **1 min** (`grinch.fight_duration`), contado a partir do boss chegar a 75%.
@@ -43,25 +43,25 @@ O anúncio tem um botão **Start**. O primeiro clique começa a contagem regress
 
 ### Fase 2: Defesa (🎄 / ❄️)
 - Tabuleiro de 2 linhas de 4 botões (8 casas). Cada casa é 🎄 ou ❄️, sorteadas de novo a cada clique, e sempre há pelo menos uma de cada.
-- **🎄 (defesa certa):** conta como uma defesa bem-sucedida. Cada defesa tira `30 ÷ nº de jogadores` % de HP do boss.
-- Ao todo são necessárias **tantas defesas quanto jogadores** inscritos. Elas tiram **30%** de HP no total, e o boss vai de **75% para 45%**.
+- **🎄 (defesa certa):** conta como uma defesa bem-sucedida. Cada defesa tira `30 ÷ defesas necessárias` % de HP do boss.
+- Ao todo é necessária **uma defesa por jogador, no máximo 6** (`grinch.defense.max_defenses`). Elas tiram **30%** de HP no total, e o boss vai de **75% para 45%**.
 - **❄️ (errou):** o jogador perde **10% do HP máximo dele** (`grinch.defense.miss_hp_loss_percent`). Com 10 erros ele fica com 0 e não pode mais agir.
 - Se **todos** os jogadores chegarem a 0 de HP, o resultado é **derrota** na hora.
 - O tabuleiro é trocado a cada clique, e cliques de um tabuleiro velho são recusados.
 
 ### Fase 3: Ataque (🧊 / ☃️)
 - Também 2 linhas de 4 botões, com pelo menos um 🧊 e um ☃️. O tabuleiro é sorteado **uma vez**, quando a fase começa, e **não muda** durante a fase (diferente da defesa e do ataque final).
-- **☃️:** tira **5%** de HP do boss (`grinch.attack.damage`).
-- **🧊:** tira **5,25%** de HP do boss (`grinch.attack.heavy_damage`).
-- A fase termina quando o boss chega a **5%** (`grinch.attack.boss_hp_after`). Ele sai de 45%, então faltam **40%**, o que dá no mínimo 8 cliques (os últimos cliques são cortados para não passar de 5%).
+- **☃️:** tira **6,67%** de HP do boss (`grinch.attack.damage`).
+- **🧊:** tira **7%** de HP do boss (`grinch.attack.heavy_damage`).
+- A fase termina quando o boss chega a **5%** (`grinch.attack.boss_hp_after`). Ele sai de 45%, então faltam **40%**, o que dá 6 cliques (o último é cortado para não passar de 5%).
 - Os jogadores não perdem HP nesta fase.
 
 ### Fase 4: Ataque final (⚔️ / 🎁 / ❄️)
 - Uma linha de 5 botões: 4 casas que são ⚔️ ou 🎁 (sorteadas a cada clique, sempre com pelo menos um de cada) e um botão fixo ❄️ no fim.
-- **⚔️:** tira **1%** de HP do boss (`grinch.final_attack.hit_damage`) e dá **2 pontos** ao jogador (`hit_score`). Os pontos ficam guardados por jogador para uso futuro e **não aparecem no ranking de dano**, que mostra só o dano causado. **Só o ataque final dá pontos**: snowball, defesa e ataque não dão.
+- **⚔️:** tira **0,84%** de HP do boss (`grinch.final_attack.hit_damage`) e dá **2 pontos** ao jogador (`hit_score`). Os pontos ficam guardados por jogador para uso futuro e **não aparecem no ranking de dano**, que mostra só o dano causado. **Só o ataque final dá pontos**: snowball, defesa e ataque não dão.
 - **🎁:** não tira HP. Dá **1 a 5 pontos de presente** (sorteio uniforme, `gift_points.min` e `max`) ao jogador.
 - **❄️:** não tira HP. Dá **1 Snowball** no inventário do jogador na hora (`snowballs_reward`).
-- O boss está com 5%, então **5 cliques em ⚔️** (de qualquer jogador) o derrotam. Isso é a **vitória**.
+- O boss está com 5%, então **6 cliques em ⚔️** (de qualquer jogador) o derrotam. Isso é a **vitória**.
 
 ## 4. Fim da luta e recompensas
 
@@ -81,25 +81,27 @@ O anúncio tem um botão **Start**. O primeiro clique começa a contagem regress
 
 | Ação | Pontos |
 | --- | --- |
-| Clique de Snowball (fase 1) | 1 |
-| Defesa certa (fase 2) | `30 ÷ nº de jogadores` |
-| Ataque ☃️ (fase 3) | 5 |
-| Ataque 🧊 (fase 3) | 5,25 (pode ser menos no último golpe) |
-| ⚔️ (fase 4) | **2** (embora tire só 1% de HP) |
+| Clique de Snowball (fase 1) | 4,17 |
+| Defesa certa (fase 2) | `30 ÷ defesas necessárias` |
+| Ataque ☃️ (fase 3) | 6,67 |
+| Ataque 🧊 (fase 3) | 7 |
+| ⚔️ (fase 4) | 0,84 |
+
+O último golpe de cada fase pode valer menos, porque é cortado no marco.
 
 - **Presentes:** soma dos pontos 🎁 (1 a 5 cada).
 - Os dois placares só listam jogadores inscritos. Desempate pelo ID do jogador.
 
 ## 6. Resumo de uma luta
 
-Para N jogadores inscritos:
+Para N jogadores:
 
-1. 25 cliques de ☃️ levam o boss de 100% a 75%. O relógio de 1 min começa.
-2. N defesas certas levam o boss a 45% (cada erro custa 10% do HP máximo do jogador).
-3. Cerca de 8 ataques (5% ou 5,25% cada) levam o boss a 5%.
-4. 5 cliques em ⚔️ derrotam o boss. Cada 🎁 e cada ❄️ clicados gastam um clique sem dano.
+1. 6 cliques de ☃️ levam o boss de 100% a 75%. O relógio de 1 min começa.
+2. N defesas certas (no máximo 6) levam o boss a 45% (cada erro custa 10% do HP máximo do jogador).
+3. 6 ataques (6,67% ou 7% cada) levam o boss a 5%.
+4. 6 cliques em ⚔️ derrotam o boss. Cada 🎁 e cada ❄️ clicados gastam um clique sem dano.
 
-Total mínimo: **25 + N + 8 + 5 cliques**, tudo dentro de 1 min depois dos primeiros 25.
+Total mínimo: **6 + min(N, 6) + 6 + 6 cliques**, com o relógio de 1 min depois dos primeiros 6.
 
 ## 7. Números que não pertencem à luta mas aparecem nela
 
@@ -119,14 +121,15 @@ Arquivo: [`tuning.yaml`](../tuning.yaml), apontado por `MILKY_TUNING_CONFIG` (Di
 | Tempo de inscrição | `grinch.registration.duration` | `1m` |
 | Inscritos que iniciam a luta na hora | `grinch.registration.early_start_players` | `3` |
 | Relógio de combate | `grinch.fight_duration` | `1m` |
-| Dano por clique de snowball (% de HP) | `grinch.snowballs.damage` | `1` |
+| Dano por clique de snowball (% de HP) | `grinch.snowballs.damage` | `4.17` |
 | HP do boss ao fim da fase 1 | `grinch.snowballs.boss_hp_after` | `75` |
 | HP do boss ao fim da defesa | `grinch.defense.boss_hp_after` | `45` |
+| Máximo de defesas necessárias | `grinch.defense.max_defenses` | `6` |
 | HP perdido por erro na defesa (% do máximo do jogador) | `grinch.defense.miss_hp_loss_percent` | `10` |
-| Dano do ☃️ | `grinch.attack.damage` | `5` |
-| Dano do 🧊 | `grinch.attack.heavy_damage` | `5.25` |
+| Dano do ☃️ | `grinch.attack.damage` | `6.67` |
+| Dano do 🧊 | `grinch.attack.heavy_damage` | `7` |
 | HP do boss ao fim do ataque | `grinch.attack.boss_hp_after` | `5` |
-| Dano do ⚔️ final | `grinch.final_attack.hit_damage` | `1` |
+| Dano do ⚔️ final | `grinch.final_attack.hit_damage` | `0.84` |
 | Pontos do ⚔️ final (guardados) | `grinch.final_attack.hit_score` | `2` |
 | Pontos de presente do 🎁 | `grinch.final_attack.gift_points.min` e `max` | `1` e `5` |
 | Snowballs do ❄️ final | `grinch.final_attack.snowballs_reward` | `1` |
@@ -136,7 +139,7 @@ Arquivo: [`tuning.yaml`](../tuning.yaml), apontado por `MILKY_TUNING_CONFIG` (Di
 Regras de validação (o bot não inicia se alguma falhar):
 
 - Os marcos de HP precisam cair de 100 até 0: `0 < attack.boss_hp_after < defense.boss_hp_after < snowballs.boss_hp_after < 100`.
-- O dano total da defesa é `snowballs.boss_hp_after - defense.boss_hp_after`, dividido entre os inscritos (hoje `75 - 45 = 30`).
+- O dano total da defesa é `snowballs.boss_hp_after - defense.boss_hp_after`, dividido entre as defesas necessárias (hoje `75 - 45 = 30`).
 - Danos e HP aceitam até 2 casas decimais e precisam ser maiores que zero. O último golpe de cada fase é cortado no marco, então o dano não precisa dividir a distância em partes iguais.
 - Durações maiores que zero (a janela de atividade e o intervalo após a luta podem ser `0s`). `early_start_players` é 1 ou mais. `chance_percent` vai de 0 a 100. `miss_hp_loss_percent` vai de 1 a 100. `gift_points`: `1 <= min <= max`. Recompensas são 0 ou mais.
 - Não são ajustáveis: o HP total (100%), os 8 botões dos tabuleiros e a linha final de 5 botões.

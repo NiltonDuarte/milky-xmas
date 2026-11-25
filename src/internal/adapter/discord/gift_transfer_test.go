@@ -6,6 +6,7 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -89,15 +90,15 @@ func TestGiftTransferAuraAndSocksInteractions(t *testing.T) {
 		content string
 	}{
 		{alice.UserID, aura, gifttext.Aura(0)},
-		{alice.UserID, socks, "## 🧦 Your inventory\n```\n🎁 Gifts: 0 - normal | 2 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 2\n```"},
+		{alice.UserID, socks, gifttext.Inventory(core.Inventory{Normal: 0, Rare: 2, Epic: 0, Snowballs: 0, YellowSnowballs: 0, Coal: 2}, true)},
 		{alice.UserID, send("600", true, 1, "rare"), "Choose another player in this server."},
 		{alice.UserID, send(bob.UserID, false, 1.5, "rare"), "Enter a positive whole number of items."},
 		{alice.UserID, send(bob.UserID, false, 1, "rare"), "Sent 1 🎁 rare gift to Bob. Your 😇 good deeds are going up."},
 		{alice.UserID, send(bob.UserID, false, 1, "rare"), "Sent 1 🎁 rare gift to Bob. Your 😇 good deeds are going up."},
 		{alice.UserID, aura, gifttext.Aura(20)},
 		{bob.UserID, aura, gifttext.Aura(0)},
-		{alice.UserID, socks, "## 🧦 Your inventory\n```\n🎁 Gifts: 0 - normal | 0 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 2\n```"},
-		{bob.UserID, socks, "## 🧦 Your inventory\n```\n🎁 Gifts: 0 - normal | 2 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0\n```"},
+		{alice.UserID, socks, gifttext.Inventory(core.Inventory{Normal: 0, Rare: 0, Epic: 0, Snowballs: 0, YellowSnowballs: 0, Coal: 2}, true)},
+		{bob.UserID, socks, gifttext.Inventory(core.Inventory{Normal: 0, Rare: 2, Epic: 0, Snowballs: 0, YellowSnowballs: 0, Coal: 0}, true)},
 		{alice.UserID, send(bob.UserID, false, 2, "coal"), "Sent 2 🌑 Coal to Bob. Your 😈 bad deeds are increasing. Beware!"},
 		{alice.UserID, aura, gifttext.Aura(10)},
 	} {
@@ -121,12 +122,8 @@ func TestGiftTransferAuraAndSocksInteractions(t *testing.T) {
 				return fakeResponse(http.StatusNoContent, ""), nil
 			case 2:
 				if image := map[string]string{"aura": "badgood.jpg", "look": "stocking.jpg"}[step.data.Name]; image != "" {
-					edit, files := decodeMultipartEdit(t, r, image)
-					embeds := *edit.Embeds
-					if r.Method != http.MethodPatch || len(embeds) != 2 || embeds[0].Image == nil ||
-						embeds[0].Image.URL != "attachment://"+image || embeds[1].Description != step.content ||
-						files != 1 {
-						t.Errorf("expected %s above %q, got %s %+v with %d files", image, step.content, r.Method, embeds, files)
+					if box := decodeBox(t, r, image); box.text != step.content || len(box.rows) != 0 {
+						t.Errorf("expected %s above %q, got %+v", image, step.content, box)
 					}
 					return fakeResponse(http.StatusOK, `{"id":"123"}`), nil
 				}
@@ -155,6 +152,75 @@ func TestGiftTransferAuraAndSocksInteractions(t *testing.T) {
 	if err != nil || record.Inventory.Rare != 2 || record.Inventory.Coal != 2 || record.Aura != 0 {
 		t.Fatalf("recipient record = %+v, %v", record, err)
 	}
+}
+
+type boxRow struct {
+	Components []struct {
+		Label    string
+		CustomID string `json:"custom_id"`
+		Disabled bool
+		Style    discordgo.ButtonStyle
+	}
+}
+
+type replyBox struct {
+	text        string
+	rows        []boxRow
+	attachments int
+}
+
+// decodeBox expects one container holding the image, then texts and dividers, then any button rows.
+func decodeBox(t *testing.T, r *http.Request, image string) replyBox {
+	t.Helper()
+	var payload struct {
+		Flags       discordgo.MessageFlags `json:"flags"`
+		Content     *string                `json:"content"`
+		Embeds      []json.RawMessage      `json:"embeds"`
+		Attachments []struct{ ID string }  `json:"attachments"`
+		Components  []struct {
+			Type       discordgo.ComponentType `json:"type"`
+			Components []json.RawMessage       `json:"components"`
+		} `json:"components"`
+	}
+	files := decodeMultipartPayload(t, r, &payload, image)
+	if r.Method != http.MethodPatch || payload.Flags != discordgo.MessageFlagsIsComponentsV2 || payload.Content != nil ||
+		len(payload.Embeds) != 0 || len(payload.Components) != 1 || payload.Components[0].Type != discordgo.ContainerComponent ||
+		len(payload.Components[0].Components) < 2 || files != 1 {
+		t.Fatalf("expected one box with %s, got %s %+v with %d files", image, r.Method, payload, files)
+	}
+	parts := payload.Components[0].Components
+	var gallery struct {
+		Items []struct{ Media struct{ URL string } }
+	}
+	if err := json.Unmarshal(parts[0], &gallery); err != nil {
+		t.Fatal(err)
+	}
+	if len(gallery.Items) != 1 || gallery.Items[0].Media.URL != "attachment://"+image {
+		t.Fatalf("box image = %+v, want %s", gallery, image)
+	}
+	box := replyBox{attachments: len(payload.Attachments)}
+	var texts []string
+	for _, part := range parts[1:] {
+		var body struct {
+			Type    discordgo.ComponentType
+			Content string
+		}
+		if err := json.Unmarshal(part, &body); err != nil {
+			t.Fatal(err)
+		}
+		switch body.Type {
+		case discordgo.TextDisplayComponent:
+			texts = append(texts, body.Content)
+		case discordgo.ActionsRowComponent:
+			var row boxRow
+			if err := json.Unmarshal(part, &row); err != nil {
+				t.Fatal(err)
+			}
+			box.rows = append(box.rows, row)
+		}
+	}
+	box.text = strings.Join(texts, "\n")
+	return box
 }
 
 func decodeMultipartEdit(t *testing.T, r *http.Request, image string) (discordgo.WebhookEdit, int) {

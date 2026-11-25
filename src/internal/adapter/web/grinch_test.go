@@ -17,7 +17,7 @@ func TestLocalGrinch(t *testing.T) {
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
 	store := &giftfixture.Store{}
 	service := app.NewService(store, func() time.Time { return now }, func(int) int { return 0 })
-	handler := newHandler(service, newGrinchFixture(func() time.Time { return now }, store, core.DefaultTuning().Grinch))
+	handler := newHandler(service, newGrinchFixture(func() time.Time { return now }, store, stepGrinchRules()))
 	send := func(command, want string) {
 		t.Helper()
 		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(url.Values{"command": {command}}.Encode()))
@@ -50,13 +50,17 @@ func TestLocalGrinch(t *testing.T) {
 	send("/grinch view", "5 ❄️")
 	send("/grinch hit 5", "5.00/100% HP\nfinal")
 	send("/grinch hit 5", "5.00/100% HP\nfinal")
-	send("/look in-your-stocking", "❄️ Snowballs: 2 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0")
+	send("/look in-your-stocking", "❄️ Normal   2\n")
+	send("/look in-your-stocking", "Coal\n```\n0\n")
+	send("/look in-your-stocking", "🟡 Yellow   0\n")
 	for range 4 {
 		send("/grinch hit 2", "HP\nfinal")
 	}
 	send("/grinch hit 2", "Damage leaderboard\n1. fixture — 100.00 dmg\n\nGift leaderboard\n1. fixture — 2 pts\n\nSnowball leaderboard\n1. fixture — 2 snowballs")
 	send("/grinch view", "👽 Grinch · 0.00/100% HP")
-	send("/look in-your-stocking", "❄️ Snowballs: 2 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0")
+	send("/look in-your-stocking", "❄️ Normal   2\n")
+	send("/look in-your-stocking", "Coal\n```\n0\n")
+	send("/look in-your-stocking", "🟡 Yellow   0\n")
 	now = now.Add(time.Second)
 	send("/grinch summon", "🎅 0 ready")
 	send("/grinch join", "🎅 1 ready")
@@ -71,7 +75,9 @@ func TestLocalGrinch(t *testing.T) {
 	send("/grinch hit 1", "75.00/100% HP\ndefense")
 	now = now.Add(time.Minute)
 	send("/grinch view", "75.00/100% HP\nescaped")
-	send("/look in-your-stocking", "❄️ Snowballs: 2 | 🟡 Yellow Snowballs: 1\n🌑 Coal: 1")
+	send("/look in-your-stocking", "❄️ Normal   2\n")
+	send("/look in-your-stocking", "Coal\n```\n1\n")
+	send("/look in-your-stocking", "🟡 Yellow   1\n")
 
 	// A group that does not bring the Grinch down to 75% in two minutes loses.
 	now = now.Add(time.Second)
@@ -81,4 +87,11 @@ func TestLocalGrinch(t *testing.T) {
 	send("/grinch hit 1", "99.00/100% HP\nsnowballs")
 	now = now.Add(2 * time.Minute)
 	send("/grinch view", "99.00/100% HP\nescaped")
+}
+
+// stepGrinchRules keeps small hits, so the walkthrough passes through each phase step by step.
+func stepGrinchRules() core.GrinchRules {
+	rules := core.DefaultTuning().Grinch
+	rules.SnowballDamage, rules.AttackDamage, rules.AttackHeavyDamage, rules.FinalHitDamage = 100, 500, 525, 100
+	return rules
 }

@@ -164,7 +164,7 @@ func replyActivityClaim(w http.ResponseWriter, r *http.Request, drops *app.Activ
 	}
 	io.WriteString(w, gifttext.DropCollected(award))
 	if award.Finished != nil {
-		io.WriteString(w, "\n"+gifttext.DropExpired(award.Finished.Claims, mention))
+		io.WriteString(w, "\n"+gifttext.DropFinished(award.Finished.Claims, mention))
 	}
 }
 
@@ -186,7 +186,7 @@ func replyInventory(w http.ResponseWriter, r *http.Request, service app.Service)
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	io.WriteString(w, gifttext.Inventory(items))
+	io.WriteString(w, gifttext.Inventory(items, false))
 }
 
 func replyWater(w http.ResponseWriter, r *http.Request, tree *app.Tree) {

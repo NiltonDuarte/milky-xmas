@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/giftfixture"
+	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/gifttext"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/adapter/web"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
@@ -36,8 +37,8 @@ func TestSocksInChat(t *testing.T) {
 		code  int
 		reply string
 	}{
-		{"filled", store, http.StatusOK, "## 🧦 Your inventory\n```\n🎁 Gifts: 1 - normal | 2 rare | 3 epic\n❄️ Snowballs: 4 | 🟡 Yellow Snowballs: 6\n🌑 Coal: 5\n```"},
-		{"empty", &giftfixture.Store{}, http.StatusOK, "## 🧦 Your inventory\n```\n🎁 Gifts: 0 - normal | 0 rare | 0 epic\n❄️ Snowballs: 0 | 🟡 Yellow Snowballs: 0\n🌑 Coal: 0\n```"},
+		{"filled", store, http.StatusOK, gifttext.Inventory(core.Inventory{Normal: 1, Rare: 2, Epic: 3, Snowballs: 4, YellowSnowballs: 6, Coal: 5}, false)},
+		{"empty", &giftfixture.Store{}, http.StatusOK, gifttext.Inventory(core.Inventory{Normal: 0, Rare: 0, Epic: 0, Snowballs: 0, YellowSnowballs: 0, Coal: 0}, false)},
 		{"read failure", &unavailableInventory{}, http.StatusInternalServerError, "Could not load your inventory. Try again."},
 	} {
 		t.Run(step.name, func(t *testing.T) {

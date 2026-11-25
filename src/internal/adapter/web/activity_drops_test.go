@@ -82,7 +82,7 @@ func TestLocalGiftRainEndsAtTenClaimsAndExpireListsPlayers(t *testing.T) {
 	if got := send("/drop collect 1"); got != "You collected 🌑 Coal." {
 		t.Fatalf("claim = %q", got)
 	}
-	if got := send("/drop expire 1"); got != "⌛ This drop has expired.\n**Collected by**\nfixture — 🌑 Coal" {
+	if got := send("/drop expire 1"); got != "⏰ Time's up! The Grinch stole all the presents! 😈\n**Collected by**\nfixture — 🌑 Coal" {
 		t.Fatalf("expire = %q", got)
 	}
 	if got := send("/drop expire 1"); got != "This gift drop is no longer available." {

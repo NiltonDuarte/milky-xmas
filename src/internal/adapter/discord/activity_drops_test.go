@@ -267,7 +267,7 @@ func TestGiftRainEndsAtTenClicksAndListsPlayers(t *testing.T) {
 		}
 	}
 	edit := <-edits
-	if edit.Content == nil || !strings.HasPrefix(*edit.Content, "⌛ This drop has expired.\n**Collected by**\n<@user0> — 🌑 Coal") ||
+	if edit.Content == nil || !strings.HasPrefix(*edit.Content, "🎉 All the gifts were collected!\n**Collected by**\n<@user0> — 🌑 Coal") ||
 		!strings.HasSuffix(*edit.Content, "<@user9> — 🌑 Coal") || len(edit.Components) != 0 {
 		t.Fatalf("final message = %+v", edit)
 	}
@@ -310,7 +310,7 @@ func TestDropExpiresAfterItsLifetimeAndListsPlayers(t *testing.T) {
 	<-edits // Button disabled.
 	select {
 	case edit := <-edits:
-		if edit.Content == nil || *edit.Content != "⌛ This drop has expired.\n**Collected by**\n<@alice> — 🎁 rare gift" || len(edit.Components) != 0 {
+		if edit.Content == nil || *edit.Content != "⏰ Time's up! The Grinch stole all the presents! 😈\n**Collected by**\n<@alice> — 🎁 rare gift" || len(edit.Components) != 0 {
 			t.Fatalf("expiry message = %+v", edit)
 		}
 	case <-time.After(2 * time.Second):

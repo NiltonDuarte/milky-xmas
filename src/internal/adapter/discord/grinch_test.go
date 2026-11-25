@@ -238,7 +238,7 @@ func TestGrinchButtonAcknowledgement(t *testing.T) {
 		return fakeResponse(http.StatusOK, `{"id":"999"}`), nil
 	})
 	state, err := b.encounter.Sync(t.Context(), display)
-	if err != nil || state.Health(core.DefaultTuning().Grinch) != 99 {
+	if err != nil || state.Health(core.DefaultTuning().Grinch) != 95.83 {
 		t.Fatalf("health after click: %v, %v", state.Health(core.DefaultTuning().Grinch), err)
 	}
 }

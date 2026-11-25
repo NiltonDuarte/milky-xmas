@@ -49,10 +49,10 @@ func TestLocalChatAppliesTunedGiftRain(t *testing.T) {
 	if got := send("/message festive chat"); !strings.Contains(got, "It's raining gifts") {
 		t.Fatalf("second message did not start the rain: %q", got)
 	}
-	if got := send("/drop collect 1"); strings.Contains(got, "expired") {
+	if got := send("/drop collect 1"); strings.Contains(got, "All the gifts") {
 		t.Fatalf("first collection ended the rain: %q", got)
 	}
-	if got := send("/drop collect 1"); !strings.Contains(got, "⌛ This drop has expired.") {
+	if got := send("/drop collect 1"); !strings.Contains(got, "🎉 All the gifts were collected!") {
 		t.Fatalf("second collection did not end the rain: %q", got)
 	}
 	if got := send("/drop collect 1"); got != "This gift drop is no longer available." {
@@ -64,6 +64,7 @@ func TestLocalChatAppliesTunedGrinchFight(t *testing.T) {
 	tuning := core.DefaultTuning()
 	tuning.Grinch.EarlyStartPlayers = 1
 	tuning.Grinch.SnowballsBossHP = 9000
+	tuning.Grinch.SnowballDamage = 100
 	send := tunedChat(t, tuning)
 
 	send("/grinch summon")

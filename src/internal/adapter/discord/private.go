@@ -12,7 +12,9 @@ import (
 
 // privateReply is a private command result. With Image set, the image is shown above the text.
 type privateReply struct {
-	Content    string
+	Content string
+	// Blocks, when set, replace Content in the box: each is shown apart, with a dividing line.
+	Blocks     []string
 	Image      *privateImage
 	Components []discordgo.MessageComponent
 }
@@ -49,12 +51,69 @@ func respondPrivatelyWith(session *discordgo.Session, interaction *discordgo.Int
 		cancel()
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	edit := privateEdit(result)
-	if _, err := session.InteractionResponseEdit(interaction, edit, discordgo.WithContext(ctx)); err != nil {
+	if err := showReply(session, interaction, result); err != nil {
 		logInteractionError(interaction.ID, "show command result", err)
 	}
+}
+
+// showReply edits the deferred reply into result. A reply with an image is one box holding the
+// image, the text, and the buttons. If Discord refuses the box, two embeds are sent instead so
+// the player still gets the result.
+func showReply(session *discordgo.Session, interaction *discordgo.Interaction, result privateReply) error {
+	if result.Image != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err := editBoxedReply(ctx, session, interaction, result)
+		cancel()
+		if err == nil {
+			return nil
+		}
+		logInteractionError(interaction.ID, "show boxed result", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := session.InteractionResponseEdit(interaction, privateEdit(result), discordgo.WithContext(ctx))
+	return err
+}
+
+// editBoxedReply puts the image above the text and buttons inside one Components V2 container.
+// discordgo's WebhookEdit has no flags field, so the request body is built here. Content and
+// embeds are cleared so a message sent with embeds can become a box.
+func editBoxedReply(ctx context.Context, session *discordgo.Session, interaction *discordgo.Interaction, result privateReply) error {
+	files := []*discordgo.File{{Name: result.Image.Name, ContentType: "image/jpeg", Reader: bytes.NewReader(result.Image.Data)}}
+	box := []discordgo.MessageComponent{
+		discordgo.MediaGallery{Items: []discordgo.MediaGalleryItem{{Media: discordgo.UnfurledMediaItem{URL: "attachment://" + result.Image.Name}}}},
+	}
+	blocks := result.Blocks
+	if len(blocks) == 0 {
+		blocks = []string{result.Content}
+	}
+	for i, block := range blocks {
+		if i > 0 {
+			box = append(box, discordgo.Separator{})
+		}
+		box = append(box, discordgo.TextDisplay{Content: block})
+	}
+	body := struct {
+		Content         *string                           `json:"content"`
+		Embeds          []*discordgo.MessageEmbed         `json:"embeds"`
+		Flags           discordgo.MessageFlags            `json:"flags"`
+		Components      []discordgo.MessageComponent      `json:"components"`
+		Attachments     *[]*discordgo.MessageAttachment   `json:"attachments"`
+		AllowedMentions *discordgo.MessageAllowedMentions `json:"allowed_mentions"`
+	}{
+		Embeds:          []*discordgo.MessageEmbed{},
+		Flags:           discordgo.MessageFlagsIsComponentsV2,
+		Components:      []discordgo.MessageComponent{discordgo.Container{Components: append(box, result.Components...)}},
+		Attachments:     attachmentsFor(files),
+		AllowedMentions: &discordgo.MessageAllowedMentions{},
+	}
+	contentType, payload, err := discordgo.MultipartBodyWithJSON(body, files)
+	if err != nil {
+		return err
+	}
+	uri := discordgo.EndpointWebhookMessage(interaction.AppID, interaction.Token, "@original")
+	_, err = session.RequestRaw("PATCH", uri, contentType, payload, discordgo.EndpointWebhookToken("", ""), 0, discordgo.WithContext(ctx))
+	return err
 }
 
 // privateEdit builds the message edit for a private reply. Files are listed in the attachments by

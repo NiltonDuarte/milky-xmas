@@ -63,24 +63,25 @@ grinch:
   # se o tempo acabar antes, o boss vence.
   snowballs:
     duration: 2m            # tempo para baixar o boss até boss_hp_after
-    damage: 1               # HP do boss por clique
+    damage: 4.17            # HP do boss por clique: 6 cliques do grupo vencem a fase
     boss_hp_after: 75       # a fase termina quando o boss chega a este HP
 
   # Fase 2: defesa. O dano total da fase (snowballs.boss_hp_after - defense.boss_hp_after)
-  # é dividido entre os jogadores inscritos: são necessárias tantas defesas quanto jogadores.
+  # é dividido entre as defesas necessárias: uma por jogador, até max_defenses.
   defense:
     boss_hp_after: 45
     miss_hp_loss_percent: 10   # % do HP máximo do jogador perdido ao errar
+    max_defenses: 6            # nunca são necessárias mais defesas que isto
 
   # Fase 3: ataque. Os últimos golpes são cortados para não passar de boss_hp_after.
   attack:
-    damage: 5               # HP do boss por clique em ☃️
-    heavy_damage: 5.25      # HP do boss por clique em 🧊
+    damage: 6.67            # HP do boss por clique em ☃️: até 6 cliques vencem a fase
+    heavy_damage: 7         # HP do boss por clique em 🧊
     boss_hp_after: 5
 
   # Fase 4: ataque final, até o boss chegar a 0.
   final_attack:
-    hit_damage: 1           # HP do boss tirado por ⚔️
+    hit_damage: 0.84        # HP do boss tirado por ⚔️: 6 golpes vencem a fase
     hit_score: 2            # pontos que ⚔️ dá ao jogador (guardados para uso futuro; o ranking de dano mostra só o dano)
     gift_points:            # 🎁 dá pontos de presente sorteados nesta faixa
       min: 1

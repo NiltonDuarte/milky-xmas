@@ -169,6 +169,7 @@ type document struct {
 		Defense struct {
 			BossHPAfter       float64 `yaml:"boss_hp_after"`
 			MissHPLossPercent whole   `yaml:"miss_hp_loss_percent"`
+			MaxDefenses       whole   `yaml:"max_defenses"`
 		} `yaml:"defense"`
 		Attack struct {
 			Damage      float64 `yaml:"damage"`
@@ -230,6 +231,7 @@ func defaultsDocument() document {
 	doc.Grinch.Snowballs.Duration = duration(g.SnowballsDuration)
 	doc.Grinch.Snowballs.Damage, doc.Grinch.Snowballs.BossHPAfter = percent(g.SnowballDamage), percent(g.SnowballsBossHP)
 	doc.Grinch.Defense.BossHPAfter, doc.Grinch.Defense.MissHPLossPercent = percent(g.DefenseBossHP), whole(g.DefenseMissHPLoss)
+	doc.Grinch.Defense.MaxDefenses = whole(g.DefenseMaxDefenses)
 	doc.Grinch.Attack.Damage, doc.Grinch.Attack.HeavyDamage = percent(g.AttackDamage), percent(g.AttackHeavyDamage)
 	doc.Grinch.Attack.BossHPAfter = percent(g.AttackBossHP)
 	doc.Grinch.FinalAttack.HitDamage, doc.Grinch.FinalAttack.HitScore = percent(g.FinalHitDamage), percent(g.FinalHitScore)
@@ -281,6 +283,7 @@ func (doc document) tuning() (core.Tuning, error) {
 		SnowballsBossHP:          hundredths("grinch.snowballs.boss_hp_after", g.Snowballs.BossHPAfter),
 		DefenseBossHP:            hundredths("grinch.defense.boss_hp_after", g.Defense.BossHPAfter),
 		DefenseMissHPLoss:        int(g.Defense.MissHPLossPercent),
+		DefenseMaxDefenses:       int(g.Defense.MaxDefenses),
 		AttackDamage:             hundredths("grinch.attack.damage", g.Attack.Damage),
 		AttackHeavyDamage:        hundredths("grinch.attack.heavy_damage", g.Attack.HeavyDamage),
 		AttackBossHP:             hundredths("grinch.attack.boss_hp_after", g.Attack.BossHPAfter),

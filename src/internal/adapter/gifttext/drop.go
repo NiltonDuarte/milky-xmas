@@ -32,10 +32,20 @@ func DropRejection(err error) string {
 	}
 }
 
-// DropExpired is the final message of a drop. Mention formats a player's user ID.
+// DropExpired is the final message of a drop whose time ran out. Mention formats a player's
+// user ID.
 func DropExpired(claims []app.DropClaimRecord, mention func(string) string) string {
+	return dropEnd("⏰ Time's up! The Grinch stole all the presents! 😈", claims, mention)
+}
+
+// DropFinished is the final message of a drop that players used up before its time ran out.
+func DropFinished(claims []app.DropClaimRecord, mention func(string) string) string {
+	return dropEnd("🎉 All the gifts were collected!", claims, mention)
+}
+
+func dropEnd(title string, claims []app.DropClaimRecord, mention func(string) string) string {
 	var text strings.Builder
-	text.WriteString("⌛ This drop has expired.")
+	text.WriteString(title)
 	if len(claims) == 0 {
 		text.WriteString("\nNobody collected a gift.")
 		return text.String()

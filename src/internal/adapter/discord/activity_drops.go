@@ -75,11 +75,13 @@ func (b *dropBot) expire(session *discordgo.Session, channelID, messageID, dropI
 	if !ok {
 		return // Already finished, for example when the tenth Gift Rain gift was collected.
 	}
-	showDropEnd(session, channelID, messageID, summary)
+	showDropEnd(session, channelID, messageID, gifttext.DropExpired(summary.Claims, userMention))
 }
 
-func showDropEnd(session *discordgo.Session, channelID, messageID string, summary app.DropSummary) {
-	content := gifttext.DropExpired(summary.Claims, func(userID string) string { return "<@" + userID + ">" })
+func userMention(userID string) string { return "<@" + userID + ">" }
+
+// showDropEnd replaces a drop's message and buttons with its final text.
+func showDropEnd(session *discordgo.Session, channelID, messageID, content string) {
 	components := []discordgo.MessageComponent{}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -151,7 +153,7 @@ func (b *dropBot) button(session *discordgo.Session, interaction *discordgo.Inte
 		if message := interaction.Message; message != nil {
 			switch {
 			case award.Finished != nil:
-				showDropEnd(session, interaction.ChannelID, message.ID, *award.Finished)
+				showDropEnd(session, interaction.ChannelID, message.ID, gifttext.DropFinished(award.Finished.Claims, userMention))
 			case award.Kind == core.RandomActiveDrop:
 				components := dropComponents(parts[1], award.Taken)
 				if _, err := session.ChannelMessageEditComplex(&discordgo.MessageEdit{

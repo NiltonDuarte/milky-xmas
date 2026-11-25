@@ -18,17 +18,17 @@ A collected daily claim SHALL show the heading `## 🎅🏻 Christmas won’t be
 
 ### Requirement: Inventory presentation
 
-`/look in-your-stocking` SHALL show the heading `## 🧦 Your inventory` and a code block listing gifts by rarity, Snowballs, Yellow Snowballs, and Coal.
+`/look in-your-stocking` SHALL show three sections divided by lines, with large titles `🎁 Gifts`, `❄️ Snowballs`, and `🌑 Coal`, listing every balance including zeros. Discord SHALL show the Normal words and the Coal number in white, Rare in green, and Epic in purple. The snowball rows SHALL carry the ❄️ and 🟡 emoji.
 
 #### Scenario: Inventory listing
 
 - **GIVEN** a player has any inventory
 - **WHEN** they run `/look in-your-stocking`
-- **THEN** the reply uses the heading and code block with every balance, including zeros
+- **THEN** the reply lists every balance, including zeros
 
 ### Requirement: Aura presentation
 
-`/aura check` SHALL show `😈 Bad <n>%  |  <n>% Good 😇` in a code block. Discord SHALL show the bad good image above that line in the private reply.
+`/aura check` SHALL show the aura scale that `single-aura-scale` defines in a code block. Discord SHALL show the bad good image above that line in the private reply.
 
 #### Scenario: Aura line
 

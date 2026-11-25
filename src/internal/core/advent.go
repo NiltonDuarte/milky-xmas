@@ -1,7 +1,9 @@
 package core
 
 import (
-	"math/bits"
+	"crypto/sha256"
+	"encoding/binary"
+	"fmt"
 	"time"
 )
 
@@ -18,9 +20,26 @@ const (
 )
 
 type AdventCalendar struct {
-	Year  int
-	Total int
+	Year int
+	// Doors holds the status of each door: Doors[0] is door 1.
 	Doors [AdventDays]DoorStatus
+	// Order lists the door indexes in the order this player sees them.
+	Order [AdventDays]int
+}
+
+// AdventOrder shuffles the numbers 0 to AdventDays-1. The result depends only on the seed, so
+// a player keeps the same order every time without it being stored.
+func AdventOrder(seed string) [AdventDays]int {
+	var order [AdventDays]int
+	for i := range order {
+		order[i] = i
+	}
+	for i := AdventDays - 1; i > 0; i-- {
+		sum := sha256.Sum256(fmt.Appendf(nil, "%s|%d", seed, i))
+		j := binary.BigEndian.Uint64(sum[:8]) % uint64(i+1)
+		order[i], order[j] = order[j], order[i]
+	}
+	return order
 }
 
 // TEMPORARY: a test window that opens every door from November 24 through November 29, 2026 (UTC),
@@ -65,8 +84,8 @@ func AdventStatus(now time.Time, day int, opened bool) DoorStatus {
 	return DoorAvailable
 }
 
-func AdventView(now time.Time, opened uint32) AdventCalendar {
-	calendar := AdventCalendar{Year: now.UTC().Year(), Total: bits.OnesCount32(opened)}
+func AdventView(now time.Time, opened uint32, order [AdventDays]int) AdventCalendar {
+	calendar := AdventCalendar{Year: now.UTC().Year(), Order: order}
 	for i := range calendar.Doors {
 		calendar.Doors[i] = AdventStatus(now, i+1, opened&(1<<i) != 0)
 	}

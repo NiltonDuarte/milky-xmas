@@ -10,29 +10,31 @@ import (
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
 
-// Aura draws the scale from -50 to +50 with a marker on the player's place and the number
-// under it. Each cell on either side of the centre covers ten points.
+// Aura draws the scale from bad to good with a marker on the player's place and a finger
+// pointing up at it. Both sides carry a number, as the player's value on their side and zero on
+// the other. The ends of the scale are not shown to players.
 func Aura(aura core.Aura) string {
 	const cells, pointsPerCell = 5, 10
-	bar := []rune(strings.Repeat("▱", cells) + "|" + strings.Repeat("▱", cells))
+	// Box-drawing cells are one column wide in code blocks, so the finger lines up.
+	bar := []rune(strings.Repeat("─", cells) + "┼" + strings.Repeat("─", cells))
 	magnitude := int(aura)
 	if magnitude < 0 {
 		magnitude = -magnitude
 	}
 	step := min(magnitude/pointsPerCell, cells-1) + 1
-	marker, label := cells, "0"
+	marker, bad, good := cells, "0", "0"
 	switch {
 	case aura < 0:
-		marker, label = cells-step, fmt.Sprintf("%d", aura)
+		marker, bad = cells-step, fmt.Sprintf("%d", aura)
 	case aura > 0:
-		marker, label = cells+step, fmt.Sprintf("+%d", aura)
+		marker, good = cells+step, fmt.Sprintf("+%d", aura)
 	}
 	bar[marker] = '●'
-	left := fmt.Sprintf("😈 %d ", core.AuraMin)
-	// The emoji takes two columns in a code block but counts as one character.
-	column := utf8.RuneCountInString(left) + 1 + marker
-	indent := strings.Repeat(" ", column-len(label)/2)
-	return fmt.Sprintf("```\n%s%s +%d 😇\n%s%s\n```", left, string(bar), core.AuraMax, indent, label)
+	left := bad + " 😈 "
+	// The emoji takes two columns but counts as one character, so this is the marker's column.
+	// The fingertip sits on the left of 👆, which therefore starts right there.
+	indent := strings.Repeat(" ", utf8.RuneCountInString(left)+1+marker)
+	return fmt.Sprintf("```\n%s%s 😇 %s\n%s👆🏻\n```", left, string(bar), good, indent)
 }
 
 func Transfer(item string, quantity int64, recipient string) string {

@@ -96,7 +96,7 @@ func TestGrinchSQLite(t *testing.T) {
 	group.Wait()
 	display.updateError = errors.New("edit failed")
 	state, err := first.Sync(t.Context(), display)
-	if !errors.Is(err, display.updateError) || state.Phase != core.GrinchDefense || state.Health(core.DefaultTuning().Grinch) != 75 || len(state.Accepted) != 28 {
+	if !errors.Is(err, display.updateError) || state.Phase != core.GrinchDefense || state.Health(core.DefaultTuning().Grinch) != 75 || len(state.Accepted) != 9 { // Three joins and the six snowballs that end the phase.
 		t.Fatalf("state after concurrent attacks = %+v, %v", state, err)
 	}
 	if err := store.Close(); err != nil {
