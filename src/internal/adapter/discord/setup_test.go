@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -53,7 +54,9 @@ func TestSetupChannels(t *testing.T) {
 	}
 	var reply string
 	var private bool
-	var prompts, introductions int
+	var prompts, introductions, roleCreations int
+	var introductionButtons []string
+	roleCreated := false
 	session.Client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/callback"):
@@ -74,7 +77,15 @@ func TestSetupChannels(t *testing.T) {
 			reply = *edit.Content
 			return fakeResponse(http.StatusOK, `{"id":"101"}`), nil
 		case r.URL.Path == "/api/v9/channels/400/messages" || r.URL.Path == "/api/v9/channels/401/messages":
-			var message discordgo.MessageSend
+			var message struct {
+				Content    string `json:"content"`
+				Components []struct {
+					Components []struct {
+						Label    string `json:"label"`
+						CustomID string `json:"custom_id"`
+					} `json:"components"`
+				} `json:"components"`
+			}
 			if err := json.NewDecoder(r.Body).Decode(&message); err != nil {
 				t.Fatal(err)
 			}
@@ -83,10 +94,24 @@ func TestSetupChannels(t *testing.T) {
 				prompts++
 			case r.URL.Path == "/api/v9/channels/401/messages" && message.Content == app.ChristmasIntroduction:
 				introductions++
+				for _, row := range message.Components {
+					for _, button := range row.Components {
+						introductionButtons = append(introductionButtons, button.Label+"|"+button.CustomID)
+					}
+				}
 			default:
 				t.Fatalf("unexpected public message at %s: %q", r.URL.Path, message.Content)
 			}
 			return fakeResponse(http.StatusOK, `{"id":"102"}`), nil
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v9/guilds/200/roles":
+			if roleCreated {
+				return fakeResponse(http.StatusOK, `[{"id":"900","name":"elfs"}]`), nil
+			}
+			return fakeResponse(http.StatusOK, `[{"id":"200","name":"@everyone"}]`), nil
+		case r.Method == http.MethodPost && r.URL.Path == "/api/v9/guilds/200/roles":
+			roleCreations++
+			roleCreated = true
+			return fakeResponse(http.StatusOK, `{"id":"900","name":"elfs"}`), nil
 		default:
 			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
 			return nil, nil
@@ -128,6 +153,9 @@ func TestSetupChannels(t *testing.T) {
 	invoke("402", "setup", mod, set("400", true, false), "commands on · boss off", true)
 	invoke("402", "setup", mod, set("401", false, true), "commands off · boss on", true)
 	invoke("402", "setup", mod, set("401", false, true), "commands off · boss on", true)
+	if roleCreations != 1 || !slices.Equal(introductionButtons, []string{"Join the elf army 🛷|elfs:join"}) {
+		t.Fatalf("elfs roles created = %d, introduction buttons = %q", roleCreations, introductionButtons)
+	}
 	if introductions != 1 || channels.get("200", "400") != nil || channels.get("200", "401") == nil || channels.get("201", "401") != nil {
 		t.Fatalf("unexpected worker selection or repeated introduction: %d introductions", introductions)
 	}

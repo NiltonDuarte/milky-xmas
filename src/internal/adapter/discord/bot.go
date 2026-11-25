@@ -128,6 +128,8 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 			b.drops.button(session, event.Interaction)
 		} else if ok && strings.HasPrefix(data.CustomID, adventButtonPrefix) {
 			b.adventButton(session, event.Interaction)
+		} else if ok && data.CustomID == elfButtonID {
+			b.elfButton(session, event.Interaction)
 		} else if ok && strings.HasPrefix(data.CustomID, "grinch:") {
 			if worker := b.grinches.get(event.GuildID, event.ChannelID); worker != nil {
 				worker.button(session, event.Interaction)

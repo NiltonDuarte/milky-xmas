@@ -94,9 +94,12 @@ func setupPromptChannel(ctx context.Context, session *discordgo.Session, guild *
 
 func setupPoster(session *discordgo.Session) app.SetupAnnouncement {
 	return func(ctx context.Context, channel, content string) error {
-		_, err := session.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
-			Content: content, AllowedMentions: &discordgo.MessageAllowedMentions{},
-		}, discordgo.WithContext(ctx))
+		message := &discordgo.MessageSend{Content: content, AllowedMentions: &discordgo.MessageAllowedMentions{}}
+		if content == app.ChristmasIntroduction {
+			// The introduction is the last setup message: it carries the way to join the elf army.
+			message.Components = elfArmyComponents()
+		}
+		_, err := session.ChannelMessageSendComplex(channel, message, discordgo.WithContext(ctx))
 		return err
 	}
 }
@@ -136,6 +139,9 @@ func (b bot) handleSetup(session *discordgo.Session, interaction *discordgo.Inte
 		if !saved {
 			logInteractionError(interaction.ID, "save channel choices", err)
 			return "Could not save the channel choices."
+		}
+		if boss {
+			prepareElfRole(ctx, session, member.ServerID)
 		}
 		reply := fmt.Sprintf("Saved <#%s> · commands %s · boss %s.", channelID, setupToggle(commands), setupToggle(boss))
 		// A failed Discord post may exhaust the reply context. Refresh the saved choices independently.
