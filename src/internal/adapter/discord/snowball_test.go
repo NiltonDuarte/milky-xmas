@@ -45,10 +45,14 @@ func TestThrownSnowballInteraction(t *testing.T) {
 				options = append(options, &discordgo.ApplicationCommandInteractionDataOption{
 					Type: discordgo.ApplicationCommandOptionString, Name: "type", Value: "yellow",
 				})
-				saved, err := store.Save(t.Context(), app.GiftUpdate{Member: sender, Next: core.GiftRecord{Inventory: wantInventory}})
-				if err != nil || !saved {
-					t.Fatalf("seed yellow snowball = %v, %v", saved, err)
-				}
+			} else {
+				options = append(options, &discordgo.ApplicationCommandInteractionDataOption{
+					Type: discordgo.ApplicationCommandOptionString, Name: "type", Value: "normal",
+				})
+			}
+			// The sender owns exactly the snowball that is thrown.
+			if saved, err := store.Save(t.Context(), app.GiftUpdate{Member: sender, Next: core.GiftRecord{Inventory: wantInventory}}); err != nil || !saved {
+				t.Fatalf("seed snowball = %v, %v", saved, err)
 			}
 			session, err := discordgo.New("Bot fixture")
 			if err != nil {
@@ -114,7 +118,7 @@ func TestThrownSnowballInteraction(t *testing.T) {
 				ID: "300", AppID: "100", Token: "fixture-token", GuildID: "200", ChannelID: "700", Type: discordgo.InteractionApplicationCommand,
 				Member: &discordgo.Member{Nick: "Alice", User: &discordgo.User{ID: "400"}},
 				Data: discordgo.ApplicationCommandInteractionData{
-					CommandType: discordgo.ChatApplicationCommand, Name: "thrown",
+					CommandType: discordgo.ChatApplicationCommand, Name: "throw",
 					Options: []*discordgo.ApplicationCommandInteractionDataOption{
 						{Type: discordgo.ApplicationCommandOptionSubCommand, Name: "snowball", Options: options},
 					},
@@ -135,7 +139,7 @@ func TestThrownSnowballInteraction(t *testing.T) {
 			if aura, err := service.CheckAura(t.Context(), sender); err != nil || aura.Bad != wantBad {
 				t.Fatalf("sender aura = %+v, %v", aura, err)
 			}
-			if inventory, err := service.ViewInventory(t.Context(), sender); err != nil || inventory.YellowSnowballs != 0 {
+			if inventory, err := service.ViewInventory(t.Context(), sender); err != nil || inventory != (core.Inventory{}) {
 				t.Fatalf("sender inventory = %+v, %v", inventory, err)
 			}
 		})
@@ -153,20 +157,25 @@ func TestSnowballAutocomplete(t *testing.T) {
 	if saved, err := setup.Configure(ctx, "200", "700", true, true, false, nil); err != nil || !saved {
 		t.Fatalf("configure channel = %v, %v", saved, err)
 	}
-	member := app.Member{ServerID: "200", UserID: "400"}
-	if saved, err := store.Save(ctx, app.GiftUpdate{Member: member, Next: core.GiftRecord{Inventory: core.Inventory{YellowSnowballs: 1}}}); err != nil || !saved {
-		t.Fatalf("seed yellow snowball = %v, %v", saved, err)
+	for user, inventory := range map[string]core.Inventory{
+		"400": {Snowballs: 1, YellowSnowballs: 1}, "500": {Snowballs: 1},
+	} {
+		member := app.Member{ServerID: "200", UserID: user}
+		if saved, err := store.Save(ctx, app.GiftUpdate{Member: member, Next: core.GiftRecord{Inventory: inventory}}); err != nil || !saved {
+			t.Fatalf("seed snowballs for %s = %v, %v", user, saved, err)
+		}
 	}
 	b := bot{guildID: "200", service: app.NewService(store, time.Now, func(int) int { return 0 }), setup: setup}
 	for _, step := range []struct {
 		user, channel, query string
-		wants                string
+		wants, labels        string
 	}{
-		{"400", "700", "", "normal,yellow"},
-		{"400", "700", "yel", "yellow"},
-		{"500", "700", "", "normal"},
-		{"500", "700", "yel", ""},
-		{"400", "701", "", ""},
+		{"400", "700", "", "normal,yellow", "❄️ Normal Snowball|🟡 Yellow Snowball"},
+		{"400", "700", "yel", "yellow", "🟡 Yellow Snowball"},
+		{"500", "700", "", "normal", "❄️ Normal Snowball"},
+		{"500", "700", "yel", "", ""},
+		{"600", "700", "", "", ""},
+		{"400", "701", "", "", ""},
 	} {
 		session, err := discordgo.New("Bot fixture")
 		if err != nil {
@@ -182,12 +191,16 @@ func TestSnowballAutocomplete(t *testing.T) {
 			if payload.Type != discordgo.InteractionApplicationCommandAutocompleteResult || payload.Data == nil || payload.Data.Choices == nil {
 				t.Fatalf("invalid autocomplete response: %+v", payload)
 			}
-			var values []string
+			var values, labels []string
 			for _, choice := range payload.Data.Choices {
 				values = append(values, choice.Value.(string))
+				labels = append(labels, choice.Name)
 			}
 			if got := strings.Join(values, ","); got != step.wants {
 				t.Errorf("choices for %+v = %q", step, got)
+			}
+			if got := strings.Join(labels, "|"); got != step.labels {
+				t.Errorf("choice labels for %+v = %q", step, got)
 			}
 			return fakeResponse(http.StatusNoContent, ""), nil
 		})
@@ -196,7 +209,7 @@ func TestSnowballAutocomplete(t *testing.T) {
 			Type:   discordgo.InteractionApplicationCommandAutocomplete,
 			Member: &discordgo.Member{User: &discordgo.User{ID: step.user}},
 			Data: discordgo.ApplicationCommandInteractionData{
-				CommandType: discordgo.ChatApplicationCommand, Name: "thrown",
+				CommandType: discordgo.ChatApplicationCommand, Name: "throw",
 				Options: []*discordgo.ApplicationCommandInteractionDataOption{
 					{Type: discordgo.ApplicationCommandOptionSubCommand, Name: "snowball", Options: []*discordgo.ApplicationCommandInteractionDataOption{
 						{Type: discordgo.ApplicationCommandOptionString, Name: "type", Value: step.query, Focused: true},

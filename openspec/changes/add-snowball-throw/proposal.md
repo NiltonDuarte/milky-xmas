@@ -6,7 +6,7 @@ Players can see their Snowball balance in `/socks`. Throwing a snowball gives pl
 
 ## What Changes
 
-- Add `/thrown snowball` with a recipient selector.
+- Add `/throw snowball` with a recipient selector.
 - Credit one Snowball to the recipient and tag the recipient in the channel where the throw happened.
 
 ## Capabilities

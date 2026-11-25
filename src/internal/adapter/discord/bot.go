@@ -88,7 +88,7 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 		},
 		adventCommand(),
 		grinchCommand(),
-		thrownCommand(),
+		throwCommand(),
 		waterCommand(),
 		helpCommand(),
 		setupCommand(),
@@ -149,7 +149,7 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 	}
 
 	if event.Type == discordgo.InteractionApplicationCommandAutocomplete {
-		if data.Name == thrownCommandName && b.setup != nil {
+		if data.Name == throwCommandName && b.setup != nil {
 			b.autocompleteSnowball(session, event.Interaction, data)
 		}
 		return
@@ -185,8 +185,8 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 			b.handleHelp(session, event.Interaction)
 		}
 		return
-	case thrownCommandName:
-		b.handleThrownSnowball(session, event.Interaction, data)
+	case throwCommandName:
+		b.handleThrowSnowball(session, event.Interaction, data)
 		return
 	case app.LookCommand:
 		if commandSubcommand(data.Options, app.StockingSubcommand) != nil {

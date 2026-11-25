@@ -11,7 +11,7 @@ import (
 
 func replyThrownSnowball(w http.ResponseWriter, r *http.Request, service app.Service, args []string) {
 	if (len(args) != 2 && len(args) != 3) || args[0] != "snowball" {
-		http.Error(w, "Use /thrown snowball <recipient> [normal|yellow].", http.StatusBadRequest)
+		http.Error(w, "Use /throw snowball <recipient> [normal|yellow].", http.StatusBadRequest)
 		return
 	}
 	name := args[1]

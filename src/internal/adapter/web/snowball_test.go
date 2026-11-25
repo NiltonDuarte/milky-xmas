@@ -17,7 +17,7 @@ import (
 func TestThrownSnowballInChat(t *testing.T) {
 	store := &giftfixture.Store{}
 	sender := app.Member{ServerID: "local", UserID: "fixture"}
-	if saved, err := store.Save(t.Context(), app.GiftUpdate{Member: sender, Next: core.GiftRecord{Inventory: core.Inventory{YellowSnowballs: 1}}}); err != nil || !saved {
+	if saved, err := store.Save(t.Context(), app.GiftUpdate{Member: sender, Next: core.GiftRecord{Inventory: core.Inventory{Snowballs: 2, YellowSnowballs: 1}}}); err != nil || !saved {
 		t.Fatalf("seed yellow snowball = %v, %v", saved, err)
 	}
 	service := app.NewService(store, time.Now, func(int) int { return 0 })
@@ -27,11 +27,12 @@ func TestThrownSnowballInChat(t *testing.T) {
 		code    int
 		reply   string
 	}{
-		{"/thrown snowball fixture", http.StatusBadRequest, "Choose another player in this server."},
-		{"/thrown snowball Bob", http.StatusOK, "You have thrown a ❄️ snowball at Bob. 🥶\nBob❕  fixture has thrown a ❄️ snowball at you. 🥶"},
-		{"/thrown snowball Bob", http.StatusOK, "You have thrown a ❄️ snowball at Bob. 🥶\nBob❕  fixture has thrown a ❄️ snowball at you. 🥶"},
-		{"/thrown snowball Bob yellow", http.StatusOK, "You have thrown a 🟡 yellow snowball at Bob. 🥶\nBob❕  fixture has thrown a 🟡 yellow snowball at you. 🥶"},
-		{"/thrown snowball Bob yellow", http.StatusBadRequest, "You don't have a Yellow Snowball to throw."},
+		{"/throw snowball fixture", http.StatusBadRequest, "Choose another player in this server."},
+		{"/throw snowball Bob", http.StatusOK, "You have thrown a ❄️ snowball at Bob. 🥶\nBob❕  fixture has thrown a ❄️ snowball at you. 🥶"},
+		{"/throw snowball Bob", http.StatusOK, "You have thrown a ❄️ snowball at Bob. 🥶\nBob❕  fixture has thrown a ❄️ snowball at you. 🥶"},
+		{"/throw snowball Bob", http.StatusBadRequest, "You don't have a Snowball to throw."},
+		{"/throw snowball Bob yellow", http.StatusOK, "You have thrown a 🟡 yellow snowball at Bob. 🥶\nBob❕  fixture has thrown a 🟡 yellow snowball at you. 🥶"},
+		{"/throw snowball Bob yellow", http.StatusBadRequest, "You don't have a Yellow Snowball to throw."},
 		{"/aura check", http.StatusOK, "```\n😈 Bad 5%  |  0% Good 😇\n```"},
 	} {
 		form := url.Values{"command": {step.command}}
@@ -47,7 +48,7 @@ func TestThrownSnowballInChat(t *testing.T) {
 	if err != nil || inventory.Snowballs != 2 || inventory.YellowSnowballs != 1 {
 		t.Fatalf("recipient inventory = %+v, %v", inventory, err)
 	}
-	if inventory, err := service.ViewInventory(t.Context(), sender); err != nil || inventory.YellowSnowballs != 0 {
+	if inventory, err := service.ViewInventory(t.Context(), sender); err != nil || inventory != (core.Inventory{}) {
 		t.Fatalf("sender inventory = %+v, %v", inventory, err)
 	}
 }

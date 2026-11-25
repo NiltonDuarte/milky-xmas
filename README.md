@@ -68,9 +68,9 @@ In the Discord test server, invoke `/look in-your-stocking` and check that only 
 
 ## Throw a snowball
 
-In the Discord test server, use `/thrown snowball` and select another player. Use the optional type field to choose Normal or Yellow Snowball. Yellow appears when you have one. Throwing it transfers one to the recipient and adds five percentage points to your Bad deeds, up to 100%. The sender sees a private confirmation and the bot mentions the recipient in the same channel with their new Snowball total. The recipient can run `/look in-your-stocking` to check the balance. If the bot cannot post in that channel, the inventory still increases and the sender sees a delivery warning.
+In the Discord test server, use `/throw snowball` and select another player. Then choose the type, Normal or Yellow Snowball; the type is required, like the player. Each type appears only when you own one. A throw moves one snowball of that type from your inventory to the recipient's, and a Yellow Snowball also adds five percentage points to your Bad deeds, up to 100%. The sender sees a private confirmation and the bot mentions the recipient in the same channel with their new Snowball total. The recipient can run `/look in-your-stocking` to check the balance. If you have none to throw, or the recipient's inventory is full, the throw is refused and nothing moves. If the bot cannot post in that channel, the inventory still changes and the sender sees a delivery warning.
 
-In the local chat, run `/thrown snowball friend` twice. The transcript shows the confirmation and simulated notification. The notification reports one Snowball on the first throw and two on the second. Use `/thrown snowball friend yellow` to throw a Yellow Snowball from your inventory. Use `/send gift friend coal 1` to transfer Coal.
+In the local chat, give yourself Snowballs first (they come from the Grinch fight rewards), then run `/throw snowball friend`. The transcript shows the confirmation and simulated notification, and a throw without a Snowball is refused. Use `/throw snowball friend yellow` to throw a Yellow Snowball from your inventory. Use `/send gift friend coal 1` to transfer Coal.
 
 ## Advent calendar
 
@@ -104,7 +104,7 @@ Moderators with Manage Messages or Administrator can run `/give gift <recipient>
 
 In the Discord test server, check that a member without Manage Messages cannot see `/give` or is refused, that a moderator's grant appears in the recipient's `/look in-your-stocking`, and that the aura image appears above the aura line.
 
-The snowball notification reads `<recipient>❕  <sender> has thrown a <type> at you. 🥶`. In Discord it mentions the recipient and shows the snowball image below the text. Check that after `/thrown snowball`.
+The snowball notification reads `<recipient>❕  <sender> has thrown a <type> at you. 🥶`. In Discord it mentions the recipient and shows the snowball image below the text. Check that after `/throw snowball`.
 
 The Grinch announcement shows the Grinch image below the registration text. In the Discord test server, summon the Grinch with `/grinch summon` and check the image, then press Start and confirm the image stays while the fight updates.
 

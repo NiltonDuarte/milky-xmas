@@ -13,28 +13,28 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-const thrownCommandName = "thrown"
+const throwCommandName = "throw"
 const snowballImageName = "snowball.jpg"
 
 //go:embed snowball.jpg
 var snowballImage []byte
 
-func thrownCommand() *discordgo.ApplicationCommand {
+func throwCommand() *discordgo.ApplicationCommand {
 	return &discordgo.ApplicationCommand{
-		Type: discordgo.ChatApplicationCommand, Name: thrownCommandName, Description: "Throw a snowball",
+		Type: discordgo.ChatApplicationCommand, Name: throwCommandName, Description: "Throw a snowball",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
 				Type: discordgo.ApplicationCommandOptionSubCommand, Name: "snowball", Description: "Throw a snowball at another player",
 				Options: []*discordgo.ApplicationCommandOption{
 					{Type: discordgo.ApplicationCommandOptionUser, Name: "recipient", Description: "Player receiving the snowball", Required: true},
-					{Type: discordgo.ApplicationCommandOptionString, Name: "type", Description: "Choose a normal or yellow snowball", Autocomplete: true},
+					{Type: discordgo.ApplicationCommandOptionString, Name: "type", Description: "Choose a normal or yellow snowball", Required: true, Autocomplete: true},
 				},
 			},
 		},
 	}
 }
 
-func (b bot) handleThrownSnowball(session *discordgo.Session, interaction *discordgo.Interaction, data discordgo.ApplicationCommandInteractionData) {
+func (b bot) handleThrowSnowball(session *discordgo.Session, interaction *discordgo.Interaction, data discordgo.ApplicationCommandInteractionData) {
 	sub := commandSubcommand(data.Options, "snowball")
 	if sub == nil {
 		return
@@ -109,8 +109,8 @@ func (b bot) autocompleteSnowball(session *discordgo.Session, interaction *disco
 			logInteractionError(interaction.ID, "load snowball choices", err)
 		}
 		query = strings.ToLower(strings.TrimSpace(query))
-		if strings.Contains("normal snowball", query) {
-			choices = append(choices, &discordgo.ApplicationCommandOptionChoice{Name: "Normal Snowball", Value: string(core.NormalSnowball)})
+		if err == nil && inventory.Snowballs > 0 && strings.Contains("normal snowball", query) {
+			choices = append(choices, &discordgo.ApplicationCommandOptionChoice{Name: gifttext.SnowballEmoji(core.NormalSnowball) + " Normal Snowball", Value: string(core.NormalSnowball)})
 		}
 		if err == nil && inventory.YellowSnowballs > 0 && strings.Contains("yellow snowball", query) {
 			choices = append(choices, &discordgo.ApplicationCommandOptionChoice{Name: gifttext.SnowballEmoji(core.YellowSnowball) + " Yellow Snowball", Value: string(core.YellowSnowball)})

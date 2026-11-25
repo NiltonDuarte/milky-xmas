@@ -20,7 +20,7 @@ func Help(access HelpAccess) string {
 		"/look in-your-stocking          See your gifts and items",
 		"/send gift <player> <item> <n>  Send gifts or Coal",
 		"/aura check                     See your Bad and Good deeds",
-		"/thrown snowball <player>       Throw a snowball",
+		"/throw snowball <player>        Throw a snowball",
 		"/advent view                    See your Advent doors",
 		"/advent open <day>              Open an Advent door",
 		"/water                          Water the Christmas tree",

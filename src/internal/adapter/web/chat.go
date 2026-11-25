@@ -53,7 +53,7 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 			case "/drop":
 				replyActivityClaim(w, r, drops, args)
 				return
-			case "/thrown":
+			case "/throw":
 				replyThrownSnowball(w, r, service, args)
 				return
 			case "/" + app.LookCommand:

@@ -8,7 +8,7 @@ Let players transfer earned Coal and Yellow Snowballs using the existing social 
 
 ### Requirement: Choose a snowball type
 
-`/thrown snowball` SHALL accept normal or yellow and default to normal. Discord SHALL suggest yellow only when the sender owns one. Yellow SHALL move one Yellow Snowball between inventories and name the chosen item in both replies. Normal SHALL continue to credit one regular Snowball using the existing behavior.
+`/throw snowball` SHALL accept normal or yellow. Discord SHALL require the type, like the player, and suggest yellow only when the sender owns one. The local chat SHALL default to normal when the type is left out. Yellow SHALL move one Yellow Snowball between inventories and name the chosen item in both replies. Normal SHALL move one regular Snowball between inventories, as `transfer-normal-snowball` defines.
 
 #### Scenario: Throw an owned Yellow Snowball
 

@@ -30,6 +30,23 @@ func TestTransferCoal(t *testing.T) {
 	}
 }
 
+func TestTransferSnowball(t *testing.T) {
+	sender := GiftRecord{Inventory: Inventory{Snowballs: 1, YellowSnowballs: 2}, Aura: Aura{Bad: 15}}
+	recipient := GiftRecord{Inventory: Inventory{Snowballs: 4}, Aura: Aura{Good: 25}}
+	from, to, err := TransferSnowball(sender, recipient)
+	if err != nil || from.Inventory != (Inventory{YellowSnowballs: 2}) || to.Inventory != (Inventory{Snowballs: 5}) ||
+		from.Aura != sender.Aura || to.Aura != recipient.Aura {
+		t.Fatalf("throw snowball = %+v, %+v, %v", from, to, err)
+	}
+	if _, _, err := TransferSnowball(from, to); !errors.Is(err, ErrInsufficientSnowball) {
+		t.Fatalf("empty snowball inventory: %v", err)
+	}
+	full := GiftRecord{Inventory: Inventory{Snowballs: math.MaxInt64}}
+	if _, _, err := TransferSnowball(sender, full); !errors.Is(err, ErrSnowballCapacity) {
+		t.Fatalf("full recipient: %v", err)
+	}
+}
+
 func TestTransferYellowSnowball(t *testing.T) {
 	sender := GiftRecord{Inventory: Inventory{YellowSnowballs: 1, Snowballs: 3}, Aura: Aura{Bad: 15}}
 	recipient := GiftRecord{Inventory: Inventory{YellowSnowballs: 2, Snowballs: 4}, Aura: Aura{Good: 25}}

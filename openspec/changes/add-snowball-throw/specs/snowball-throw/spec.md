@@ -8,7 +8,7 @@ Let players throw a snowball to add one item to another player's inventory.
 
 ### Requirement: Throw a snowball
 
-Both adapters SHALL support `/thrown snowball`. A successful throw SHALL add one Snowball to a different human recipient in the same server. Throws SHALL require no sender inventory balance. The sender SHALL see `You have thrown a ❄️ snowball at <recipient>. 🥶`.
+Both adapters SHALL support `/throw snowball`. A successful throw SHALL add one Snowball to a different human recipient in the same server. Throws SHALL require no sender inventory balance. The sender SHALL see `You have thrown a ❄️ snowball at <recipient>. 🥶`.
 
 #### Scenario: First received snowball
 
@@ -38,7 +38,7 @@ Both adapters SHALL support `/thrown snowball`. A successful throw SHALL add one
 
 ### Requirement: Discord delivery
 
-Discord SHALL register `snowball` under `/thrown` with one required user option. Discord SHALL respond privately to the sender and post a message mentioning the recipient in the channel where the command was used after persisting the credit. The web adapter SHALL show the simulated notification in the local transcript.
+Discord SHALL register `snowball` under `/throw` with one required user option. Discord SHALL respond privately to the sender and post a message mentioning the recipient in the channel where the command was used after persisting the credit. The web adapter SHALL show the simulated notification in the local transcript.
 
 #### Scenario: Channel post unavailable
 

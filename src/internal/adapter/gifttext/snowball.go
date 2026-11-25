@@ -37,6 +37,8 @@ func SnowballRejection(err error) string {
 		return "Choose another player in this server."
 	case errors.Is(err, core.ErrSnowballType):
 		return "Choose a normal or yellow snowball."
+	case errors.Is(err, core.ErrInsufficientSnowball):
+		return "You don't have a Snowball to throw."
 	case errors.Is(err, core.ErrInsufficientYellowSnowball):
 		return "You don't have a Yellow Snowball to throw."
 	case errors.Is(err, core.ErrSnowballCapacity):

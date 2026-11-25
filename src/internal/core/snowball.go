@@ -15,15 +15,21 @@ const (
 var (
 	ErrSnowballCapacity           = errors.New("snowball inventory is full")
 	ErrSnowballType               = errors.New("unknown snowball type")
+	ErrInsufficientSnowball       = errors.New("no snowballs available")
 	ErrInsufficientYellowSnowball = errors.New("no yellow snowballs available")
 )
 
-func (inventory Inventory) ReceiveSnowball() (Inventory, error) {
-	if inventory.Snowballs == math.MaxInt64 {
-		return inventory, ErrSnowballCapacity
+// TransferSnowball moves one normal Snowball from the sender to the recipient.
+func TransferSnowball(sender, recipient GiftRecord) (GiftRecord, GiftRecord, error) {
+	if sender.Inventory.Snowballs == 0 {
+		return sender, recipient, ErrInsufficientSnowball
 	}
-	inventory.Snowballs++
-	return inventory, nil
+	if recipient.Inventory.Snowballs == math.MaxInt64 {
+		return sender, recipient, ErrSnowballCapacity
+	}
+	sender.Inventory.Snowballs--
+	recipient.Inventory.Snowballs++
+	return sender, recipient, nil
 }
 
 func TransferYellowSnowball(sender, recipient GiftRecord) (GiftRecord, GiftRecord, error) {

@@ -6,7 +6,7 @@ Players need a way to use Yellow Snowballs and send Coal from their inventory.
 
 ## What Changes
 
-- Offer Yellow Snowball in `/thrown snowball` when the sender owns one.
+- Offer Yellow Snowball in `/throw snowball` when the sender owns one.
 - Offer Coal in `/send gift` and increase the sender's Bad deeds for each Coal sent.
 
 ## Capabilities
