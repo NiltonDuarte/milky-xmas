@@ -110,7 +110,7 @@ The Grinch announcement shows the Grinch image below the registration text. In t
 
 If the Grinch escapes or defeats all players, the final battle message shows only Max's image, with no Grinch image. A victory shows only the Grinch. Check both endings in the Discord test server.
 
-Run `/helpmemilky` to list the commands you can use. In Discord, moderator commands appear only for members with the permission: Manage Messages for `/give gift` and `/grinch summon`, Manage Server for `/setup`. The reply is private. The list is written by hand in `gifttext/help.go`, so update it when a command is added or renamed. In the Discord test server, run it with a regular account and with a moderator account and compare the lists.
+Run `/help` or `/helpmemilky` to list the commands you can use. In Discord, moderator commands appear only for members with the permission: Manage Messages for `/give gift` and `/grinch summon`, Manage Server for `/setup`. The reply is private. The list is written by hand in `gifttext/help.go`, so update it when a command is added or renamed. In the Discord test server, run it with a regular account and with a moderator account and compare the lists.
 
 ## Activity drop updates
 

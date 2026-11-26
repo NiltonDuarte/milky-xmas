@@ -103,6 +103,7 @@ func TestHelpInChat(t *testing.T) {
 	}{
 		{"/helpmemilky", http.StatusOK, "/look in-your-stocking"},
 		{"/helpmemilky", http.StatusOK, "/give gift"},
+		{"/help", http.StatusOK, "/throw snowball <player> <type>"},
 		{"/helpmemilky now", http.StatusBadRequest, "Use /helpmemilky."},
 	} {
 		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader("command="+url.QueryEscape(step.command)))

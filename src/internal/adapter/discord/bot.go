@@ -93,6 +93,7 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 		spiritCommand(),
 		statsCommand(),
 		helpCommand(),
+		helpAliasCommand(),
 		setupCommand(),
 	}
 	wanted := make(map[string]bool, len(commands))
@@ -194,7 +195,7 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 			b.handleStats(session, event.Interaction)
 		}
 		return
-	case gifttext.HelpCommand:
+	case gifttext.HelpCommand, gifttext.HelpAlias:
 		if len(data.Options) == 0 {
 			b.handleHelp(session, event.Interaction)
 		}

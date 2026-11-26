@@ -90,7 +90,7 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 			case "/" + gifttext.StatsCommand:
 				replyStats(w, r, service, tree, args)
 				return
-			case "/" + gifttext.HelpCommand:
+			case "/" + gifttext.HelpCommand, "/" + gifttext.HelpAlias:
 				if len(args) != 0 {
 					http.Error(w, "Use /helpmemilky.", http.StatusBadRequest)
 					return

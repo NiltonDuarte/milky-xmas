@@ -63,6 +63,9 @@ func TestHelpInteraction(t *testing.T) {
 			}
 		})
 	}
+	if alias := helpAliasCommand(); alias.Name != "help" || len(alias.Options) != 0 || alias.DefaultMemberPermissions != nil {
+		t.Errorf("unexpected /help registration: %+v", alias)
+	}
 	if command := helpCommand(); command.Name != "helpmemilky" || len(command.Options) != 0 || command.DefaultMemberPermissions != nil {
 		t.Errorf("unexpected help registration: %+v", command)
 	}

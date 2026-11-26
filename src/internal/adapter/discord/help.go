@@ -14,6 +14,13 @@ func helpCommand() *discordgo.ApplicationCommand {
 	}
 }
 
+// helpAliasCommand is the short name of the same list.
+func helpAliasCommand() *discordgo.ApplicationCommand {
+	command := helpCommand()
+	command.Name = gifttext.HelpAlias
+	return command
+}
+
 func (b bot) handleHelp(session *discordgo.Session, interaction *discordgo.Interaction) {
 	respondPrivately(session, interaction, func(context.Context, app.Member) string {
 		permissions := interaction.Member.Permissions

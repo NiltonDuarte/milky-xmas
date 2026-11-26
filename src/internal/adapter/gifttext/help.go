@@ -2,7 +2,11 @@ package gifttext
 
 import "strings"
 
-const HelpCommand = "helpmemilky"
+// HelpCommand and its shortcut HelpAlias show the same list.
+const (
+	HelpCommand = "helpmemilky"
+	HelpAlias   = "help"
+)
 
 // HelpAccess says which restricted command groups the player may use.
 type HelpAccess struct {
@@ -20,11 +24,11 @@ func Help(access HelpAccess) string {
 		"/look in-your-stocking          See your gifts and items",
 		"/send gift <player> <item> <n>  Send gifts or Coal",
 		"/aura check                     See your Bad and Good deeds",
-		"/throw snowball <player>        Throw a snowball",
+		"/throw snowball <player> <type> Throw a snowball",
 		"/advent view                    See your Advent doors",
 		"/water                          Water the Christmas tree",
 		"/stats                          Server stats and leaderboards",
-		"/helpmemilky                    Show this list",
+		"/help, /helpmemilky             Show this list",
 	} {
 		text.WriteString(line + "\n")
 	}
