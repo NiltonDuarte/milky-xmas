@@ -185,9 +185,9 @@ func grinchStandings(rules core.GrinchRules, state core.Grinch) ([]string, bool)
 		title, format, unit string
 		scores              []core.GrinchScore
 	}{
-		{"🏆 Damage leaderboard", "%.2f", "dmg", core.WithPoints(state.Leaderboard(rules))},
-		{"🎁 Gift leaderboard", "%.0f", "pts", core.WithPoints(state.GiftLeaderboard())},
-		{"❄️ Snowball leaderboard", "%.0f", "snowballs", core.WithPoints(state.SnowballLeaderboard())},
+		{"🏆 Damage leaderboard", "%.2f", " dmg", core.WithPoints(state.Leaderboard(rules))},
+		{"🎁 Gift leaderboard", "%.0f", "", core.WithPoints(state.GiftLeaderboard())},
+		{"❄️ Snowball leaderboard", "%.0f", "", core.WithPoints(state.SnowballLeaderboard())},
 	} {
 		if len(board.scores) == 0 {
 			continue
@@ -195,7 +195,7 @@ func grinchStandings(rules core.GrinchRules, state core.Grinch) ([]string, bool)
 		var section strings.Builder
 		section.WriteString("**" + board.title + "**")
 		for i, score := range board.scores[:min(grinchStandingsLimit, len(board.scores))] {
-			fmt.Fprintf(&section, "\n%d. <@%s> — "+board.format+" %s", i+1, score.Member, score.Points, board.unit)
+			fmt.Fprintf(&section, "\n%d. <@%s> — "+board.format+"%s", i+1, score.Member, score.Points, board.unit)
 		}
 		overflow = overflow || len(board.scores) > grinchStandingsLimit
 		sections = append(sections, section.String())
@@ -210,16 +210,16 @@ func grinchStandingsText(rules core.GrinchRules, state core.Grinch) string {
 		title, format, unit string
 		scores              []core.GrinchScore
 	}{
-		{"Damage leaderboard", "%.2f", "dmg", core.WithPoints(state.Leaderboard(rules))},
-		{"Gift leaderboard", "%.0f", "pts", core.WithPoints(state.GiftLeaderboard())},
-		{"Snowball leaderboard", "%.0f", "snowballs", core.WithPoints(state.SnowballLeaderboard())},
+		{"Damage leaderboard", "%.2f", " dmg", core.WithPoints(state.Leaderboard(rules))},
+		{"Gift leaderboard", "%.0f", "", core.WithPoints(state.GiftLeaderboard())},
+		{"Snowball leaderboard", "%.0f", "", core.WithPoints(state.SnowballLeaderboard())},
 	} {
 		if len(board.scores) == 0 {
 			continue
 		}
 		fmt.Fprintf(&text, "%s\n", board.title)
 		for i, score := range board.scores {
-			fmt.Fprintf(&text, "%d. Discord user %s — "+board.format+" %s\n", i+1, score.Member, score.Points, board.unit)
+			fmt.Fprintf(&text, "%d. Discord user %s — "+board.format+"%s\n", i+1, score.Member, score.Points, board.unit)
 		}
 		text.WriteString("\n")
 	}

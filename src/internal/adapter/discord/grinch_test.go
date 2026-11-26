@@ -261,8 +261,8 @@ func TestGrinchStandings(t *testing.T) {
 	// Only players with points are listed. 789 scored nothing and 456 has no damage or gifts.
 	want := []string{
 		"**🏆 Damage leaderboard**\n1. <@123> — 12.50 dmg",
-		"**🎁 Gift leaderboard**\n1. <@123> — 4 pts",
-		"**❄️ Snowball leaderboard**\n1. <@456> — 2 snowballs",
+		"**🎁 Gift leaderboard**\n1. <@123> — 4",
+		"**❄️ Snowball leaderboard**\n1. <@456> — 2",
 	}
 	if overflow || !slices.Equal(sections, want) {
 		t.Fatalf("standings = %q, overflow %v, want %q", sections, overflow, want)

@@ -148,15 +148,14 @@ func fixtureSummary(rules core.GrinchRules, state core.Grinch) string {
 		}
 		for _, board := range []struct {
 			title  string
-			unit   string
 			scores []core.GrinchScore
-		}{{"Gift leaderboard", "pts", core.WithPoints(state.GiftLeaderboard())}, {"Snowball leaderboard", "snowballs", core.WithPoints(state.SnowballLeaderboard())}} {
+		}{{"Gift leaderboard", core.WithPoints(state.GiftLeaderboard())}, {"Snowball leaderboard", core.WithPoints(state.SnowballLeaderboard())}} {
 			if len(board.scores) == 0 {
 				continue
 			}
 			fmt.Fprint(&message, "\n\n"+board.title)
 			for index, score := range board.scores {
-				fmt.Fprintf(&message, "\n%d. %s — %.0f %s", index+1, score.Member, score.Points, board.unit)
+				fmt.Fprintf(&message, "\n%d. %s — %.0f", index+1, score.Member, score.Points)
 			}
 		}
 	}

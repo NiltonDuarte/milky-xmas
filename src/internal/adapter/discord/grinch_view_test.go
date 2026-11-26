@@ -168,8 +168,8 @@ func TestGrinchViewShowsFinalLeaderboards(t *testing.T) {
 	view := grinchView(rules, fight, []string{grinchImageName}, false, false)
 	text := viewText(t, view)
 	for _, want := range []string{
-		"The group defeated the Grinch!", "**🏆 Damage leaderboard**\n1. <@p00>", "**🎁 Gift leaderboard**\n1. <@p01> — 5 pts",
-		"**❄️ Snowball leaderboard**\n1. <@p02> — 2 snowballs",
+		"The group defeated the Grinch!", "**🏆 Damage leaderboard**\n1. <@p00>", "**🎁 Gift leaderboard**\n1. <@p01> — 5",
+		"**❄️ Snowball leaderboard**\n1. <@p02> — 2",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("final view misses %q in %q", want, text)

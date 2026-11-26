@@ -72,3 +72,13 @@ The damage, gift, and Snowball leaderboards SHALL list only players with points 
 - **GIVEN** a finished fight in the local chat where one player scored damage and gifts
 - **WHEN** the player views the fight
 - **THEN** the leaderboards list only the players with points
+
+### Requirement: Counts without units
+
+The gift and Snowball leaderboards SHALL show each player's number alone. The damage leaderboard SHALL keep `dmg`.
+
+#### Scenario: Gifts and Snowballs
+
+- **GIVEN** a finished fight where a player has 4 gift points and another collected 2 Snowballs
+- **WHEN** the final message is shown
+- **THEN** the lines end with `— 4` and `— 2`

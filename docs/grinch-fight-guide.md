@@ -42,7 +42,6 @@ Six hits are enough to clear each damage phase, no matter how many players there
 
 - Phase 1 has its own limit: 2 minutes.
 - When the Grinch reaches 75% HP, a second clock starts for phases 2 to 4: 1 minute.
-- During testing both are set to 3 minutes.
 
 ## How it ends
 
