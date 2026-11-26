@@ -20,6 +20,8 @@ type privateReply struct {
 	Blocks     []string
 	Image      *privateImage
 	Components []discordgo.MessageComponent
+	// ComponentsFirst puts the buttons and menus of a box above its text.
+	ComponentsFirst bool
 }
 
 type privateImage struct {
@@ -158,13 +160,19 @@ func boxedComponents(result privateReply) []discordgo.MessageComponent {
 	if len(blocks) == 0 {
 		blocks = []string{result.Content}
 	}
+	if result.ComponentsFirst && len(result.Components) > 0 {
+		box = append(append(box, result.Components...), discordgo.Separator{})
+	}
 	for i, block := range blocks {
 		if i > 0 {
 			box = append(box, discordgo.Separator{})
 		}
 		box = append(box, discordgo.TextDisplay{Content: block})
 	}
-	return []discordgo.MessageComponent{discordgo.Container{Components: append(box, result.Components...)}}
+	if !result.ComponentsFirst {
+		box = append(box, result.Components...)
+	}
+	return []discordgo.MessageComponent{discordgo.Container{Components: box}}
 }
 
 // file is the image as a new upload.

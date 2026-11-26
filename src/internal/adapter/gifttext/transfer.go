@@ -10,30 +10,30 @@ import (
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
 
-// Aura draws the scale from bad to good with a marker on the player's place and a finger
-// pointing up at it. Both sides carry a number, as the player's value on their side and zero on
+// Aura draws the scale from bad to good with a marker fixed on its middle and a finger pointing
+// up at the player's place. Both sides carry a number, as the player's value on their side and zero on
 // the other. The ends of the scale are not shown to players.
 func Aura(aura core.Aura) string {
 	const cells, pointsPerCell = 5, 10
 	// Box-drawing cells are one column wide in code blocks, so the finger lines up.
-	bar := []rune(strings.Repeat("─", cells) + "┼" + strings.Repeat("─", cells))
+	bar := []rune(strings.Repeat("─", 2*cells+1))
 	magnitude := int(aura)
 	if magnitude < 0 {
 		magnitude = -magnitude
 	}
 	step := min(magnitude/pointsPerCell, cells-1) + 1
-	marker, bad, good := cells, "0", "0"
+	bar[cells] = '●' // The marker always stands for the neutral middle.
+	place, bad, good := cells, "0", "0"
 	switch {
 	case aura < 0:
-		marker, bad = cells-step, fmt.Sprintf("%d", aura)
+		place, bad = cells-step, fmt.Sprintf("%d", aura)
 	case aura > 0:
-		marker, good = cells+step, fmt.Sprintf("+%d", aura)
+		place, good = cells+step, fmt.Sprintf("+%d", aura)
 	}
-	bar[marker] = '●'
 	left := bad + " 😈 "
-	// The emoji takes two columns but counts as one character, so this is the marker's column.
+	// The emoji takes two columns but counts as one character, so this is the place's column.
 	// The fingertip sits on the left of 👆, which therefore starts right there.
-	indent := strings.Repeat(" ", utf8.RuneCountInString(left)+1+marker)
+	indent := strings.Repeat(" ", utf8.RuneCountInString(left)+1+place)
 	return fmt.Sprintf("```\n%s%s 😇 %s\n%s👆🏻\n```", left, string(bar), good, indent)
 }
 

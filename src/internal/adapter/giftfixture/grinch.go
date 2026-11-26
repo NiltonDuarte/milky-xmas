@@ -39,6 +39,12 @@ func (store *Store) SaveGrinch(ctx context.Context, scope string, version int64,
 		record.Inventory = record.Inventory.AddGrinchReward(reward)
 		store.save(app.GiftUpdate{Member: member, Next: record})
 	}
+	if state.Phase == core.GrinchWon || state.Phase == core.GrinchDefeat || state.Phase == core.GrinchEscaped {
+		if store.fights == nil {
+			store.fights = make(map[string]finishedFight)
+		}
+		store.fights[scope+":"+state.ID] = finishedFight{server: server, phase: state.Phase}
+	}
 	store.grinch[scope] = grinchRecord{state: cloneGrinch(state), version: version + 1}
 	return true, nil
 }

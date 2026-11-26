@@ -17,6 +17,7 @@ type Store interface {
 	GiftStore
 	AdventStore
 	AuraStore
+	StatsStore
 }
 
 type AdventOpening struct {

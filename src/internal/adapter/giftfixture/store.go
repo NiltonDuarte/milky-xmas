@@ -14,6 +14,8 @@ type Store struct {
 	records map[app.Member]core.GiftRecord
 	advent  map[adventMember]uint32
 	grinch  map[string]grinchRecord
+	history []serverHistory
+	fights  map[string]finishedFight
 }
 
 func (store *Store) Load(_ context.Context, member app.Member) (core.GiftRecord, error) {
@@ -65,7 +67,52 @@ func (store *Store) save(update app.GiftUpdate) {
 	if store.records == nil {
 		store.records = make(map[app.Member]core.GiftRecord)
 	}
+	if update.Reason != "" {
+		next, previous := update.Next.Inventory, update.Previous.Inventory
+		store.history = append(store.history, serverHistory{server: update.Member.ServerID, entry: app.HistoryEntry{
+			UserID: update.Member.UserID, Reason: update.Reason,
+			Delta: core.Inventory{
+				Normal: next.Normal - previous.Normal, Rare: next.Rare - previous.Rare, Epic: next.Epic - previous.Epic,
+				Snowballs: next.Snowballs - previous.Snowballs, YellowSnowballs: next.YellowSnowballs - previous.YellowSnowballs,
+				Coal: next.Coal - previous.Coal,
+			},
+		}})
+	}
 	store.records[update.Member] = update.Next
+}
+
+type serverHistory struct {
+	server string
+	entry  app.HistoryEntry
+}
+
+type finishedFight struct {
+	server string
+	phase  core.GrinchPhase
+}
+
+func (store *Store) PlayerHistory(_ context.Context, server string) ([]app.HistoryEntry, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	var history []app.HistoryEntry
+	for _, kept := range store.history {
+		if kept.server == server {
+			history = append(history, kept.entry)
+		}
+	}
+	return history, nil
+}
+
+func (store *Store) FightResults(_ context.Context, server string) ([]core.GrinchPhase, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	var results []core.GrinchPhase
+	for _, fight := range store.fights {
+		if fight.server == server {
+			results = append(results, fight.phase)
+		}
+	}
+	return results, nil
 }
 
 type adventMember struct {

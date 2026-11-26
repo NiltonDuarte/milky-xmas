@@ -3,6 +3,7 @@ package giftstore
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -37,6 +38,50 @@ func loadPlayer(ctx context.Context, reader playerReader, member app.Member) (co
 		record.LastClaim, err = time.Parse(time.RFC3339Nano, lastClaim)
 	}
 	return record, err
+}
+
+// PlayerHistory returns every kept inventory change of a server.
+func (s *SQLite) PlayerHistory(ctx context.Context, server string) ([]app.HistoryEntry, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT user_id, reason, normal, rare, epic, snowballs, yellow_snowballs, coal
+		FROM player_history WHERE server_id = ?
+	`, server)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var history []app.HistoryEntry
+	for rows.Next() {
+		var entry app.HistoryEntry
+		if err := rows.Scan(&entry.UserID, &entry.Reason, &entry.Delta.Normal, &entry.Delta.Rare, &entry.Delta.Epic,
+			&entry.Delta.Snowballs, &entry.Delta.YellowSnowballs, &entry.Delta.Coal); err != nil {
+			return nil, err
+		}
+		history = append(history, entry)
+	}
+	return history, rows.Err()
+}
+
+// FightResults returns how every finished fight of a server ended.
+func (s *SQLite) FightResults(ctx context.Context, server string) ([]core.GrinchPhase, error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT payload FROM grinch_history WHERE server_id = ?", server)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var results []core.GrinchPhase
+	for rows.Next() {
+		var payload []byte
+		if err := rows.Scan(&payload); err != nil {
+			return nil, err
+		}
+		var fight core.Grinch
+		if err := json.Unmarshal(payload, &fight); err != nil {
+			return nil, err
+		}
+		results = append(results, fight.Phase)
+	}
+	return results, rows.Err()
 }
 
 // ServerAuras returns the aura of every player the server has stored.

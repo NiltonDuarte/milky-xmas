@@ -91,6 +91,7 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 		throwCommand(),
 		waterCommand(),
 		spiritCommand(),
+		statsCommand(),
 		helpCommand(),
 		setupCommand(),
 	}
@@ -129,6 +130,8 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 			b.drops.button(session, event.Interaction)
 		} else if ok && strings.HasPrefix(data.CustomID, adventButtonPrefix) {
 			b.adventButton(session, event.Interaction)
+		} else if ok && strings.HasPrefix(data.CustomID, "stats:") {
+			b.statsSelect(session, event.Interaction, data)
 		} else if ok && data.CustomID == elfButtonID {
 			b.elfButton(session, event.Interaction)
 		} else if ok && strings.HasPrefix(data.CustomID, "grinch:") {
@@ -184,6 +187,11 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 	case gifttext.SpiritCommand:
 		if len(data.Options) == 0 {
 			b.handleSpirit(session, event.Interaction)
+		}
+		return
+	case gifttext.StatsCommand:
+		if len(data.Options) == 0 {
+			b.handleStats(session, event.Interaction)
 		}
 		return
 	case gifttext.HelpCommand:

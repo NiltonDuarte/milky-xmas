@@ -23,6 +23,7 @@ func Help(access HelpAccess) string {
 		"/throw snowball <player>        Throw a snowball",
 		"/advent view                    See your Advent doors",
 		"/water                          Water the Christmas tree",
+		"/stats                          Server stats and leaderboards",
 		"/helpmemilky                    Show this list",
 	} {
 		text.WriteString(line + "\n")

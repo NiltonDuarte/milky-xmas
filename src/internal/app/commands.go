@@ -15,6 +15,7 @@ type Service struct {
 	gifts  GiftStore
 	advent AdventStore
 	auras  AuraStore
+	stats  StatsStore
 	now    func() time.Time
 	random func(int) int
 	tuning core.Tuning

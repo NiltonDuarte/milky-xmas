@@ -87,6 +87,9 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 				// The local chat player can use the moderator tools.
 				replySpirit(w, r, service)
 				return
+			case "/" + gifttext.StatsCommand:
+				replyStats(w, r, service, tree, args)
+				return
 			case "/" + gifttext.HelpCommand:
 				if len(args) != 0 {
 					http.Error(w, "Use /helpmemilky.", http.StatusBadRequest)
@@ -116,7 +119,7 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 		}
 		reply, err := service.Reply(command)
 		if err != nil {
-			http.Error(w, "Unknown command. Try /"+app.HelloCommand+", /daily claim, /advent view, /grinch view, /send gift, /aura check, /look in-your-stocking, /water, /spirit, or /helpmemilky.", http.StatusBadRequest)
+			http.Error(w, "Unknown command. Try /"+app.HelloCommand+", /daily claim, /advent view, /grinch view, /send gift, /aura check, /look in-your-stocking, /water, /spirit, /stats, or /helpmemilky.", http.StatusBadRequest)
 			return
 		}
 
@@ -205,6 +208,30 @@ func replySpirit(w http.ResponseWriter, r *http.Request, service app.Service) {
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	io.WriteString(w, strings.Join(gifttext.SpiritBlocks(spirit), "\n"))
+}
+
+// replyStats stands in for the Discord drop-downs: "/stats server" or "/stats <leaderboard>".
+func replyStats(w http.ResponseWriter, r *http.Request, service app.Service, tree *app.Tree, args []string) {
+	choice := gifttext.StatsServerView
+	if len(args) == 1 {
+		choice = args[0]
+	}
+	if _, ok := gifttext.Leaderboard(choice, core.EventStats{}, nil); len(args) > 1 || (!ok && choice != gifttext.StatsServerView) {
+		http.Error(w, "Use /stats server, bad, good, throwers, gifters, or plants.", http.StatusBadRequest)
+		return
+	}
+	stats, err := service.Stats(r.Context(), fixtureServerID, tree)
+	if err != nil {
+		http.Error(w, gifttext.StatsUnavailable, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	if choice == gifttext.StatsServerView {
+		io.WriteString(w, gifttext.ServerStats(stats))
+		return
+	}
+	blocks, _ := gifttext.Leaderboard(choice, stats, func(userID string) string { return userID })
+	io.WriteString(w, strings.Join(blocks, "\n"))
 }
 
 func replyWater(w http.ResponseWriter, r *http.Request, tree *app.Tree) {

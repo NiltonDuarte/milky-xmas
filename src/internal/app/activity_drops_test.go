@@ -19,6 +19,14 @@ func (store *dropStoreFixture) ServerAuras(context.Context, string) ([]core.Aura
 	return nil, nil
 }
 
+func (store *dropStoreFixture) PlayerHistory(context.Context, string) ([]HistoryEntry, error) {
+	return nil, nil
+}
+
+func (store *dropStoreFixture) FightResults(context.Context, string) ([]core.GrinchPhase, error) {
+	return nil, nil
+}
+
 func (store *dropStoreFixture) Load(_ context.Context, member Member) (core.GiftRecord, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()

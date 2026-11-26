@@ -36,13 +36,13 @@ Each player SHALL have one aura between -50 and +50, starting at 0. Good actions
 
 ### Requirement: Aura check shows the scale
 
-`/aura check` SHALL show the scale from bad to good with a marker at the player's position and a 👆🏻 under it. A number SHALL appear before 😈 and after 😇: the player's value on their side and 0 on the other. The limits -50 and +50 SHALL NOT be shown. In Discord, replies that have an image (`/aura check`, `/look in-your-stocking`, and the Advent calendar) SHALL show the image, the text, and any buttons together in one box.
+`/aura check` SHALL show the scale from bad to good as a line with a marker that stays on its middle, and a 👆🏻 under the player's position. A number SHALL appear before 😈 and after 😇: the player's value on their side and 0 on the other. The limits -50 and +50 SHALL NOT be shown. In Discord, replies that have an image (`/aura check`, `/look in-your-stocking`, and the Advent calendar) SHALL show the image, the text, and any buttons together in one box.
 
 #### Scenario: Bad side
 
 - **GIVEN** a player with an aura of -15
 - **WHEN** they run `/aura check`
-- **THEN** the marker is on the bad side with the 👆🏻 under it, `-15` before 😈, and `0` after 😇
+- **THEN** the marker stays in the middle, the 👆🏻 is under the bad side, `-15` before 😈, and `0` after 😇
 
 ### Requirement: Drop bonus from +25
 

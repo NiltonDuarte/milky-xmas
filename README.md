@@ -52,7 +52,7 @@ In the test server, invoke `/daily claim`. Check that you see the same success m
 
 ## Gift transfers and aura
 
-Daily claims award one rarity per claim with a 70% chance of normal, 25% rare, and 5% epic. Daily gifts saved before this update become normal gifts. Aura is a single scale from -50 (bad deeds) to +50 (good deeds), and everyone starts neutral at 0. Each gift sent moves the sender 5, 10, or 30 points toward good, respectively. In `/send gift`, choose Coal to transfer Coal, which moves the sender 5 points per item toward bad. The aura never leaves the scale. `/aura check` draws the scale with a marker on your place and the number under it. Upgrading from the earlier separate Bad and Good percentages resets everyone to 0.
+Daily claims award one rarity per claim with a 70% chance of normal, 25% rare, and 5% epic. Daily gifts saved before this update become normal gifts. Aura is a single scale from -50 (bad deeds) to +50 (good deeds), and everyone starts neutral at 0. Each gift sent moves the sender 5, 10, or 30 points toward good, respectively. In `/send gift`, choose Coal to transfer Coal, which moves the sender 5 points per item toward bad. The aura never leaves the scale. `/aura check` draws the scale with a marker on its middle, a finger under your place, and your value beside your side. Upgrading from the earlier separate Bad and Good percentages resets everyone to 0.
 
 In the local chat, run `/aura check`, then `/daily claim`. Use the rarity shown in the reply to send one gift, for example `/send gift friend normal 1`. Check that the confirmation and a new `/aura check` show the expected aura. Try sending more than you claimed and check that the aura stays the same. The browser plays as `fixture`, and `friend` is a simulated recipient. A claim after giving away your last gift still shows the original cooldown.
 
@@ -134,9 +134,13 @@ In the Discord test server, run `/water` from two accounts and check the public 
 
 When the event ends, a moderator (Manage Messages) runs `/spirit` to post the Christmas spirit of the server: every player's good deeds and bad deeds added up from their current aura, with the winning side. The same picture is shown for either side until one exists for bad deeds; the current one is a watermarked preview to be replaced.
 
+## Stats and leaderboards
+
+Anyone can run `/stats` to open a private panel. Pick **Server stats** (tree level, waterings, gifts and Coal sent, snowballs thrown, drops collected, and Grinch fights) or **Leaderboards**, and then a category: Bad eggs, Good eggs, Throwers, Gifters, or Plant moms and dads. Each lists the top ten. Bad and Good eggs add up deed points without one side lowering the other and without the aura's limit. In the local chat use `/stats server`, `/stats bad`, `good`, `throwers`, `gifters`, or `plants`.
+
 ## Event history
 
-For the scoreboards at the end of the event, the bot's database keeps every finished Grinch fight (`grinch_history`) and every inventory or aura change with its reason (`player_history`). Waterings stay counted in the tree and opened Advent doors in `advent_openings`. Nothing shows these records yet.
+For the scoreboards at the end of the event, the bot's database keeps every finished Grinch fight (`grinch_history`) and every inventory or aura change with its reason (`player_history`). Waterings stay counted in the tree and opened Advent doors in `advent_openings`. `/stats` is built from these records.
 
 ## Tuning the numbers
 

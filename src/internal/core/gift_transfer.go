@@ -5,6 +5,15 @@ import (
 	"math"
 )
 
+// How many points of good or bad deeds each item sent or thrown is worth.
+const (
+	NormalGiftPoints     = 5
+	RareGiftPoints       = 10
+	EpicGiftPoints       = 30
+	CoalPoints           = 5
+	YellowSnowballPoints = 5
+)
+
 func TransferGift(sender, recipient GiftRecord, rarity GiftRarity, quantity int64) (GiftRecord, GiftRecord, error) {
 	from := sender.Inventory.balance(rarity)
 	switch {
@@ -22,12 +31,12 @@ func TransferGift(sender, recipient GiftRecord, rarity GiftRarity, quantity int6
 	*from -= quantity
 	*recipient.Inventory.balance(rarity) += quantity
 
-	points := 5
+	points := NormalGiftPoints
 	switch rarity {
 	case RareGift:
-		points = 10
+		points = RareGiftPoints
 	case EpicGift:
-		points = 30
+		points = EpicGiftPoints
 	}
 	sender.Aura = sender.Aura.Move(quantity, points)
 	return sender, recipient, nil
@@ -49,6 +58,6 @@ func TransferCoal(sender, recipient GiftRecord, quantity int64) (GiftRecord, Gif
 	}
 	sender.Inventory.Coal -= quantity
 	recipient.Inventory.Coal += quantity
-	sender.Aura = sender.Aura.Move(quantity, -5)
+	sender.Aura = sender.Aura.Move(quantity, -CoalPoints)
 	return sender, recipient, nil
 }
