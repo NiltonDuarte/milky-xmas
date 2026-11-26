@@ -22,12 +22,13 @@ func setupCommand() *discordgo.ApplicationCommand {
 		Options: []*discordgo.ApplicationCommandOption{
 			{Type: discordgo.ApplicationCommandOptionSubCommand, Name: "view", Description: "View the configured channels"},
 			{
-				Type: discordgo.ApplicationCommandOptionSubCommand, Name: "channel", Description: "Set a channel's command and boss permissions",
+				Type: discordgo.ApplicationCommandOptionSubCommand, Name: "channel", Description: "Set a channel's command, boss and quote choices",
 				Options: []*discordgo.ApplicationCommandOption{
 					{Type: discordgo.ApplicationCommandOptionChannel, Name: "channel", Description: "Discord text channel", Required: true,
 						ChannelTypes: []discordgo.ChannelType{discordgo.ChannelTypeGuildText}},
 					{Type: discordgo.ApplicationCommandOptionBoolean, Name: "commands", Description: "Allow bot commands here", Required: true},
 					{Type: discordgo.ApplicationCommandOptionBoolean, Name: "boss", Description: "Allow Grinch encounters here", Required: true},
+					{Type: discordgo.ApplicationCommandOptionBoolean, Name: "quotes", Description: "Post Christmas quotes here when people chat"},
 				},
 			},
 		},
@@ -123,9 +124,9 @@ func (b bot) handleSetup(session *discordgo.Session, interaction *discordgo.Inte
 		if sub == nil {
 			return "Use /setup channel or /setup view."
 		}
-		channelID, commands, boss, ok := setupOptions(sub.Options)
+		channelID, choice, ok := setupOptions(sub.Options)
 		if !ok {
-			return "Choose a text channel and set both permissions."
+			return "Choose a text channel and set both commands and boss."
 		}
 		channel, err := session.State.Channel(channelID)
 		if err != nil {
@@ -135,15 +136,19 @@ func (b bot) handleSetup(session *discordgo.Session, interaction *discordgo.Inte
 			return "Choose a text channel in this server."
 		}
 
-		saved, err := b.setup.Configure(ctx, member.ServerID, channelID, canManage, commands, boss, setupPoster(session))
+		saved, err := b.setup.Configure(ctx, member.ServerID, channelID, canManage, choice, setupPoster(session))
 		if !saved {
 			logInteractionError(interaction.ID, "save channel choices", err)
 			return "Could not save the channel choices."
 		}
-		if boss {
+		if choice.Boss {
 			prepareElfRole(ctx, session, member.ServerID)
 		}
-		reply := fmt.Sprintf("Saved <#%s> · commands %s · boss %s.", channelID, setupToggle(commands), setupToggle(boss))
+		reply := fmt.Sprintf("Saved <#%s> · commands %s · boss %s", channelID, setupToggle(choice.Commands), setupToggle(choice.Boss))
+		if choice.Quotes != nil {
+			reply += " · quotes " + setupToggle(*choice.Quotes)
+		}
+		reply += "."
 		// A failed Discord post may exhaust the reply context. Refresh the saved choices independently.
 		refreshCtx, cancel := context.WithTimeout(b.grinches.ctx, 2*time.Second)
 		defer cancel()
@@ -159,9 +164,10 @@ func (b bot) handleSetup(session *discordgo.Session, interaction *discordgo.Inte
 	})
 }
 
-func setupOptions(options []*discordgo.ApplicationCommandInteractionDataOption) (string, bool, bool, bool) {
+func setupOptions(options []*discordgo.ApplicationCommandInteractionDataOption) (string, app.ChannelChoice, bool) {
 	var channel string
-	var commands, boss, commandsSet, bossSet bool
+	var choice app.ChannelChoice
+	var commandsSet, bossSet bool
 	for _, option := range options {
 		if option == nil {
 			continue
@@ -170,16 +176,20 @@ func setupOptions(options []*discordgo.ApplicationCommandInteractionDataOption) 
 		case option.Name == "channel" && option.Type == discordgo.ApplicationCommandOptionChannel:
 			channel, _ = option.Value.(string)
 		case option.Name == "commands" && option.Type == discordgo.ApplicationCommandOptionBoolean:
-			commands, commandsSet = option.Value.(bool)
+			choice.Commands, commandsSet = option.Value.(bool)
 		case option.Name == "boss" && option.Type == discordgo.ApplicationCommandOptionBoolean:
-			boss, bossSet = option.Value.(bool)
+			choice.Boss, bossSet = option.Value.(bool)
+		case option.Name == "quotes" && option.Type == discordgo.ApplicationCommandOptionBoolean:
+			if quotes, ok := option.Value.(bool); ok {
+				choice.Quotes = &quotes
+			}
 		}
 	}
-	return channel, commands, boss, channel != "" && commandsSet && bossSet
+	return channel, choice, channel != "" && commandsSet && bossSet
 }
 
 func channelChoices(settings app.GuildSettings) string {
-	var commands, bosses []string
+	var commands, bosses, quotes []string
 	for id, channel := range settings.Channels {
 		if channel.Commands {
 			commands = append(commands, "<#"+id+">")
@@ -187,18 +197,26 @@ func channelChoices(settings app.GuildSettings) string {
 		if channel.Boss {
 			bosses = append(bosses, "<#"+id+">")
 		}
+		if channel.Quotes {
+			quotes = append(quotes, "<#"+id+">")
+		}
 	}
-	slices.Sort(commands)
-	slices.Sort(bosses)
-	if len(commands) == 0 {
-		commands = []string{"none"}
+	var lines, counts []string
+	for _, group := range []struct {
+		name     string
+		channels []string
+	}{{"Commands", commands}, {"Grinch", bosses}, {"Quotes", quotes}} {
+		slices.Sort(group.channels)
+		list := strings.Join(group.channels, ", ")
+		if list == "" {
+			list = "none"
+		}
+		lines = append(lines, group.name+" · "+list)
+		counts = append(counts, fmt.Sprintf("%s · %d channels", group.name, len(group.channels)))
 	}
-	if len(bosses) == 0 {
-		bosses = []string{"none"}
-	}
-	reply := "Commands · " + strings.Join(commands, ", ") + "\nGrinch · " + strings.Join(bosses, ", ")
+	reply := strings.Join(lines, "\n")
 	if len(reply) > 1900 {
-		return fmt.Sprintf("Commands · %d channels\nGrinch · %d channels. The full list exceeds Discord's message limit.", len(commands), len(bosses))
+		return strings.Join(counts, "\n") + ". The full list exceeds Discord's message limit."
 	}
 	return reply
 }

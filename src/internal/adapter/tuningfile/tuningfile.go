@@ -198,6 +198,10 @@ type document struct {
 		WaterCooldown duration  `yaml:"water_cooldown"`
 		EventEnd      timestamp `yaml:"event_end"`
 	} `yaml:"tree"`
+	Quotes struct {
+		EveryMessages whole    `yaml:"every_messages"`
+		MinInterval   duration `yaml:"min_interval"`
+	} `yaml:"quotes"`
 }
 
 // percent writes hundredths of HP as a percentage, for the file.
@@ -244,6 +248,7 @@ func defaultsDocument() document {
 	doc.Tree.DecayInterval, doc.Tree.WaterCooldown = duration(tree.DecayInterval), duration(tree.WaterCooldown)
 	doc.Tree.EventEnd = timestamp(tree.EventEnd)
 	doc.Tree.WaterAura = whole(tree.WaterAura)
+	doc.Quotes.EveryMessages, doc.Quotes.MinInterval = whole(d.Quotes.EveryMessages), duration(d.Quotes.MinInterval)
 	return doc
 }
 
@@ -302,5 +307,6 @@ func (doc document) tuning() (core.Tuning, error) {
 		DecayInterval: time.Duration(doc.Tree.DecayInterval), WaterCooldown: time.Duration(doc.Tree.WaterCooldown),
 		EventEnd: time.Time(doc.Tree.EventEnd), WaterAura: int(doc.Tree.WaterAura),
 	}
+	t.Quotes = core.QuoteRules{EveryMessages: int(doc.Quotes.EveryMessages), MinInterval: time.Duration(doc.Quotes.MinInterval)}
 	return t, errors.Join(problems...)
 }

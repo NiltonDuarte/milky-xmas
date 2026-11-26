@@ -44,17 +44,17 @@ func TestGuildSettingsAndAnnouncements(t *testing.T) {
 	if err := setup.Welcome(ctx, "guild", "general", post); err != nil {
 		t.Fatal(err)
 	}
-	if saved, err := setup.Configure(ctx, "guild", "event", false, true, true, post); saved || !errors.Is(err, app.ErrManageGuild) || intros != 0 {
+	if saved, err := setup.Configure(ctx, "guild", "event", false, app.ChannelChoice{Commands: true, Boss: true}, post); saved || !errors.Is(err, app.ErrManageGuild) || intros != 0 {
 		t.Fatalf("unauthorized configure = %v, %v; intros %d", saved, err, intros)
 	}
-	if saved, err := setup.Configure(ctx, "guild", "general", true, true, false, post); !saved || err != nil {
+	if saved, err := setup.Configure(ctx, "guild", "general", true, app.ChannelChoice{Commands: true, Boss: false}, post); !saved || err != nil {
 		t.Fatalf("configure general = %v, %v", saved, err)
 	}
-	if saved, err := setup.Configure(ctx, "guild", "event", true, false, true, post); !saved || !errors.Is(err, failed) {
+	if saved, err := setup.Configure(ctx, "guild", "event", true, app.ChannelChoice{Commands: false, Boss: true}, post); !saved || !errors.Is(err, failed) {
 		t.Fatalf("configure event with failed post = %v, %v", saved, err)
 	}
 	offline = false
-	if saved, err := setup.Configure(ctx, "guild", "event", true, false, true, post); !saved || err != nil {
+	if saved, err := setup.Configure(ctx, "guild", "event", true, app.ChannelChoice{Commands: false, Boss: true}, post); !saved || err != nil {
 		t.Fatalf("retry introduction = %v, %v", saved, err)
 	}
 
@@ -65,7 +65,7 @@ func TestGuildSettingsAndAnnouncements(t *testing.T) {
 	if err := setup.Welcome(ctx, "guild", "general", post); err != nil {
 		t.Fatal(err)
 	}
-	if saved, err := setup.Configure(ctx, "guild", "event", true, true, true, post); !saved || err != nil {
+	if saved, err := setup.Configure(ctx, "guild", "event", true, app.ChannelChoice{Commands: true, Boss: true}, post); !saved || err != nil {
 		t.Fatalf("reconfigure event = %v, %v", saved, err)
 	}
 	settings, err := setup.Settings(ctx, "guild")

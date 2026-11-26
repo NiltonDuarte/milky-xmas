@@ -20,6 +20,15 @@ type ChannelSettings struct {
 	Commands   bool
 	Boss       bool
 	Introduced bool
+	Quotes     bool
+}
+
+// ChannelChoice is what a moderator selects for a channel.
+type ChannelChoice struct {
+	Commands bool
+	Boss     bool
+	// Quotes is nil when the moderator did not say, which keeps the current choice.
+	Quotes *bool
 }
 
 type GuildSettings struct {
@@ -69,7 +78,7 @@ func (setup *GuildSetup) Welcome(ctx context.Context, guild, channel string, pos
 }
 
 // Configure reports whether the channel choices were saved, even if posting failed.
-func (setup *GuildSetup) Configure(ctx context.Context, guild, channel string, canManage, commands, boss bool, post SetupAnnouncement) (bool, error) {
+func (setup *GuildSetup) Configure(ctx context.Context, guild, channel string, canManage bool, choice ChannelChoice, post SetupAnnouncement) (bool, error) {
 	if !canManage {
 		return false, ErrManageGuild
 	}
@@ -84,8 +93,11 @@ func (setup *GuildSetup) Configure(ctx context.Context, guild, channel string, c
 		settings.Channels = make(map[string]ChannelSettings)
 	}
 	selection := settings.Channels[channel]
-	selection.Commands, selection.Boss = commands, boss
-	if !commands && !boss && !selection.Introduced {
+	selection.Commands, selection.Boss = choice.Commands, choice.Boss
+	if choice.Quotes != nil {
+		selection.Quotes = *choice.Quotes
+	}
+	if !selection.Commands && !selection.Boss && !selection.Quotes && !selection.Introduced {
 		delete(settings.Channels, channel)
 	} else {
 		settings.Channels[channel] = selection
@@ -93,7 +105,7 @@ func (setup *GuildSetup) Configure(ctx context.Context, guild, channel string, c
 	if err := setup.store.SaveGuildSettings(ctx, guild, settings); err != nil {
 		return false, err
 	}
-	if !boss || selection.Introduced {
+	if !choice.Boss || selection.Introduced {
 		return true, nil
 	}
 	if err := post(ctx, channel, ChristmasIntroduction); err != nil {

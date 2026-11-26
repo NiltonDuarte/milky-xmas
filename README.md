@@ -86,6 +86,10 @@ When the bot joins a server, it asks moderators to configure it in the system ch
 
 Select a general channel with commands on and boss off. Select an event channel with boss on. The bot posts the Christmas introduction when that channel is first enabled for the boss. If it cannot post, grant **View Channel** and **Send Messages**, then repeat the setup. Check that `/hello` works in the general channel and is refused in an unselected channel. Restart the bot and check that `/setup view` still shows the same choices.
 
+## Christmas quotes
+
+Turn them on with `/setup channel` and `quotes: True` (the other two choices are set as usual; leaving `quotes` out keeps the current one). In those channels the bot posts a Christmas quote or poem after 3 player messages, at most one every 3 hours (the time of the last quote is saved, so a restart keeps the interval); both numbers are in the `quotes` section of `tuning.yaml`. A quiet channel gets nothing, and no quote repeats until all were shown. The texts are in `core/quotes.go` and must stay in the public domain. In the local chat, send `/message hi` until a quote appears.
+
 ## Grinch encounter
 
 Use `/setup channel` to enable the boss in each Discord text channel where it may appear. Enable commands there too if moderators should be able to invoke `/grinch summon`. That command requires **Manage Messages**. Test it twice during an active fight and confirm that only one encounter starts. Use `/setup channel` for installations that previously selected a channel through `MILKY_GRINCH_CHANNEL_ID`.

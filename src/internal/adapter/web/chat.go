@@ -30,6 +30,7 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 		drops = activity[0]
 	}
 	tree := service.RewardTree(app.NewTree(&app.MemoryTreeStore{}, time.Now).WithRules(service.Tuning().Tree))
+	quotes := app.NewQuoteFeed(service)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -48,7 +49,7 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 			args := fields[1:]
 			switch fields[0] {
 			case "/message":
-				replyActivityMessage(w, r, drops, args)
+				replyActivityMessage(w, r, drops, quotes, args)
 				return
 			case "/drop":
 				replyActivityClaim(w, r, drops, args)
@@ -129,22 +130,33 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 	return http.NewCrossOriginProtection().Handler(mux)
 }
 
-func replyActivityMessage(w http.ResponseWriter, r *http.Request, drops *app.ActivityDrops, args []string) {
+func replyActivityMessage(w http.ResponseWriter, r *http.Request, drops *app.ActivityDrops, quotes *app.QuoteFeed, args []string) {
 	if len(args) == 0 {
 		http.Error(w, "Use /message <text>.", http.StatusBadRequest)
 		return
 	}
-	drop := drops.Observe(fixtureServerID, fixtureServerID)
+	var replies []string
+	if drop := drops.Observe(fixtureServerID, fixtureServerID); drop != nil {
+		headline := "Watch out! Something is falling down!"
+		if drop.Kind == core.GiftRainDrop {
+			headline = "🎁 It's raining gifts! 🎁 Hallelujah"
+		}
+		replies = append(replies, fmt.Sprintf("%s\n🎁 🎁 🎁 🎁\n🎁 🎁 🎁 🎁\n/drop collect %s", headline, drop.ID))
+	}
+	// The local chat has one channel, with quotes always on.
+	quote, err := quotes.Observe(r.Context(), fixtureServerID, fixtureServerID)
+	if err != nil {
+		http.Error(w, "Could not draw a quote. Try again.", http.StatusInternalServerError)
+		return
+	}
+	if quote != nil {
+		replies = append(replies, gifttext.Quote(*quote))
+	}
+	if len(replies) == 0 {
+		replies = []string{"Message recorded."}
+	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	if drop == nil {
-		io.WriteString(w, "Message recorded.")
-		return
-	}
-	if drop.Kind == "rain" {
-		fmt.Fprintf(w, "🎁 It's raining gifts! 🎁 Hallelujah\n🎁 🎁 🎁 🎁\n🎁 🎁 🎁 🎁\n/drop collect %s", drop.ID)
-		return
-	}
-	fmt.Fprintf(w, "Watch out! Something is falling down!\n🎁 🎁 🎁 🎁\n🎁 🎁 🎁 🎁\n/drop collect %s", drop.ID)
+	io.WriteString(w, strings.Join(replies, "\n\n"))
 }
 
 func replyActivityClaim(w http.ResponseWriter, r *http.Request, drops *app.ActivityDrops, args []string) {

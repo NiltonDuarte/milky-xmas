@@ -154,7 +154,7 @@ func TestSnowballAutocomplete(t *testing.T) {
 	}
 	defer store.Close()
 	setup := app.NewGuildSetup(store)
-	if saved, err := setup.Configure(ctx, "200", "700", true, true, false, nil); err != nil || !saved {
+	if saved, err := setup.Configure(ctx, "200", "700", true, app.ChannelChoice{Commands: true, Boss: false}, nil); err != nil || !saved {
 		t.Fatalf("configure channel = %v, %v", saved, err)
 	}
 	for user, inventory := range map[string]core.Inventory{

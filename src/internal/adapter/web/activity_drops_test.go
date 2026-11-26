@@ -26,6 +26,10 @@ func TestLocalActivityGiftRain(t *testing.T) {
 			return 70
 		}
 	})
+	// Keep Christmas quotes out of the replies under test.
+	tuning := core.DefaultTuning()
+	tuning.Quotes.EveryMessages = 1000
+	service = service.WithTuning(tuning)
 	handler := newHandler(service, newGrinchFixture(func() time.Time { return now }, store, core.DefaultTuning().Grinch), app.NewActivityDrops(service))
 	send := func(command string) string {
 		t.Helper()

@@ -128,7 +128,7 @@ func TestGrinchFightWithChangedTuning(t *testing.T) {
 	rules.EarlyStartPlayers = 2
 	rules.FinalSnowballReward = 3
 	rules.LossCoal, rules.LossYellowPerGroupMember = 2, 2
-	if err := (Tuning{Gifts: DefaultTuning().Gifts, Drops: DefaultTuning().Drops, Grinch: rules, Tree: DefaultTreeRules()}).Validate(); err != nil {
+	if err := (Tuning{Gifts: DefaultTuning().Gifts, Drops: DefaultTuning().Drops, Grinch: rules, Tree: DefaultTreeRules(), Quotes: DefaultQuoteRules()}).Validate(); err != nil {
 		t.Fatal(err)
 	}
 

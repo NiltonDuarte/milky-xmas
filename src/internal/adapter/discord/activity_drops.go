@@ -38,8 +38,7 @@ func newDropBot(drops *app.ActivityDrops) *dropBot {
 }
 
 func (b bot) observeDrop(session *discordgo.Session, event *discordgo.MessageCreate) {
-	if b.drops == nil || b.drops.drops == nil || event == nil || event.Author == nil || event.Author.Bot ||
-		event.WebhookID != "" || !b.permitsGuild(event.GuildID) {
+	if b.drops == nil || b.drops.drops == nil || !b.playerMessage(event) {
 		return
 	}
 	if b.setup != nil {

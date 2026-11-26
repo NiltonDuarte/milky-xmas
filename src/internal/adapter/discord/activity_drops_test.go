@@ -24,7 +24,7 @@ func TestActivityDropsOnlyObserveConfiguredChannelsAndRenderEightButtons(t *test
 	}
 	defer store.Close()
 	setup := app.NewGuildSetup(store)
-	if saved, err := setup.Configure(t.Context(), "200", "400", true, true, false, func(context.Context, string, string) error { return nil }); !saved || err != nil {
+	if saved, err := setup.Configure(t.Context(), "200", "400", true, app.ChannelChoice{Commands: true, Boss: false}, func(context.Context, string, string) error { return nil }); !saved || err != nil {
 		t.Fatalf("configure = %v, %v", saved, err)
 	}
 	service := app.NewService(store, time.Now, func(bound int) int {

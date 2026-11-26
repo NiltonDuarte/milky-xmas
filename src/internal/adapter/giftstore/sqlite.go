@@ -63,6 +63,10 @@ func initSchema(ctx context.Context, db *sql.DB) error {
 		CREATE TABLE IF NOT EXISTS grinch_encounters (scope TEXT PRIMARY KEY, revision INTEGER NOT NULL, payload BLOB NOT NULL);
 		CREATE TABLE IF NOT EXISTS guild_settings (guild_id TEXT PRIMARY KEY, payload BLOB NOT NULL);
 		CREATE TABLE IF NOT EXISTS christmas_trees (server_id TEXT PRIMARY KEY, revision INTEGER NOT NULL, payload BLOB NOT NULL);
+		CREATE TABLE IF NOT EXISTS quote_posts (
+			server_id TEXT NOT NULL, channel_id TEXT NOT NULL, at TEXT NOT NULL,
+			PRIMARY KEY (server_id, channel_id)
+		);
 		CREATE TABLE IF NOT EXISTS grinch_history (
 			scope TEXT NOT NULL, fight_id TEXT NOT NULL, server_id TEXT NOT NULL, payload BLOB NOT NULL,
 			PRIMARY KEY (scope, fight_id)

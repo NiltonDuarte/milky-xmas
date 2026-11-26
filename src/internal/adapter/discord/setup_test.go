@@ -177,4 +177,13 @@ func TestSetupChannels(t *testing.T) {
 	}
 	invoke("402", "setup", mod, set("400", false, false), "commands off · boss off", true)
 	invoke("400", "hello", 0, nil, "Commands are disabled", true)
+
+	withQuotes := set("402", false, false)
+	withQuotes[0].Options = append(withQuotes[0].Options,
+		&discordgo.ApplicationCommandInteractionDataOption{Name: "quotes", Type: discordgo.ApplicationCommandOptionBoolean, Value: true})
+	invoke("402", "setup", mod, withQuotes, "commands off · boss off · quotes on.", true)
+	invoke("402", "setup", mod, view, "Quotes · <#402>", true)
+	// Leaving quotes out keeps the choice.
+	invoke("402", "setup", mod, set("402", true, false), "commands on · boss off.", true)
+	invoke("402", "setup", mod, view, "Quotes · <#402>", true)
 }

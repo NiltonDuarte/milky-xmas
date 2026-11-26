@@ -154,6 +154,7 @@ type Tuning struct {
 	Drops  DropTuning
 	Grinch GrinchRules
 	Tree   TreeRules
+	Quotes QuoteRules
 }
 
 // The default numbers, documented in docs/activity-drops-numbers.md and
@@ -218,7 +219,8 @@ func DefaultTuning() Tuning {
 			LossCoal:                 1,
 			LossYellowPerGroupMember: 1,
 		},
-		Tree: DefaultTreeRules(),
+		Tree:   DefaultTreeRules(),
+		Quotes: DefaultQuoteRules(),
 	}
 }
 
@@ -343,6 +345,8 @@ func (tuning Tuning) Validate() error {
 	if tree.EventEnd.IsZero() {
 		bad("tree.event_end", "must be a date and time")
 	}
+	atLeast("quotes.every_messages", tuning.Quotes.EveryMessages, 1)
+	atLeastZero("quotes.min_interval", tuning.Quotes.MinInterval)
 	return errors.Join(problems...)
 }
 

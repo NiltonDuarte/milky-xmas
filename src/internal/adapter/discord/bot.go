@@ -21,6 +21,7 @@ type bot struct {
 	grinches *grinchChannels
 	drops    *dropBot
 	tree     *app.Tree
+	quotes   *app.QuoteFeed
 }
 
 func Run(ctx context.Context, token, guildID string, service app.Service, setup *app.GuildSetup, encounter func(string, string) *app.GrinchEncounter, tree *app.Tree) error {
@@ -30,7 +31,7 @@ func Run(ctx context.Context, token, guildID string, service app.Service, setup 
 		stop()
 		channels.wait()
 	}()
-	b := bot{guildID: guildID, service: service, setup: setup, grinches: channels, drops: newDropBot(app.NewActivityDrops(service)), tree: tree}
+	b := bot{guildID: guildID, service: service, setup: setup, grinches: channels, drops: newDropBot(app.NewActivityDrops(service)), tree: tree, quotes: app.NewQuoteFeed(service)}
 	session, err := discordgo.New("Bot " + token)
 	if err != nil {
 		return fmt.Errorf("create Discord session: %w", err)
@@ -46,6 +47,7 @@ func Run(ctx context.Context, token, guildID string, service app.Service, setup 
 	})
 	session.AddHandler(func(s *discordgo.Session, event *discordgo.MessageCreate) {
 		b.observeDrop(s, event)
+		b.observeQuote(s, event)
 		if worker := channels.get(event.GuildID, event.ChannelID); worker != nil {
 			worker.observe(s, event)
 		}

@@ -101,3 +101,9 @@ tree:
   decay_interval: 1h      # a árvore perde 1% de água a cada intervalo
   water_cooldown: 1h      # espera de cada jogador entre regas
   event_end: 2027-01-05T01:00:00Z   # data e hora UTC do fim do evento: a árvore para de secar e de ser regada
+
+# Frases e poemas de Natal nos canais com quotes ligado (/setup channel).
+quotes:
+  every_messages: 3       # mensagens de jogadores no canal para sair uma frase
+  min_interval: 3h        # intervalo mínimo entre duas frases no mesmo canal
+                          # (every_messages: 1 vira "a cada X tempo enquanto houver conversa")
