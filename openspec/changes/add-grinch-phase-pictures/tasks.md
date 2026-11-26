@@ -5,4 +5,4 @@
 ## 2. Verification
 
 - [x] 2.1 Run `go fmt ./...`, `go vet ./...`, `go test -race -count=1 ./...`, and `openspec validate add-grinch-phase-pictures --strict`.
-- [ ] 2.2 Discord test server: play a fight and check the animation in the defense phase and the heart picture at 5%.
+- [x] 2.2 Discord test server: play a fight and check the animation in the defense phase and the heart picture at 5%.

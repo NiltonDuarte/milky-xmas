@@ -15,6 +15,10 @@ type dropStoreFixture struct {
 	records map[Member]core.GiftRecord
 }
 
+func (store *dropStoreFixture) ServerAuras(context.Context, string) ([]core.Aura, error) {
+	return nil, nil
+}
+
 func (store *dropStoreFixture) Load(_ context.Context, member Member) (core.GiftRecord, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()

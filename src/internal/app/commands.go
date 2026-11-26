@@ -14,6 +14,7 @@ var ErrUnknownCommand = errors.New("unknown command")
 type Service struct {
 	gifts  GiftStore
 	advent AdventStore
+	auras  AuraStore
 	now    func() time.Time
 	random func(int) int
 	tuning core.Tuning

@@ -68,6 +68,36 @@ func deferPrivately(session *discordgo.Session, interaction *discordgo.Interacti
 	return true
 }
 
+// announceBox posts a boxed result to the channel and removes the private acknowledgement. If
+// the post fails, the player still sees the box.
+func announceBox(session *discordgo.Session, interaction *discordgo.Interaction, result privateReply) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	message := &discordgo.MessageSend{
+		Flags:           discordgo.MessageFlagsIsComponentsV2,
+		Components:      boxedComponents(result),
+		AllowedMentions: &discordgo.MessageAllowedMentions{},
+	}
+	if result.Image != nil {
+		message.Files = []*discordgo.File{result.Image.file()}
+	}
+	if _, err := session.ChannelMessageSendComplex(interaction.ChannelID, message, discordgo.WithContext(ctx)); err != nil {
+		logInteractionError(interaction.ID, "post the result to the channel", err)
+		showResult(session, interaction, result)
+		return
+	}
+	if err := session.InteractionResponseDelete(interaction, discordgo.WithContext(ctx)); err != nil {
+		logInteractionError(interaction.ID, "remove the private acknowledgement", err)
+	}
+}
+
+// showResult ends a deferred private reply with result and logs a failure.
+func showResult(session *discordgo.Session, interaction *discordgo.Interaction, result privateReply) {
+	if err := showReply(session, interaction, result); err != nil {
+		logInteractionError(interaction.ID, "show command result", err)
+	}
+}
+
 // showReply edits the deferred reply into result. A reply with an image or blocks is one box
 // holding the image, the text, and the buttons. If Discord refuses the box, two embeds are sent instead so
 // the player still gets the result.

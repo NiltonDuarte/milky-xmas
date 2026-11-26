@@ -130,6 +130,10 @@ Run `/water` to water the server's Christmas tree. It starts withered at 10% wat
 
 In the Discord test server, run `/water` from two accounts and check the public box, the picture, and `/aura check`, then run it again right away to see the private refusal. Restart the bot with the same database to check the level continues.
 
+## Christmas spirit
+
+When the event ends, a moderator (Manage Messages) runs `/spirit` to post the Christmas spirit of the server: every player's good deeds and bad deeds added up from their current aura, with the winning side. The same picture is shown for either side until one exists for bad deeds; the current one is a watermarked preview to be replaced.
+
 ## Event history
 
 For the scoreboards at the end of the event, the bot's database keeps every finished Grinch fight (`grinch_history`) and every inventory or aura change with its reason (`player_history`). Waterings stay counted in the tree and opened Advent doors in `advent_openings`. Nothing shows these records yet.

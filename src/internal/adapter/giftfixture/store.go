@@ -35,6 +35,18 @@ func (store *Store) Save(ctx context.Context, update app.GiftUpdate) (bool, erro
 	return true, nil
 }
 
+func (store *Store) ServerAuras(_ context.Context, server string) ([]core.Aura, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	var auras []core.Aura
+	for member, record := range store.records {
+		if member.ServerID == server {
+			auras = append(auras, record.Aura)
+		}
+	}
+	return auras, nil
+}
+
 func (store *Store) SaveTransfer(ctx context.Context, sender, recipient app.GiftUpdate) (bool, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()

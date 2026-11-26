@@ -90,6 +90,7 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 		grinchCommand(),
 		throwCommand(),
 		waterCommand(),
+		spiritCommand(),
 		helpCommand(),
 		setupCommand(),
 	}
@@ -178,6 +179,11 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 	case waterCommandName:
 		if len(data.Options) == 0 {
 			b.handleWater(session, event.Interaction)
+		}
+		return
+	case gifttext.SpiritCommand:
+		if len(data.Options) == 0 {
+			b.handleSpirit(session, event.Interaction)
 		}
 		return
 	case gifttext.HelpCommand:

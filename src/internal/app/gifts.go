@@ -53,7 +53,7 @@ type GiftClaim struct {
 }
 
 func NewService(store Store, now func() time.Time, random func(int) int) Service {
-	return Service{gifts: store, advent: store, now: now, random: random, tuning: core.DefaultTuning()}
+	return Service{gifts: store, advent: store, auras: store, now: now, random: random, tuning: core.DefaultTuning()}
 }
 
 func (service Service) ClaimGift(ctx context.Context, member Member) (GiftClaim, error) {

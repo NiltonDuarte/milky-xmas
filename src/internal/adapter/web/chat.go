@@ -79,6 +79,14 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 				}
 				replyWater(w, r, tree)
 				return
+			case "/" + gifttext.SpiritCommand:
+				if len(args) != 0 {
+					http.Error(w, "Use /spirit.", http.StatusBadRequest)
+					return
+				}
+				// The local chat player can use the moderator tools.
+				replySpirit(w, r, service)
+				return
 			case "/" + gifttext.HelpCommand:
 				if len(args) != 0 {
 					http.Error(w, "Use /helpmemilky.", http.StatusBadRequest)
@@ -108,7 +116,7 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 		}
 		reply, err := service.Reply(command)
 		if err != nil {
-			http.Error(w, "Unknown command. Try /"+app.HelloCommand+", /daily claim, /advent view, /grinch view, /send gift, /aura check, /look in-your-stocking, /water, or /helpmemilky.", http.StatusBadRequest)
+			http.Error(w, "Unknown command. Try /"+app.HelloCommand+", /daily claim, /advent view, /grinch view, /send gift, /aura check, /look in-your-stocking, /water, /spirit, or /helpmemilky.", http.StatusBadRequest)
 			return
 		}
 
@@ -187,6 +195,16 @@ func replyInventory(w http.ResponseWriter, r *http.Request, service app.Service)
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	io.WriteString(w, gifttext.Inventory(items, false))
+}
+
+func replySpirit(w http.ResponseWriter, r *http.Request, service app.Service) {
+	spirit, err := service.ChristmasSpirit(r.Context(), fixtureServerID)
+	if err != nil {
+		http.Error(w, gifttext.SpiritUnavailable, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	io.WriteString(w, strings.Join(gifttext.SpiritBlocks(spirit), "\n"))
 }
 
 func replyWater(w http.ResponseWriter, r *http.Request, tree *app.Tree) {

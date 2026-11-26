@@ -39,6 +39,24 @@ func loadPlayer(ctx context.Context, reader playerReader, member app.Member) (co
 	return record, err
 }
 
+// ServerAuras returns the aura of every player the server has stored.
+func (s *SQLite) ServerAuras(ctx context.Context, server string) ([]core.Aura, error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT aura FROM gift_players WHERE server_id = ?", server)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var auras []core.Aura
+	for rows.Next() {
+		var aura core.Aura
+		if err := rows.Scan(&aura); err != nil {
+			return nil, err
+		}
+		auras = append(auras, aura)
+	}
+	return auras, rows.Err()
+}
+
 func (s *SQLite) Save(ctx context.Context, update app.GiftUpdate) (bool, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

@@ -33,6 +33,7 @@ func Help(access HelpAccess) string {
 		if access.Moderator {
 			text.WriteString("/give gift <player> <amount> <rarity>  Give gifts to a player\n")
 			text.WriteString("/grinch summon                         Summon the Grinch\n")
+			text.WriteString("/spirit                                Reveal the Christmas spirit\n")
 		}
 		if access.Manager {
 			text.WriteString("/setup view                            See the configured channels\n")

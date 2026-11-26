@@ -60,3 +60,22 @@ func TestHistoryKeepsTransfersAndEveryFinishedFight(t *testing.T) {
 		t.Fatalf("reward history = %d coal, %v", sent, err)
 	}
 }
+
+func TestServerAurasReadsOneServer(t *testing.T) {
+	store, err := OpenSQLite(t.Context(), filepath.Join(t.TempDir(), "auras.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	for member, aura := range map[app.Member]core.Aura{
+		{ServerID: "s", UserID: "alice"}: 12, {ServerID: "s", UserID: "bob"}: -30, {ServerID: "other", UserID: "carol"}: 40,
+	} {
+		if saved, err := store.Save(t.Context(), app.GiftUpdate{Member: member, Next: core.GiftRecord{Aura: aura}}); err != nil || !saved {
+			t.Fatalf("save = %v, %v", saved, err)
+		}
+	}
+	auras, err := store.ServerAuras(t.Context(), "s")
+	if got := core.ServerSpirit(auras); err != nil || len(auras) != 2 || got != (core.Spirit{Good: 12, Bad: 30}) {
+		t.Fatalf("auras = %v, spirit = %+v, %v", auras, got, err)
+	}
+}
