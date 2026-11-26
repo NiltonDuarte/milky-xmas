@@ -64,7 +64,7 @@ A Discord tree reply with a picture SHALL be one box holding the picture, the wa
 
 - **GIVEN** a tree at 100%
 - **WHEN** a player runs `/water`
-- **THEN** no water or good deed is added and only that player sees the decorated tree with `🎄 The tree is already fully watered. Try again later!`
+- **THEN** no water or good deed is added and only that player sees the decorated tree with `🎄 The tree is fully watered. Try again later!`
 
 ### Requirement: Water answers in time
 

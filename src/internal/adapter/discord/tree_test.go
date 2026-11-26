@@ -159,7 +159,7 @@ func TestWaterInteraction(t *testing.T) {
 
 	got = water(t, waterBot(now, core.TreeMaxLevel), "alice", http.StatusOK)
 	if !slices.Equal(got.calls, []string{"ack", "edit"}) || got.image != "fulltree.png" || got.channel != "" ||
-		got.private != "🎄 The tree is already fully watered. Try again later!" {
+		got.private != "🎄 The tree is fully watered. Try again later!" {
 		t.Errorf("watering a full tree = %+v", got)
 	}
 

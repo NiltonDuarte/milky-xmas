@@ -52,7 +52,7 @@ func TreeRejection(err error) string {
 	var cooldown core.TreeCooldownError
 	switch {
 	case errors.Is(err, core.ErrTreeFull):
-		return "🎄 The tree is already fully watered. Try again later!"
+		return "🎄 The tree is fully watered. Try again later!"
 	case errors.As(err, &cooldown):
 		return "💧 You already watered the tree. Try again in " + wait(cooldown.Remaining) + "."
 	case errors.Is(err, core.ErrTreeEventOver):
