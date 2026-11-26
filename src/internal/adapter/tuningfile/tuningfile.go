@@ -193,6 +193,7 @@ type document struct {
 	Tree struct {
 		StartLevel    whole     `yaml:"start_level"`
 		WaterPoints   whole     `yaml:"water_points"`
+		WaterAura     whole     `yaml:"water_aura"`
 		DecayInterval duration  `yaml:"decay_interval"`
 		WaterCooldown duration  `yaml:"water_cooldown"`
 		EventEnd      timestamp `yaml:"event_end"`
@@ -242,6 +243,7 @@ func defaultsDocument() document {
 	doc.Tree.StartLevel, doc.Tree.WaterPoints = whole(tree.StartLevel), whole(tree.WaterPoints)
 	doc.Tree.DecayInterval, doc.Tree.WaterCooldown = duration(tree.DecayInterval), duration(tree.WaterCooldown)
 	doc.Tree.EventEnd = timestamp(tree.EventEnd)
+	doc.Tree.WaterAura = whole(tree.WaterAura)
 	return doc
 }
 
@@ -298,7 +300,7 @@ func (doc document) tuning() (core.Tuning, error) {
 	t.Tree = core.TreeRules{
 		StartLevel: int(doc.Tree.StartLevel), WaterPoints: int(doc.Tree.WaterPoints),
 		DecayInterval: time.Duration(doc.Tree.DecayInterval), WaterCooldown: time.Duration(doc.Tree.WaterCooldown),
-		EventEnd: time.Time(doc.Tree.EventEnd),
+		EventEnd: time.Time(doc.Tree.EventEnd), WaterAura: int(doc.Tree.WaterAura),
 	}
 	return t, errors.Join(problems...)
 }

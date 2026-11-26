@@ -16,6 +16,7 @@ const (
 	TreeWaterPoints   = 2
 	TreeDecayInterval = time.Hour
 	TreeWaterCooldown = time.Hour
+	TreeWaterAura     = 1
 )
 
 // TreeEventEnd is when the event ends by default: January 5, 2027 at 01:00 UTC. The tree stops
@@ -32,6 +33,8 @@ type TreeRules struct {
 	DecayInterval time.Duration
 	// WaterCooldown is how long a player waits between waterings.
 	WaterCooldown time.Duration
+	// WaterAura is how far a watering moves the player's aura toward good deeds. Zero gives nothing.
+	WaterAura int
 	// EventEnd is when the tree stops decaying and cannot be watered any more.
 	EventEnd time.Time
 }
@@ -40,7 +43,7 @@ type TreeRules struct {
 func DefaultTreeRules() TreeRules {
 	return TreeRules{
 		StartLevel: TreeStartLevel, WaterPoints: TreeWaterPoints,
-		DecayInterval: TreeDecayInterval, WaterCooldown: TreeWaterCooldown, EventEnd: TreeEventEnd,
+		DecayInterval: TreeDecayInterval, WaterCooldown: TreeWaterCooldown, WaterAura: TreeWaterAura, EventEnd: TreeEventEnd,
 	}
 }
 

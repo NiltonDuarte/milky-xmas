@@ -125,7 +125,7 @@ func TestWaterInChat(t *testing.T) {
 		return recorder.Code, recorder.Body.String()
 	}
 	if code, body := post("/water"); code != http.StatusOK || !strings.Contains(body, "fixture watered the tree! +2%") ||
-		!strings.Contains(body, "💧 Water level: 12%") || !strings.Contains(body, "1. fixture — 1") {
+		!strings.Contains(body, "🟦⬜⬜⬜⬜⬜⬜⬜⬜⬜  **12%** 💧") || strings.Contains(body, "Top waterers") {
 		t.Fatalf("first /water = %d %q", code, body)
 	}
 	if code, body := post("/water"); code != http.StatusOK || !strings.Contains(body, "You already watered the tree") {

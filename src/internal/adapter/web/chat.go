@@ -29,7 +29,7 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 	if len(activity) == 1 && activity[0] != nil {
 		drops = activity[0]
 	}
-	tree := app.NewTree(&app.MemoryTreeStore{}, time.Now).WithRules(service.Tuning().Tree)
+	tree := service.RewardTree(app.NewTree(&app.MemoryTreeStore{}, time.Now).WithRules(service.Tuning().Tree))
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -193,13 +193,13 @@ func replyWater(w http.ResponseWriter, r *http.Request, tree *app.Tree) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	member := app.Member{ServerID: fixtureServerID, UserID: fixtureUserID}
 	mention := func(userID string) string { return userID }
-	updated, err := tree.Water(r.Context(), member)
-	if err == nil {
-		io.WriteString(w, gifttext.Watered(member.UserID, updated, tree.Rules(), tree.Now(), mention))
+	updated, goodDeeds, err := tree.Water(r.Context(), member)
+	if err == nil || errors.Is(err, app.ErrGoodDeedNotSaved) {
+		io.WriteString(w, gifttext.Watered(member.UserID, goodDeeds, updated, tree.Rules(), tree.Now(), mention))
 		return
 	}
 	if errors.Is(err, core.ErrTreeEventOver) {
-		io.WriteString(w, gifttext.TreeEventOver(updated, tree.Rules(), tree.Now(), mention))
+		io.WriteString(w, gifttext.TreeEventOver(updated, tree.Rules(), tree.Now()))
 		return
 	}
 	if reply := gifttext.TreeRejection(err); reply != "" {

@@ -3,7 +3,9 @@ package discord
 import (
 	"bytes"
 	"context"
+	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
@@ -11,6 +13,7 @@ import (
 )
 
 // privateReply is a private command result. With Image set, the image is shown above the text.
+// With Image or Blocks set, the reply is one box.
 type privateReply struct {
 	Content string
 	// Blocks, when set, replace Content in the box: each is shown apart, with a dividing line.
@@ -31,15 +34,7 @@ func respondPrivately(session *discordgo.Session, interaction *discordgo.Interac
 }
 
 func respondPrivatelyWith(session *discordgo.Session, interaction *discordgo.Interaction, reply func(context.Context, app.Member) privateReply) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2500*time.Millisecond)
-	err := session.InteractionRespond(interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{Flags: discordgo.MessageFlagsEphemeral},
-	}, discordgo.WithContext(ctx))
-	cancel()
-	if err != nil {
-		logInteractionError(interaction.ID, "acknowledge command", err)
-		clearUncertainAcknowledgement(session, interaction)
+	if !deferPrivately(session, interaction) {
 		return
 	}
 
@@ -56,11 +51,28 @@ func respondPrivatelyWith(session *discordgo.Session, interaction *discordgo.Int
 	}
 }
 
-// showReply edits the deferred reply into result. A reply with an image is one box holding the
-// image, the text, and the buttons. If Discord refuses the box, two embeds are sent instead so
+// deferPrivately acknowledges a command whose result only its user sees. It reports false when
+// the command must not go on.
+func deferPrivately(session *discordgo.Session, interaction *discordgo.Interaction) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 2500*time.Millisecond)
+	err := session.InteractionRespond(interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{Flags: discordgo.MessageFlagsEphemeral},
+	}, discordgo.WithContext(ctx))
+	cancel()
+	if err != nil {
+		logInteractionError(interaction.ID, "acknowledge command", err)
+		clearUncertainAcknowledgement(session, interaction)
+		return false
+	}
+	return true
+}
+
+// showReply edits the deferred reply into result. A reply with an image or blocks is one box
+// holding the image, the text, and the buttons. If Discord refuses the box, two embeds are sent instead so
 // the player still gets the result.
 func showReply(session *discordgo.Session, interaction *discordgo.Interaction, result privateReply) error {
-	if result.Image != nil {
+	if result.Image != nil || len(result.Blocks) > 0 {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		err := editBoxedReply(ctx, session, interaction, result)
 		cancel()
@@ -79,19 +91,9 @@ func showReply(session *discordgo.Session, interaction *discordgo.Interaction, r
 // discordgo's WebhookEdit has no flags field, so the request body is built here. Content and
 // embeds are cleared so a message sent with embeds can become a box.
 func editBoxedReply(ctx context.Context, session *discordgo.Session, interaction *discordgo.Interaction, result privateReply) error {
-	files := []*discordgo.File{{Name: result.Image.Name, ContentType: "image/jpeg", Reader: bytes.NewReader(result.Image.Data)}}
-	box := []discordgo.MessageComponent{
-		discordgo.MediaGallery{Items: []discordgo.MediaGalleryItem{{Media: discordgo.UnfurledMediaItem{URL: "attachment://" + result.Image.Name}}}},
-	}
-	blocks := result.Blocks
-	if len(blocks) == 0 {
-		blocks = []string{result.Content}
-	}
-	for i, block := range blocks {
-		if i > 0 {
-			box = append(box, discordgo.Separator{})
-		}
-		box = append(box, discordgo.TextDisplay{Content: block})
+	var files []*discordgo.File
+	if result.Image != nil {
+		files = []*discordgo.File{result.Image.file()}
 	}
 	body := struct {
 		Content         *string                           `json:"content"`
@@ -103,7 +105,7 @@ func editBoxedReply(ctx context.Context, session *discordgo.Session, interaction
 	}{
 		Embeds:          []*discordgo.MessageEmbed{},
 		Flags:           discordgo.MessageFlagsIsComponentsV2,
-		Components:      []discordgo.MessageComponent{discordgo.Container{Components: append(box, result.Components...)}},
+		Components:      boxedComponents(result),
 		Attachments:     attachmentsFor(files),
 		AllowedMentions: &discordgo.MessageAllowedMentions{},
 	}
@@ -116,18 +118,46 @@ func editBoxedReply(ctx context.Context, session *discordgo.Session, interaction
 	return err
 }
 
+// boxedComponents is the one box holding the image, the text, and the buttons of a reply.
+func boxedComponents(result privateReply) []discordgo.MessageComponent {
+	var box []discordgo.MessageComponent
+	if result.Image != nil {
+		box = append(box, discordgo.MediaGallery{Items: []discordgo.MediaGalleryItem{{Media: discordgo.UnfurledMediaItem{URL: "attachment://" + result.Image.Name}}}})
+	}
+	blocks := result.Blocks
+	if len(blocks) == 0 {
+		blocks = []string{result.Content}
+	}
+	for i, block := range blocks {
+		if i > 0 {
+			box = append(box, discordgo.Separator{})
+		}
+		box = append(box, discordgo.TextDisplay{Content: block})
+	}
+	return []discordgo.MessageComponent{discordgo.Container{Components: append(box, result.Components...)}}
+}
+
+// file is the image as a new upload.
+func (image privateImage) file() *discordgo.File {
+	return &discordgo.File{Name: image.Name, ContentType: http.DetectContentType(image.Data), Reader: bytes.NewReader(image.Data)}
+}
+
 // privateEdit builds the message edit for a private reply. Files are listed in the attachments by
 // position, so editing a message that already has them replaces them instead of adding copies.
 func privateEdit(result privateReply) *discordgo.WebhookEdit {
 	edit := &discordgo.WebhookEdit{AllowedMentions: &discordgo.MessageAllowedMentions{}}
+	text := result.Content
+	if text == "" {
+		text = strings.Join(result.Blocks, "\n")
+	}
 	if result.Image == nil {
-		edit.Content = &result.Content
+		edit.Content = &text
 	} else {
 		edit.Embeds = &[]*discordgo.MessageEmbed{
 			{Image: &discordgo.MessageEmbedImage{URL: "attachment://" + result.Image.Name}},
-			{Description: result.Content},
+			{Description: text},
 		}
-		edit.Files = []*discordgo.File{{Name: result.Image.Name, ContentType: "image/jpeg", Reader: bytes.NewReader(result.Image.Data)}}
+		edit.Files = []*discordgo.File{result.Image.file()}
 		edit.Attachments = attachmentsFor(edit.Files)
 	}
 	if result.Components != nil {

@@ -133,12 +133,12 @@ func TestLoadAndFromEnv(t *testing.T) {
 
 func TestParseTreeNumbers(t *testing.T) {
 	for name, end := range map[string]string{"plain": "2026-12-25T18:30:00-03:00", "quoted": `"2026-12-25T21:30:00Z"`} {
-		got, err := Parse([]byte("tree:\n  start_level: 30\n  water_points: 4\n  decay_interval: 30m\n  water_cooldown: 0s\n  event_end: " + end + "\n"))
+		got, err := Parse([]byte("tree:\n  start_level: 30\n  water_points: 4\n  water_aura: 2\n  decay_interval: 30m\n  water_cooldown: 0s\n  event_end: " + end + "\n"))
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
 		want := core.TreeRules{
-			StartLevel: 30, WaterPoints: 4, DecayInterval: 30 * time.Minute, WaterCooldown: 0,
+			StartLevel: 30, WaterPoints: 4, WaterAura: 2, DecayInterval: 30 * time.Minute, WaterCooldown: 0,
 			EventEnd: time.Date(2026, 12, 25, 21, 30, 0, 0, time.UTC),
 		}
 		if !reflect.DeepEqual(got.Tree, want) {

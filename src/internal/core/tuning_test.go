@@ -47,6 +47,8 @@ func TestTuningValidate(t *testing.T) {
 		{"tree start level above 100", func(x *Tuning) { x.Tree.StartLevel = 101 }, []string{"tree.start_level"}},
 		{"tree start level may be zero", func(x *Tuning) { x.Tree.StartLevel = 0 }, nil},
 		{"tree water points", func(x *Tuning) { x.Tree.WaterPoints = 0 }, []string{"tree.water_points"}},
+		{"tree water aura negative", func(x *Tuning) { x.Tree.WaterAura = -1 }, []string{"tree.water_aura"}},
+		{"tree water aura may be zero", func(x *Tuning) { x.Tree.WaterAura = 0 }, nil},
 		{"tree decay interval", func(x *Tuning) { x.Tree.DecayInterval = 0 }, []string{"tree.decay_interval"}},
 		{"tree cooldown negative", func(x *Tuning) { x.Tree.WaterCooldown = -time.Minute }, []string{"tree.water_cooldown"}},
 		{"tree cooldown may be zero", func(x *Tuning) { x.Tree.WaterCooldown = 0 }, nil},

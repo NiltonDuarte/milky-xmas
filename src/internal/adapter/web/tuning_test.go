@@ -89,11 +89,11 @@ func TestLocalChatAppliesTunedTree(t *testing.T) {
 	tuning.Tree.DecayInterval, tuning.Tree.WaterCooldown = 30*time.Minute, 0
 	send := tunedChat(t, tuning)
 
-	if got := send("/water"); !strings.Contains(got, "+5%") || !strings.Contains(got, "Water level: 25%") ||
+	if got := send("/water"); !strings.Contains(got, "+5%") || !strings.Contains(got, "**25%**") ||
 		!strings.Contains(got, "loses 1% every 30 minutes") {
 		t.Fatalf("first watering = %q, want +5%%, 25%% water, and a 30 minute decay", got)
 	}
-	if got := send("/water"); !strings.Contains(got, "Water level: 30%") {
+	if got := send("/water"); !strings.Contains(got, "**30%**") {
 		t.Fatalf("second watering without a cooldown = %q, want 30%% water", got)
 	}
 

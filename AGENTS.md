@@ -35,11 +35,11 @@ Discord drops an interaction that gets no first response within three seconds of
 - **Pick the deferred type that fits.** Use `DeferredChannelMessageWithSource` for slash commands and for a new reply to a button, with the ephemeral flag when the result is private. Use `DeferredMessageUpdate` for a button that changes the message it sits on or has nothing to show the clicker.
 - **Then do the work and update the user.** Call the shared use case, then finish with `InteractionResponseEdit` for the deferred reply, an edit of the fight or board message, or an ephemeral follow-up. Every path, including every failure, must end the deferred reply: edit it into the result or the error, or delete it when the player has nothing to see. Never leave "is thinking…" hanging.
 - **Reuse the helpers.** `respondPrivately` and `respondPrivatelyWith` cover private command results. `acknowledgeGrinchButton`, `privateFollowup`, and `privateEdit` cover buttons and follow-ups. Add a helper rather than repeating the sequence in a new handler.
-- **Choose visibility without waiting for the outcome.** The ephemeral flag is fixed when the response is deferred. If the visibility depends on the result, as with `/water` where a success is public and a refusal is private, write the trade-off in the change design before choosing.
+- **Choose visibility without waiting for the outcome.** The ephemeral flag is fixed when the response is deferred. If the visibility depends on the result, as with `/water` where a success is public and a refusal is private, write the trade-off in the change design before choosing. `/water` defers privately and posts a success to the channel as a new message.
 - **Log failures with context.** A failed acknowledgement or edit goes through `logInteractionError`, which includes the interaction's age so a late response can be traced to delivery, our own work, or Discord.
 - **Test the order.** For each new or changed handler, a test with a fake transport and a recording or failing store checks that the acknowledgement happens before the store is used, and that a failure reaches the player. See `TestGrinchActionAcknowledgesBeforeWorkingAndReportsFailuresPrivately`.
 
-The local browser chat is exempt, because its HTTP request waits for the reply. Known handlers that still work before responding: the channel permission check at the top of `handleInteraction`, which reads the store, and `/water`. Fix them when touching that code.
+The local browser chat is exempt, because its HTTP request waits for the reply. Known handlers that still work before responding: the channel permission check at the top of `handleInteraction`, which reads the store. Fix it when touching that code.
 
 ## Branches
 

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -16,11 +17,24 @@ type TreeStore interface {
 	SaveTree(context.Context, string, int64, core.Tree) (bool, error)
 }
 
+// ErrGoodDeedNotSaved reports that a watering counted but the player's aura did not change.
+var ErrGoodDeedNotSaved = errors.New("the watering counted but the good deed was not saved")
+
 // Tree owns the shared Christmas tree use cases.
 type Tree struct {
 	store TreeStore
 	now   func() time.Time
 	rules core.TreeRules
+	// players, when set, holds the aura a watering improves.
+	players GiftStore
+}
+
+// RewardTree returns a tree use case whose waterings count as good deeds on the players this
+// service stores.
+func (service Service) RewardTree(tree *Tree) *Tree {
+	copied := *tree
+	copied.players = service.gifts
+	return &copied
 }
 
 // NewTree uses the default tree numbers. Use WithRules to apply a tuning file.
@@ -47,11 +61,25 @@ func (tree *Tree) View(ctx context.Context, server string) (core.Tree, error) {
 	return stored.At(tree.rules, tree.now().UTC()), err
 }
 
-// Water adds the member's watering. On a refusal it returns the current tree with the error.
-func (tree *Tree) Water(ctx context.Context, member Member) (core.Tree, error) {
+// Water adds the member's watering and returns the tree with the good deeds the member gained.
+// On a refusal it returns the current tree with the error. With ErrGoodDeedNotSaved the watering
+// still counted.
+func (tree *Tree) Water(ctx context.Context, member Member) (core.Tree, int, error) {
 	if member.ServerID == "" || member.UserID == "" {
-		return core.Tree{}, ErrInvalidRecipient
+		return core.Tree{}, 0, ErrInvalidRecipient
 	}
+	next, err := tree.save(ctx, member)
+	if err != nil {
+		return next, 0, err
+	}
+	gained, err := tree.reward(ctx, member)
+	if err != nil {
+		return next, 0, fmt.Errorf("%w: %w", ErrGoodDeedNotSaved, err)
+	}
+	return next, gained, nil
+}
+
+func (tree *Tree) save(ctx context.Context, member Member) (core.Tree, error) {
 	now := tree.now().UTC()
 	for ctx.Err() == nil {
 		stored, revision, err := tree.store.LoadTree(ctx, member.ServerID)
@@ -71,6 +99,32 @@ func (tree *Tree) Water(ctx context.Context, member Member) (core.Tree, error) {
 		}
 	}
 	return core.Tree{}, ctx.Err()
+}
+
+// reward moves the member's aura toward good deeds and returns how far it moved.
+func (tree *Tree) reward(ctx context.Context, member Member) (int, error) {
+	if tree.players == nil || tree.rules.WaterAura == 0 {
+		return 0, nil
+	}
+	for ctx.Err() == nil {
+		record, err := tree.players.Load(ctx, member)
+		if err != nil {
+			return 0, fmt.Errorf("load aura: %w", err)
+		}
+		updated := record
+		updated.Aura = record.Aura.Move(1, tree.rules.WaterAura)
+		if updated.Aura == record.Aura {
+			return 0, nil
+		}
+		saved, err := tree.players.Save(ctx, GiftUpdate{Member: member, Previous: record, Next: updated, Reason: ReasonWater})
+		if err != nil {
+			return 0, fmt.Errorf("save aura: %w", err)
+		}
+		if saved {
+			return int(updated.Aura - record.Aura), nil
+		}
+	}
+	return 0, ctx.Err()
 }
 
 // MemoryTreeStore keeps trees in memory, for the local chat and tests.

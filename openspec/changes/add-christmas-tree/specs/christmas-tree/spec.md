@@ -80,13 +80,13 @@ The event SHALL end on January 5, 2027 at 01:00 UTC. From then on the tree SHALL
 
 ### Requirement: Tree presentation
 
-A Discord watering SHALL be shown to the whole channel as the withered tree image, then the water level bar, the tree's state, and the top three waterers, without pinging anyone. A refusal SHALL be private. The local chat SHALL show the same text without the image.
+A Discord watering SHALL be shown to the whole channel without pinging anyone, as described by the `tree-watering-reward` capability. A refusal SHALL be private. The local chat SHALL show the same text without the image.
 
 #### Scenario: Public watering
 
 - **GIVEN** a player waters the tree in Discord
 - **WHEN** the command completes
-- **THEN** the channel sees the image above the text `💧 <player> watered the tree! +2%` and the level
+- **THEN** the channel sees the tree picture, `💧 <player> watered the tree! +2%`, and the level
 
 #### Scenario: Private refusal
 

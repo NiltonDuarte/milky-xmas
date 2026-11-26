@@ -11,12 +11,12 @@ import (
 
 const TreeUnavailable = "Could not water the tree. Try again."
 
-// TreeStatus describes the tree. Mention formats a player's user ID.
-func TreeStatus(tree core.Tree, rules core.TreeRules, now time.Time, mention func(string) string) string {
+// treeText describes the tree: the water level and the tree's state.
+func treeText(tree core.Tree, rules core.TreeRules, now time.Time) string {
 	filled := tree.Level / 10
 	var text strings.Builder
-	fmt.Fprintf(&text, "## 🎄 The Christmas tree\n```\n💧 Water level: %d%%  [%s%s]\n```\n", tree.Level,
-		strings.Repeat("█", filled), strings.Repeat("░", 10-filled))
+	fmt.Fprintf(&text, "## 🎄 The Christmas tree\n%s%s  **%d%%** 💧\n",
+		strings.Repeat("🟦", filled), strings.Repeat("⬜", 10-filled), tree.Level)
 	text.WriteString([]string{
 		"🥀 The tree is withered. It needs a lot of water!",
 		"🍂 The tree is wilting.",
@@ -29,18 +29,22 @@ func TreeStatus(tree core.Tree, rules core.TreeRules, now time.Time, mention fun
 	} else {
 		fmt.Fprintf(&text, "\nIt needs 100%% water to stay alive and loses 1%% every %s. Use /water to help.", every(rules.DecayInterval))
 	}
-	if top := tree.TopWaterers(3); len(top) > 0 {
-		text.WriteString("\n**Top waterers**")
-		for i, waterer := range top {
-			fmt.Fprintf(&text, "\n%d. %s — %d", i+1, mention(waterer.Member), waterer.Count)
-		}
-	}
 	return text.String()
 }
 
-// Watered is the message after a successful watering.
-func Watered(member string, tree core.Tree, rules core.TreeRules, now time.Time, mention func(string) string) string {
-	return fmt.Sprintf("💧 %s watered the tree! +%d%%\n%s", mention(member), rules.WaterPoints, TreeStatus(tree, rules, now, mention))
+// WateredBlocks is the message after a successful watering. goodDeeds is how far the player's
+// aura moved, and is left out when it did not move.
+func WateredBlocks(member string, goodDeeds int, tree core.Tree, rules core.TreeRules, now time.Time, mention func(string) string) []string {
+	first := fmt.Sprintf("💧 %s watered the tree! +%d%%", mention(member), rules.WaterPoints)
+	if goodDeeds > 0 {
+		first += fmt.Sprintf("\n😇 Good deeds +%d", goodDeeds)
+	}
+	return []string{first, treeText(tree, rules, now)}
+}
+
+// Watered is WateredBlocks as one text.
+func Watered(member string, goodDeeds int, tree core.Tree, rules core.TreeRules, now time.Time, mention func(string) string) string {
+	return strings.Join(WateredBlocks(member, goodDeeds, tree, rules, now, mention), "\n")
 }
 
 // TreeRejection explains why a watering did not happen. It is empty for unexpected errors.
@@ -48,7 +52,7 @@ func TreeRejection(err error) string {
 	var cooldown core.TreeCooldownError
 	switch {
 	case errors.Is(err, core.ErrTreeFull):
-		return "🎄 The tree is already full of water. Come back later!"
+		return "🎄 The tree is already fully watered. Try again later!"
 	case errors.As(err, &cooldown):
 		return "💧 You already watered the tree. Try again in " + wait(cooldown.Remaining) + "."
 	case errors.Is(err, core.ErrTreeEventOver):
@@ -58,9 +62,14 @@ func TreeRejection(err error) string {
 	}
 }
 
-// TreeEventOver is the reply to a watering after the event, with the tree's final state.
-func TreeEventOver(tree core.Tree, rules core.TreeRules, now time.Time, mention func(string) string) string {
-	return TreeRejection(core.ErrTreeEventOver) + "\n" + TreeStatus(tree, rules, now, mention)
+// TreeEventOverBlocks is the reply to a watering after the event, with the tree's final state.
+func TreeEventOverBlocks(tree core.Tree, rules core.TreeRules, now time.Time) []string {
+	return []string{TreeRejection(core.ErrTreeEventOver), treeText(tree, rules, now)}
+}
+
+// TreeEventOver is TreeEventOverBlocks as one text.
+func TreeEventOver(tree core.Tree, rules core.TreeRules, now time.Time) string {
+	return strings.Join(TreeEventOverBlocks(tree, rules, now), "\n")
 }
 
 // wait writes a duration as hours and minutes, rounded up to the minute.

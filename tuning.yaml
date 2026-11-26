@@ -97,6 +97,7 @@ grinch:
 tree:
   start_level: 10         # nível de uma árvore que ninguém regou ainda
   water_points: 2         # % de água que cada rega soma
+  water_aura: 1           # pontos de good deeds na aura de quem rega (0 não dá nada)
   decay_interval: 1h      # a árvore perde 1% de água a cada intervalo
   water_cooldown: 1h      # espera de cada jogador entre regas
   event_end: 2027-01-05T01:00:00Z   # data e hora UTC do fim do evento: a árvore para de secar e de ser regada

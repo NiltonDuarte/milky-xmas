@@ -335,6 +335,9 @@ func (tuning Tuning) Validate() error {
 	if tree.WaterPoints < 1 || tree.WaterPoints > TreeMaxLevel {
 		bad("tree.water_points", "must be between 1 and %d, got %d", TreeMaxLevel, tree.WaterPoints)
 	}
+	if tree.WaterAura < 0 || tree.WaterAura > int(AuraMax) {
+		bad("tree.water_aura", "must be between 0 and %d, got %d", AuraMax, tree.WaterAura)
+	}
 	positive("tree.decay_interval", tree.DecayInterval)
 	atLeastZero("tree.water_cooldown", tree.WaterCooldown)
 	if tree.EventEnd.IsZero() {
