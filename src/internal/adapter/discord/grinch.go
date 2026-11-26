@@ -7,8 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -23,6 +25,7 @@ type grinchBot struct {
 	channel      string
 	encounter    *app.GrinchEncounter
 	lastActivity atomic.Int64
+	shown        shownPicture
 }
 
 func grinchCommand() *discordgo.ApplicationCommand {
@@ -49,7 +52,7 @@ func (b bot) summonGrinch(s *discordgo.Session, i *discordgo.Interaction, option
 		if grinch == nil {
 			return "Use this command in a configured Grinch channel."
 		}
-		display := grinchDisplay{s, grinch.channel, grinch.encounter.Rules()}
+		display := grinchDisplay{s, grinch.channel, grinch.encounter.Rules(), &grinch.shown}
 		if _, err := grinch.encounter.Sync(ctx, display); err != nil {
 			logInteractionError(i.ID, "reconcile Grinch encounter", err)
 		}
@@ -87,7 +90,7 @@ func (b *grinchBot) run(ctx context.Context, s *discordgo.Session) {
 	defer refresh.Stop()
 	roll := time.NewTicker(b.encounter.Rules().SpawnCheckInterval)
 	defer roll.Stop()
-	display := grinchDisplay{s, b.channel, b.encounter.Rules()}
+	display := grinchDisplay{s, b.channel, b.encounter.Rules(), &b.shown}
 	initial, cancel := context.WithTimeout(ctx, 3*time.Second)
 	_, err := b.encounter.RefreshBoard(initial, display)
 	cancel()
@@ -202,15 +205,73 @@ var grinchImage []byte
 //go:embed maxpee.jpg
 var maxImage []byte
 
+//go:embed grinchdefense.gif
+var grinchDefenseImage []byte
+
+//go:embed grinchheart.jpg
+var grinchHeartImage []byte
+
+const (
+	grinchDefenseImageName = "grinchdefense.gif"
+	grinchHeartImageName   = "grinchheart.jpg"
+)
+
 type grinchPicture struct {
 	name string
 	data []byte
 }
 
+func (picture grinchPicture) file() *discordgo.File {
+	return &discordgo.File{Name: picture.name, ContentType: http.DetectContentType(picture.data), Reader: bytes.NewReader(picture.data)}
+}
+
+// phasePicture is the picture of a running fight: the Grinch attacking while the players defend,
+// his heart in the last 5%, and his portrait otherwise.
+func phasePicture(phase core.GrinchPhase) grinchPicture {
+	switch phase {
+	case core.GrinchDefense:
+		return grinchPicture{grinchDefenseImageName, grinchDefenseImage}
+	case core.GrinchFinalAttack:
+		return grinchPicture{grinchHeartImageName, grinchHeartImage}
+	default:
+		return grinchPicture{grinchImageName, grinchImage}
+	}
+}
+
+// shownPicture remembers which picture each fight message carries, so a picture is uploaded only
+// when it changes. After a restart nothing is remembered and the next edit uploads it again.
+type shownPicture struct {
+	mu            sync.Mutex
+	message, name string
+}
+
+func (shown *shownPicture) is(message, name string) bool {
+	if shown == nil {
+		return false
+	}
+	shown.mu.Lock()
+	defer shown.mu.Unlock()
+	return shown.message == message && shown.name == name
+}
+
+func (shown *shownPicture) set(message, name string) {
+	if shown == nil {
+		return
+	}
+	shown.mu.Lock()
+	defer shown.mu.Unlock()
+	shown.message, shown.name = message, name
+}
+
+// pictureUploadTimeout is longer than a text edit needs, so a slow upload is not cut off and
+// retried over and over.
+const pictureUploadTimeout = 10 * time.Second
+
 type grinchDisplay struct {
 	session *discordgo.Session
 	channel string
 	rules   core.GrinchRules
+	shown   *shownPicture
 }
 
 func (display grinchDisplay) Announce(ctx context.Context, state core.Grinch) (string, time.Time, error) {
@@ -229,29 +290,35 @@ func (display grinchDisplay) Announce(ctx context.Context, state core.Grinch) (s
 	if start.IsZero() {
 		start = state.StartedAt
 	}
+	display.shown.set(message.ID, grinchImageName)
 	return message.ID, start, nil
 }
 
 func (display grinchDisplay) Update(ctx context.Context, state core.Grinch) error {
-	images := []string{grinchImageName}
-	var files []*discordgo.File
 	final := !state.EndedAt.IsZero() && state.Phase != core.GrinchCancelled
 	_, overflow := grinchStandings(display.rules, state)
 	overflow = final && overflow
-	if final {
-		// Re-send the images with the final message. Replacing the attachments also drops stale ones,
-		// so the Grinch image and, when the Grinch survived, Max's image are uploaded again.
-		pictures := []grinchPicture{{grinchImageName, grinchImage}}
-		if state.Phase != core.GrinchWon {
-			// The Grinch survived: Max's picture replaces his.
-			pictures, images = []grinchPicture{{maxImageName, maxImage}}, []string{maxImageName}
-		}
-		for _, picture := range pictures {
-			files = append(files, &discordgo.File{Name: picture.name, ContentType: "image/jpeg", Reader: bytes.NewReader(picture.data)})
-		}
+	picture := phasePicture(state.Phase)
+	if final && state.Phase != core.GrinchWon {
+		// The Grinch survived: Max's picture replaces his.
+		picture = grinchPicture{maxImageName, maxImage}
+	}
+	images := []string{picture.name}
+	var files []*discordgo.File
+	// The final message uploads its picture again, as replacing the attachments also drops stale
+	// ones. A running fight uploads only when the picture changes.
+	changed := state.Phase != core.GrinchCancelled && !final && !display.shown.is(state.MessageID, picture.name)
+	if final || changed {
+		files = append(files, picture.file())
 		if overflow {
 			files = append(files, &discordgo.File{Name: grinchStandingsFile, Reader: strings.NewReader(grinchStandingsText(display.rules, state))})
 		}
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(context.WithoutCancel(ctx), pictureUploadTimeout)
+		defer cancel()
+	}
+	if state.Phase == core.GrinchCancelled {
+		images = nil
 	}
 	edit := func(files []*discordgo.File, images []string, attach, denied bool) *discordgo.MessageEdit {
 		components := grinchView(display.rules, state, images, attach, denied)
@@ -266,7 +333,10 @@ func (display grinchDisplay) Update(ctx context.Context, state core.Grinch) erro
 	}
 	_, err := display.session.ChannelMessageEditComplex(edit(files, images, overflow, false), discordgo.WithContext(ctx))
 	var denied *discordgo.RESTError
-	if overflow && errors.As(err, &denied) && denied.Message != nil && denied.Message.Code == 50013 {
+	if err == nil && len(files) > 0 {
+		display.shown.set(state.MessageID, picture.name)
+	}
+	if (overflow || changed) && errors.As(err, &denied) && denied.Message != nil && denied.Message.Code == 50013 {
 		// Without permission to attach files nothing can be uploaded. The announcement's picture is the
 		// Grinch's, so it stays only when he lost the fight. When he won, Max's picture cannot be shown
 		// and the message has no picture rather than the Grinch's.

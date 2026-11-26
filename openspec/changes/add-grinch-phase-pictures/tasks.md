@@ -1,0 +1,8 @@
+## 1. Pictures
+
+- [x] 1.1 Show the picture of each phase and upload it only when it changes. Test every phase change and a repeated update.
+
+## 2. Verification
+
+- [x] 2.1 Run `go fmt ./...`, `go vet ./...`, `go test -race -count=1 ./...`, and `openspec validate add-grinch-phase-pictures --strict`.
+- [ ] 2.2 Discord test server: play a fight and check the animation in the defense phase and the heart picture at 5%.

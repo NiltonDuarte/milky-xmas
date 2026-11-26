@@ -231,7 +231,7 @@ func TestGrinchFinalMessageWithoutPermissionToAttachFiles(t *testing.T) {
 	})
 	state := fightWithPlayers(core.GrinchEscaped, 25)
 	state.EndedAt = time.Now()
-	if err := (grinchDisplay{session, "400", core.DefaultTuning().Grinch}).Update(t.Context(), state); err != nil {
+	if err := (grinchDisplay{session, "400", core.DefaultTuning().Grinch, nil}).Update(t.Context(), state); err != nil {
 		t.Fatal(err)
 	}
 	if want := []string{"with files", "without files"}; !slices.Equal(attempts, want) {

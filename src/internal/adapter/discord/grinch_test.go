@@ -139,7 +139,7 @@ func TestGrinchButtonAcknowledgement(t *testing.T) {
 	b := &grinchBot{guild: "200", channel: "400",
 		encounter: app.NewGrinchEncounter(&giftfixture.Store{}, "200", "scope", core.DefaultTuning().Grinch, func() time.Time { return now }, func(int) int { return 0 }),
 	}
-	display := grinchDisplay{s, b.channel, core.DefaultTuning().Grinch}
+	display := grinchDisplay{s, b.channel, core.DefaultTuning().Grinch, nil}
 	s.Client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
 		if !strings.HasSuffix(r.URL.Path, "/400/messages") {
 			t.Fatalf("unexpected spawn request: %s", r.URL)
@@ -374,7 +374,8 @@ func TestGrinchReshuffleEditsOriginalMessage(t *testing.T) {
 			Data:   discordgo.MessageComponentInteractionData{CustomID: "grinch:fight:final:4:1"},
 		})
 	}
-	if _, err := b.encounter.Sync(t.Context(), grinchDisplay{s, b.channel, core.DefaultTuning().Grinch}); err != nil {
+	b.shown.set("999", grinchHeartImageName) // The final attack's picture is already on the message.
+	if _, err := b.encounter.Sync(t.Context(), grinchDisplay{s, b.channel, core.DefaultTuning().Grinch, &b.shown}); err != nil {
 		t.Fatal(err)
 	}
 	player, err := store.Load(t.Context(), app.Member{ServerID: "200", UserID: "50"})
@@ -478,7 +479,7 @@ func TestGrinchFinalMessageImages(t *testing.T) {
 				return fakeResponse(http.StatusOK, `{"id":"999"}`), nil
 			})
 			state := core.Grinch{ID: "g", MessageID: "999", Phase: tt.phase, EndedAt: time.Now()}
-			if err := (grinchDisplay{session, "400", core.DefaultTuning().Grinch}).Update(t.Context(), state); err != nil || edits != 1 {
+			if err := (grinchDisplay{session, "400", core.DefaultTuning().Grinch, nil}).Update(t.Context(), state); err != nil || edits != 1 {
 				t.Fatalf("Update = %v after %d edits", err, edits)
 			}
 		})
