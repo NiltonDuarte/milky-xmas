@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/bits"
 	"sync"
+	"time"
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
@@ -16,6 +17,19 @@ type Store struct {
 	grinch  map[string]grinchRecord
 	history []serverHistory
 	fights  map[string]finishedFight
+	sends   map[auraSend]time.Time
+}
+
+type auraSend struct {
+	sender    app.Member
+	recipient string
+	good      bool
+}
+
+func (store *Store) LastAuraSend(_ context.Context, sender app.Member, recipientID string, good bool) (time.Time, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	return store.sends[auraSend{sender, recipientID, good}], nil
 }
 
 func (store *Store) Load(_ context.Context, member app.Member) (core.GiftRecord, error) {
@@ -60,6 +74,12 @@ func (store *Store) SaveTransfer(ctx context.Context, sender, recipient app.Gift
 	}
 	store.save(sender)
 	store.save(recipient)
+	if send := sender.AuraSend; send != nil {
+		if store.sends == nil {
+			store.sends = make(map[auraSend]time.Time)
+		}
+		store.sends[auraSend{sender.Member, send.RecipientID, send.Good}] = send.At
+	}
 	return true, nil
 }
 

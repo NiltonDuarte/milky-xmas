@@ -71,10 +71,10 @@ func TestDailyClaimInChat(t *testing.T) {
 		roll    int
 		reply   string
 	}{
-		{0, 0, "## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected 1 gifts 🎁.\nGift rarity · normal ·\n```"},
+		{0, 0, "## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected 1 gifts 🎁.\nGift rarity · normal ·\n```\n🌑 +1 Coal."},
 		{30 * time.Minute, 3, "🎅 You already got the gift for today, the next gift 🎁 is in 23 hours 30 minutes."},
 		{24*time.Hour - time.Second, 6, "🎅 You already got the gift for today, the next gift 🎁 is in 1 minute."},
-		{24 * time.Hour, 9, "## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected 10 gifts 🎁.\nGift rarity · normal ·\n```"},
+		{24 * time.Hour, 9, "## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected 10 gifts 🎁.\nGift rarity · normal ·\n```\n🌑 +1 Coal."},
 	} {
 		now = first.Add(step.elapsed)
 		roll = step.roll

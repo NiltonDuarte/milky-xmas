@@ -67,6 +67,10 @@ func initSchema(ctx context.Context, db *sql.DB) error {
 			server_id TEXT NOT NULL, channel_id TEXT NOT NULL, at TEXT NOT NULL,
 			PRIMARY KEY (server_id, channel_id)
 		);
+		CREATE TABLE IF NOT EXISTS aura_sends (
+			server_id TEXT NOT NULL, user_id TEXT NOT NULL, peer_id TEXT NOT NULL, good INTEGER NOT NULL, at TEXT NOT NULL,
+			PRIMARY KEY (server_id, user_id, peer_id, good)
+		);
 		CREATE TABLE IF NOT EXISTS grinch_history (
 			scope TEXT NOT NULL, fight_id TEXT NOT NULL, server_id TEXT NOT NULL, payload BLOB NOT NULL,
 			PRIMARY KEY (scope, fight_id)
@@ -142,6 +146,23 @@ func initSchema(ctx context.Context, db *sql.DB) error {
 	if !hasAura {
 		_, err = tx.ExecContext(ctx, `
 			ALTER TABLE gift_players ADD COLUMN aura INTEGER NOT NULL DEFAULT 0 CHECK (aura BETWEEN -50 AND 50)
+		`)
+		if err != nil {
+			return err
+		}
+	}
+	var hasAuraDay bool
+	err = tx.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM pragma_table_info('gift_players') WHERE name = 'aura_day')
+	`).Scan(&hasAuraDay)
+	if err != nil {
+		return err
+	}
+	if !hasAuraDay {
+		_, err = tx.ExecContext(ctx, `
+			ALTER TABLE gift_players ADD COLUMN aura_day TEXT NOT NULL DEFAULT '';
+			ALTER TABLE gift_players ADD COLUMN aura_raised INTEGER NOT NULL DEFAULT 0;
+			ALTER TABLE gift_players ADD COLUMN aura_lowered INTEGER NOT NULL DEFAULT 0
 		`)
 		if err != nil {
 			return err

@@ -60,6 +60,10 @@ func (fixture grinchFixture) reply(w http.ResponseWriter, r *http.Request, args 
 		state, _, err = fixture.encounter.Play(ctx, state.ID, state.MessageID, core.GrinchMove{
 			Phase: core.GrinchLobby, At: now, Member: fixtureUserID, RequestID: strconv.FormatUint(fixture.sequence.Add(1), 10),
 		})
+	case len(args) == 2 && args[0] == "revive":
+		state, result, err = fixture.encounter.Play(ctx, state.ID, state.MessageID, core.GrinchMove{
+			Revive: core.GiftRarity(args[1]), At: now, Member: fixtureUserID, RequestID: strconv.FormatUint(fixture.sequence.Add(1), 10),
+		})
 	case len(args) == 2 && args[0] == "hit":
 		slot, parseErr := strconv.Atoi(args[1])
 		if parseErr != nil || slot < 1 || slot > 8 {
@@ -71,7 +75,7 @@ func (fixture grinchFixture) reply(w http.ResponseWriter, r *http.Request, args 
 			RequestID: strconv.FormatUint(fixture.sequence.Add(1), 10),
 		})
 	default:
-		http.Error(w, "Use /grinch summon, /grinch join, /grinch view, or /grinch hit <tile>.", http.StatusBadRequest)
+		http.Error(w, "Use /grinch summon, /grinch join, /grinch view, /grinch hit <tile>, or /grinch revive <normal|rare|epic>.", http.StatusBadRequest)
 		return
 	}
 	if err != nil {
@@ -130,9 +134,6 @@ func fixtureSummary(rules core.GrinchRules, state core.Grinch) string {
 		mention := func(userID string) string { return userID }
 		if lines := grinchtext.BossLines(state.BossFeed, mention, grinchtext.BossEvents); len(lines) > 0 {
 			fmt.Fprint(&message, "\n\n👽 The Grinch\n"+strings.Join(lines, "\n"))
-		}
-		if lines := grinchtext.PlayerLines(state.PlayerFeed, mention, grinchtext.PlayerEvents); len(lines) > 0 {
-			fmt.Fprint(&message, "\n\n⚔️ The players\n"+strings.Join(lines, "\n"))
 		}
 		fmt.Fprintf(&message, "\n\n🎅 %d players", len(state.Joined))
 		if !state.Joined[fixtureUserID] {

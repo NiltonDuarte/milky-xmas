@@ -52,7 +52,7 @@ func (b bot) handleWater(session *discordgo.Session, interaction *discordgo.Inte
 	}
 	member := app.Member{ServerID: interaction.GuildID, UserID: interaction.Member.User.ID}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	tree, goodDeeds, err := b.tree.Water(ctx, member)
+	tree, watering, err := b.tree.Water(ctx, member)
 	cancel()
 	if errors.Is(err, app.ErrGoodDeedNotSaved) {
 		logInteractionError(interaction.ID, "count the watering as a good deed", err)
@@ -63,7 +63,7 @@ func (b bot) handleWater(session *discordgo.Session, interaction *discordgo.Inte
 	switch reply := gifttext.TreeRejection(err); {
 	case err == nil:
 		// The whole server sees a watering and the tree's new level.
-		watered := privateReply{Image: image(), Blocks: gifttext.WateredBlocks(member.UserID, goodDeeds, tree, b.tree.Rules(), b.tree.Now(), mention)}
+		watered := privateReply{Image: image(), Blocks: b.avatars.blocks(gifttext.WateredBlocks(member.UserID, watering, tree, b.tree.Rules(), b.tree.Now(), mention))}
 		announceBox(session, interaction, watered)
 	case errors.Is(err, core.ErrTreeEventOver):
 		showResult(session, interaction, privateReply{Image: image(), Blocks: gifttext.TreeEventOverBlocks(tree, b.tree.Rules(), b.tree.Now())})

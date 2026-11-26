@@ -45,7 +45,7 @@ func TestGrinchSQLite(t *testing.T) {
 	}
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
 	newEncounter := func(store *giftstore.SQLite) *app.GrinchEncounter {
-		return app.NewGrinchEncounter(store, "guild", "guild:channel", core.DefaultTuning().Grinch, func() time.Time { return now }, func(int) int { return 0 })
+		return app.NewGrinchEncounter(store, "guild", "guild:channel", classicFight(core.DefaultTuning().Grinch), func() time.Time { return now }, func(int) int { return 0 })
 	}
 	store, other := open(), open()
 	first, second := newEncounter(store), newEncounter(other)
@@ -139,7 +139,7 @@ func TestGrinchUncertainAnnouncement(t *testing.T) {
 	}
 	defer store.Close()
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
-	encounter := app.NewGrinchEncounter(store, "guild", "guild:channel", core.DefaultTuning().Grinch, func() time.Time { return now }, func(int) int { return 0 })
+	encounter := app.NewGrinchEncounter(store, "guild", "guild:channel", classicFight(core.DefaultTuning().Grinch), func() time.Time { return now }, func(int) int { return 0 })
 	display := &grinchDisplayFixture{now: now, sendError: errors.New("send uncertain")}
 	if ok, err := encounter.Spawn(t.Context(), now, false, display); ok || !errors.Is(err, display.sendError) {
 		t.Fatalf("first spawn = %v, %v", ok, err)
@@ -155,4 +155,13 @@ func TestGrinchUncertainAnnouncement(t *testing.T) {
 	if ok, err := encounter.Spawn(t.Context(), now, true, display); !ok || err != nil || display.created != 2 {
 		t.Fatalf("later spawn = %v, %v; %d announcements", ok, err, display.created)
 	}
+}
+
+// classicFight keeps the numbers these tests were written for: fixed damage, no wait between
+// clicks, no counterattack, no last chance, and a one-minute fight clock.
+func classicFight(rules core.GrinchRules) core.GrinchRules {
+	rules.HitsPerPlayer, rules.MinHits, rules.ClickCooldown, rules.CounterattackPercent = 0, 0, 0, 0
+	rules.LastChance = 0
+	rules.FightDuration = time.Minute
+	return rules
 }

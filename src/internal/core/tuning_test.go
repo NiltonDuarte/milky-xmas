@@ -23,8 +23,8 @@ func TestTuningValidate(t *testing.T) {
 		{"daily odds do not add up", func(x *Tuning) { x.Gifts.DailyRarity.Epic = 10 }, []string{"gifts.daily_rarity: odds must add up to 100, got 105"}},
 		{"boosted odds negative", func(x *Tuning) { x.Gifts.BoostedRarity = RarityOdds{Normal: 110, Rare: -10, Epic: 0} },
 			[]string{"gifts.good_deeds_boost.rarity.normal", "gifts.good_deeds_boost.rarity.rare"}},
-		{"threshold above the aura scale", func(x *Tuning) { x.Gifts.GoodDeedsThreshold = 51 }, []string{"gifts.good_deeds_boost.threshold"}},
-		{"threshold on the bad side", func(x *Tuning) { x.Gifts.GoodDeedsThreshold = -1 }, []string{"gifts.good_deeds_boost.threshold"}},
+		{"nice list above the aura scale", func(x *Tuning) { x.Aura.NiceAt = 51 }, []string{"aura.nice_at"}},
+		{"naughty list on the good side", func(x *Tuning) { x.Aura.NaughtyAt = 1 }, []string{"aura.naughty_at"}},
 		{"drop lifetime", func(x *Tuning) { x.Drops.Lifetime = 0 }, []string{"drops.lifetime"}},
 		{"one in zero", func(x *Tuning) { x.Drops.RandomActiveOneIn = 0 }, []string{"drops.random_active.one_in"}},
 		{"rain range reversed", func(x *Tuning) { x.Drops.GiftRain.MaxMessages = 4 }, []string{"drops.gift_rain.max_messages"}},
@@ -88,7 +88,6 @@ func TestFormatHundredths(t *testing.T) {
 func TestGiftTuningRarityBands(t *testing.T) {
 	tuning := DefaultTuning().Gifts
 	tuning.DailyRarity = RarityOdds{Normal: 10, Rare: 10, Epic: 80}
-	tuning.GoodDeedsThreshold = 20
 	tuning.BoostedRarity = RarityOdds{Normal: 0, Rare: 0, Epic: 100}
 	counts := make(map[GiftRarity]int)
 	for roll := range GiftRarityRolls {
@@ -97,11 +96,11 @@ func TestGiftTuningRarityBands(t *testing.T) {
 	if counts[NormalGift] != 10 || counts[RareGift] != 10 || counts[EpicGift] != 80 {
 		t.Fatalf("daily counts = %v", counts)
 	}
-	if got := tuning.ActiveDropRarity(0, 19); got != NormalGift {
-		t.Errorf("below the threshold = %s", got)
+	if got := tuning.ActiveDropRarity(0, false); got != NormalGift {
+		t.Errorf("neutral = %s", got)
 	}
-	if got := tuning.ActiveDropRarity(0, 20); got != EpicGift {
-		t.Errorf("at the threshold = %s", got)
+	if got := tuning.ActiveDropRarity(0, true); got != EpicGift {
+		t.Errorf("nice = %s", got)
 	}
 }
 
@@ -118,7 +117,7 @@ func TestDropTuningRainRange(t *testing.T) {
 
 // A fight with every number changed: the boss falls 100 → 90 → 60 → 10 → 0.
 func TestGrinchFightWithChangedTuning(t *testing.T) {
-	rules := DefaultTuning().Grinch
+	rules := classicFight(DefaultTuning().Grinch)
 	rules.SnowballDamage, rules.SnowballsBossHP = 250, 9000
 	rules.DefenseBossHP, rules.DefenseMissHPLoss = 6000, 50
 	rules.AttackDamage, rules.AttackHeavyDamage, rules.AttackBossHP = 1000, 1500, 1000
@@ -128,7 +127,7 @@ func TestGrinchFightWithChangedTuning(t *testing.T) {
 	rules.EarlyStartPlayers = 2
 	rules.FinalSnowballReward = 3
 	rules.LossCoal, rules.LossYellowPerGroupMember = 2, 2
-	if err := (Tuning{Gifts: DefaultTuning().Gifts, Drops: DefaultTuning().Drops, Grinch: rules, Tree: DefaultTreeRules(), Quotes: DefaultQuoteRules()}).Validate(); err != nil {
+	if err := (Tuning{Gifts: DefaultTuning().Gifts, Drops: DefaultTuning().Drops, Grinch: rules, Tree: DefaultTreeRules(), Quotes: DefaultQuoteRules(), Aura: DefaultAuraRules()}).Validate(); err != nil {
 		t.Fatal(err)
 	}
 

@@ -84,20 +84,20 @@ func TestWateringIsAGoodDeed(t *testing.T) {
 	service := Service{gifts: players}
 	tree := service.RewardTree(NewTree(&MemoryTreeStore{}, func() time.Time { return now }))
 	alice := Member{ServerID: "s", UserID: "alice"}
-	if _, gained, err := tree.Water(t.Context(), alice); err != nil || gained != 1 || players.records[alice].Aura != 1 {
-		t.Fatalf("water = %d, %v, aura %d", gained, err, players.records[alice].Aura)
+	if _, did, err := tree.Water(t.Context(), alice); err != nil || did.GoodDeeds != 1 || players.records[alice].Aura != 1 {
+		t.Fatalf("water = %d, %v, aura %d", did.GoodDeeds, err, players.records[alice].Aura)
 	}
-	if _, gained, err := tree.Water(t.Context(), alice); !errors.Is(err, core.ErrTreeCooldown) || gained != 0 || players.records[alice].Aura != 1 {
-		t.Fatalf("refused water = %d, %v, aura %d", gained, err, players.records[alice].Aura)
+	if _, did, err := tree.Water(t.Context(), alice); !errors.Is(err, core.ErrTreeCooldown) || did.GoodDeeds != 0 || players.records[alice].Aura != 1 {
+		t.Fatalf("refused water = %d, %v, aura %d", did.GoodDeeds, err, players.records[alice].Aura)
 	}
 	now = now.Add(time.Hour)
 	players.records[alice] = core.GiftRecord{Aura: core.AuraMax}
-	if _, gained, err := tree.Water(t.Context(), alice); err != nil || gained != 0 || players.records[alice].Aura != core.AuraMax {
-		t.Fatalf("water at the top of the scale = %d, %v", gained, err)
+	if _, did, err := tree.Water(t.Context(), alice); err != nil || did.GoodDeeds != 0 || players.records[alice].Aura != core.AuraMax {
+		t.Fatalf("water at the top of the scale = %d, %v", did.GoodDeeds, err)
 	}
 	now = now.Add(time.Hour)
-	players.records[alice], players.saveError = core.GiftRecord{Aura: -20}, errors.New("disk full")
-	if got, gained, err := tree.Water(t.Context(), alice); !errors.Is(err, ErrGoodDeedNotSaved) || gained != 0 || got.Waters["alice"] != 3 {
-		t.Fatalf("water with a failing aura save = %+v, %d, %v", got, gained, err)
+	players.records[alice], players.saveError = core.GiftRecord{Aura: 20}, errors.New("disk full")
+	if got, did, err := tree.Water(t.Context(), alice); !errors.Is(err, ErrGoodDeedNotSaved) || did.GoodDeeds != 0 || got.Waters["alice"] != 3 {
+		t.Fatalf("water with a failing aura save = %+v, %d, %v", got, did.GoodDeeds, err)
 	}
 }

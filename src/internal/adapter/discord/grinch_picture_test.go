@@ -25,7 +25,7 @@ func TestGrinchPictureFollowsThePhaseAndUploadsOnlyOnChange(t *testing.T) {
 		body = string(data)
 		return fakeResponse(http.StatusOK, `{"id":"1"}`), nil
 	})
-	display := grinchDisplay{session, "400", core.DefaultTuning().Grinch, &shownPicture{}}
+	display := grinchDisplay{session, "400", core.DefaultTuning().Grinch, &shownPicture{}, nil}
 	display.shown.set("m", grinchImageName)
 	for _, step := range []struct {
 		phase  core.GrinchPhase

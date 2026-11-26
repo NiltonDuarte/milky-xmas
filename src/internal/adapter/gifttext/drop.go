@@ -13,6 +13,9 @@ func DropCollected(award app.GiftDropAward) string {
 	if award.Coal {
 		return "You collected " + CoalEmoji + " Coal."
 	}
+	if award.Doubled {
+		return fmt.Sprintf("You collected a %s gift.\n😈 Naughty list: you snatched one more!", award.Rarity)
+	}
 	return fmt.Sprintf("You collected a %s gift.", award.Rarity)
 }
 
@@ -55,6 +58,9 @@ func dropEnd(title string, claims []app.DropClaimRecord, mention func(string) st
 		prize := fmt.Sprintf("🎁 %s gift", claim.Rarity)
 		if claim.Coal {
 			prize = CoalEmoji + " Coal"
+		}
+		if claim.Doubled {
+			prize += " ×2"
 		}
 		text.WriteString("\n" + mention(claim.UserID) + " — " + prize)
 	}

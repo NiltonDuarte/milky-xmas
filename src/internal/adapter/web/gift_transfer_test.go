@@ -25,12 +25,15 @@ func TestGiftTransferAndAuraInChat(t *testing.T) {
 	if saved, err := store.Save(t.Context(), seed); err != nil || !saved {
 		t.Fatalf("seed aura = %v, %v", saved, err)
 	}
+	// The daily limit has its own tests.
+	tuning := core.DefaultTuning()
+	tuning.Aura.DailyLimit = 0
 	handler := web.NewHandler(app.NewService(store, func() time.Time { return now }, func(n int) int {
 		if n == core.GiftRarityRolls {
 			return 95
 		}
 		return 1
-	}), nil)
+	}).WithTuning(tuning), nil)
 	for _, step := range []struct {
 		command string
 		status  int

@@ -19,6 +19,16 @@ type GiftStore interface {
 	// Missing records are zero values. SaveTransfer applies both updates atomically.
 	Save(context.Context, GiftUpdate) (bool, error)
 	SaveTransfer(context.Context, GiftUpdate, GiftUpdate) (bool, error)
+	// LastAuraSend is when a send to the recipient last moved the sender's aura toward good, or
+	// toward bad. It is zero when none has. SaveTransfer keeps these from GiftUpdate.AuraSend.
+	LastAuraSend(ctx context.Context, sender Member, recipientID string, good bool) (time.Time, error)
+}
+
+// AuraSend records that a send moved the sender's aura.
+type AuraSend struct {
+	RecipientID string
+	Good        bool
+	At          time.Time
 }
 
 type GiftUpdate struct {
@@ -27,6 +37,8 @@ type GiftUpdate struct {
 	Next     core.GiftRecord
 	// Reason says what changed the inventory, so stores can keep a history for scoreboards.
 	Reason Reason
+	// AuraSend, when set, is kept together with a transfer.
+	AuraSend *AuraSend
 }
 
 // Reason is what changed a player's inventory or aura.
@@ -50,6 +62,8 @@ type GiftClaim struct {
 	Total     int64
 	NextClaim time.Time
 	Remaining time.Duration
+	// Bonus is what the player's list added. Its gifts are included in Amount.
+	Bonus core.DailyBonus
 }
 
 func NewService(store Store, now func() time.Time, random func(int) int) Service {
@@ -72,6 +86,8 @@ func (service Service) ClaimGift(ctx context.Context, member Member) (GiftClaim,
 		if !collected {
 			return GiftClaim{Total: record.Inventory.GiftTotal(), NextClaim: next, Remaining: next.Sub(now)}, nil
 		}
+		var bonus core.DailyBonus
+		updated, bonus = service.tuning.Aura.AddDailyBonus(updated, rarity)
 		saved, err := service.gifts.Save(ctx, GiftUpdate{Member: member, Previous: record, Next: updated, Reason: ReasonDaily})
 		if err != nil {
 			return GiftClaim{}, fmt.Errorf("save gift claim: %w", err)
@@ -80,7 +96,8 @@ func (service Service) ClaimGift(ctx context.Context, member Member) (GiftClaim,
 			return GiftClaim{
 				Collected: true,
 				Rarity:    rarity,
-				Amount:    int64(roll) + 1,
+				Amount:    int64(roll) + 1 + bonus.Gifts,
+				Bonus:     bonus,
 				Total:     updated.Inventory.GiftTotal(),
 				NextClaim: next,
 			}, nil

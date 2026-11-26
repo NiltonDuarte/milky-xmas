@@ -20,6 +20,7 @@ type grinchChannels struct {
 	wg      sync.WaitGroup
 	ctx     context.Context
 	setup   *app.GuildSetup
+	avatars *avatarEmojis
 	build   func(string, string) *app.GrinchEncounter
 	workers map[grinchChannel]grinchWorker
 }
@@ -46,7 +47,7 @@ func (channels *grinchChannels) refresh(ctx context.Context, session *discordgo.
 			continue
 		}
 		workerCtx, stop := context.WithCancel(channels.ctx)
-		worker := &grinchBot{guild: guild, channel: channel, encounter: channels.build(guild, guild+":"+channel)}
+		worker := &grinchBot{guild: guild, channel: channel, encounter: channels.build(guild, guild+":"+channel), avatars: channels.avatars}
 		channels.workers[id] = grinchWorker{bot: worker, stop: stop}
 		channels.wg.Go(func() { worker.run(workerCtx, session) })
 	}

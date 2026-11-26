@@ -24,7 +24,7 @@ func TestGrinchSummon(t *testing.T) {
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
 	channel := "400"
 	worker := &grinchBot{guild: "200", channel: channel,
-		encounter: app.NewGrinchEncounter(&giftfixture.Store{}, "200", channel, core.DefaultTuning().Grinch, func() time.Time { return now }, func(n int) int { return n - 1 }),
+		encounter: app.NewGrinchEncounter(&giftfixture.Store{}, "200", channel, classicFight(core.DefaultTuning().Grinch), func() time.Time { return now }, func(n int) int { return n - 1 }),
 	}
 	b := bot{guildID: "200", grinches: &grinchChannels{workers: map[grinchChannel]grinchWorker{{"200", channel}: {bot: worker}}}}
 	for _, step := range []struct {
@@ -107,7 +107,7 @@ func TestGrinchSummon(t *testing.T) {
 }
 
 func TestGrinchDefenseBoard(t *testing.T) {
-	_, components := grinchMessage(core.DefaultTuning().Grinch, core.Grinch{
+	_, components := grinchMessage(classicFight(core.DefaultTuning().Grinch), core.Grinch{
 		ID: "fight", Phase: core.GrinchDefense, StartedAt: time.Now(), Board: 1, Joined: map[string]bool{"one": true},
 	})
 	if len(components) != 2 {
@@ -137,9 +137,9 @@ func TestGrinchButtonAcknowledgement(t *testing.T) {
 		t.Fatal(err)
 	}
 	b := &grinchBot{guild: "200", channel: "400",
-		encounter: app.NewGrinchEncounter(&giftfixture.Store{}, "200", "scope", core.DefaultTuning().Grinch, func() time.Time { return now }, func(int) int { return 0 }),
+		encounter: app.NewGrinchEncounter(&giftfixture.Store{}, "200", "scope", classicFight(core.DefaultTuning().Grinch), func() time.Time { return now }, func(int) int { return 0 }),
 	}
-	display := grinchDisplay{s, b.channel, core.DefaultTuning().Grinch, nil}
+	display := grinchDisplay{s, b.channel, classicFight(core.DefaultTuning().Grinch), nil, nil}
 	s.Client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
 		if !strings.HasSuffix(r.URL.Path, "/400/messages") {
 			t.Fatalf("unexpected spawn request: %s", r.URL)
@@ -244,7 +244,7 @@ func TestGrinchButtonAcknowledgement(t *testing.T) {
 }
 
 func TestGrinchAttackBoardEmojis(t *testing.T) {
-	_, rows := grinchMessage(core.DefaultTuning().Grinch, core.Grinch{Phase: core.GrinchAttack, Board: 1})
+	_, rows := grinchMessage(classicFight(core.DefaultTuning().Grinch), core.Grinch{Phase: core.GrinchAttack, Board: 1})
 	buttons := rows[0].(discordgo.ActionsRow).Components
 	ice, base := buttons[0].(discordgo.Button), buttons[1].(discordgo.Button)
 	if ice.Emoji == nil || ice.Emoji.Name != "🧊" || base.Emoji == nil || base.Emoji.Name != "☃️" {
@@ -253,7 +253,7 @@ func TestGrinchAttackBoardEmojis(t *testing.T) {
 }
 
 func TestGrinchStandings(t *testing.T) {
-	rules := core.DefaultTuning().Grinch
+	rules := classicFight(core.DefaultTuning().Grinch)
 	fight := core.Grinch{Phase: core.GrinchEscaped, EndedAt: time.Now(), HP: 4000,
 		Joined: map[string]bool{"123": true, "456": true, "789": true}, DamageDealt: map[string]core.GrinchDamage{"123": {Hundredths: 1250}},
 		Gifts: map[string]int{"123": 4}, Snowballs: map[string]int{"456": 2}}
@@ -288,7 +288,7 @@ func TestGrinchStandings(t *testing.T) {
 
 func TestGrinchFinalBoardSnowballButton(t *testing.T) {
 	for _, round := range []int{0, 7} {
-		content, rows := grinchMessage(core.DefaultTuning().Grinch, core.Grinch{ID: "fight", Phase: core.GrinchFinalAttack, HP: 500, FinalRound: round})
+		content, rows := grinchMessage(classicFight(core.DefaultTuning().Grinch), core.Grinch{ID: "fight", Phase: core.GrinchFinalAttack, HP: 500, FinalRound: round})
 		buttons := rows[0].(discordgo.ActionsRow).Components
 		button := buttons[len(buttons)-1].(discordgo.Button)
 		want := "grinch:fight:final:4"
@@ -307,7 +307,7 @@ func TestGrinchHealthDisplay(t *testing.T) {
 		{Phase: core.GrinchAttack, HP: 4500},
 		{Phase: core.GrinchWon, HP: 0, EndedAt: time.Now()},
 	} {
-		content, _ := grinchMessage(core.DefaultTuning().Grinch, state)
+		content, _ := grinchMessage(classicFight(core.DefaultTuning().Grinch), state)
 		line, _, _ := strings.Cut(content, "\n")
 		want := fmt.Sprintf("👽 Grinch · %.2f/100%% HP", state.Health(core.DefaultTuning().Grinch))
 		if line != want {
@@ -320,7 +320,7 @@ func TestGrinchReshuffleEditsOriginalMessage(t *testing.T) {
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
 	store := &giftfixture.Store{}
 	b := &grinchBot{guild: "200", channel: "400",
-		encounter: app.NewGrinchEncounter(store, "200", "scope", core.DefaultTuning().Grinch, func() time.Time { return now }, func(int) int { return 0 })}
+		encounter: app.NewGrinchEncounter(store, "200", "scope", classicFight(core.DefaultTuning().Grinch), func() time.Time { return now }, func(int) int { return 0 })}
 	fight := core.Grinch{ID: "fight", MessageID: "999", HP: 500, Phase: core.GrinchFinalAttack, FinalRound: 1,
 		StartedAt: now, TimedAt: now, Joined: map[string]bool{"50": true}, Accepted: make(map[string]bool), DamageDealt: map[string]core.GrinchDamage{}}
 	if saved, err := store.SaveGrinch(t.Context(), "scope", 0, fight, "200", nil); !saved || err != nil {
@@ -357,7 +357,7 @@ func TestGrinchReshuffleEditsOriginalMessage(t *testing.T) {
 				!strings.Contains(string(update.Components[0]), "👽 Grinch · 5.00/100% HP") ||
 				strings.Contains(string(update.Components[0]), "grinch:fight:final") ||
 				!strings.Contains(string(update.Components[1]), "grinch:fight:final:4:2") ||
-				!strings.Contains(string(update.Components[1]), "The players") || !strings.Contains(string(update.Components[1]), "@50") {
+				!strings.Contains(string(update.Components[1]), "The Grinch") || !strings.Contains(string(update.Components[1]), "@50") {
 				t.Errorf("unexpected update: %+v", update)
 			}
 			return fakeResponse(http.StatusOK, `{"id":"999"}`), nil
@@ -375,7 +375,7 @@ func TestGrinchReshuffleEditsOriginalMessage(t *testing.T) {
 		})
 	}
 	b.shown.set("999", grinchHeartImageName) // The final attack's picture is already on the message.
-	if _, err := b.encounter.Sync(t.Context(), grinchDisplay{s, b.channel, core.DefaultTuning().Grinch, &b.shown}); err != nil {
+	if _, err := b.encounter.Sync(t.Context(), grinchDisplay{s, b.channel, classicFight(core.DefaultTuning().Grinch), &b.shown, nil}); err != nil {
 		t.Fatal(err)
 	}
 	player, err := store.Load(t.Context(), app.Member{ServerID: "200", UserID: "50"})
@@ -479,7 +479,7 @@ func TestGrinchFinalMessageImages(t *testing.T) {
 				return fakeResponse(http.StatusOK, `{"id":"999"}`), nil
 			})
 			state := core.Grinch{ID: "g", MessageID: "999", Phase: tt.phase, EndedAt: time.Now()}
-			if err := (grinchDisplay{session, "400", core.DefaultTuning().Grinch, nil}).Update(t.Context(), state); err != nil || edits != 1 {
+			if err := (grinchDisplay{session, "400", classicFight(core.DefaultTuning().Grinch), nil, nil}).Update(t.Context(), state); err != nil || edits != 1 {
 				t.Fatalf("Update = %v after %d edits", err, edits)
 			}
 		})
@@ -501,7 +501,7 @@ func TestGrinchActionAcknowledgesBeforeWorkingAndReportsFailuresPrivately(t *tes
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
 	var events []string
 	b := &grinchBot{guild: "200", channel: "400",
-		encounter: app.NewGrinchEncounter(loggingGrinchStore{&giftfixture.Store{}, &events}, "200", "scope", core.DefaultTuning().Grinch,
+		encounter: app.NewGrinchEncounter(loggingGrinchStore{&giftfixture.Store{}, &events}, "200", "scope", classicFight(core.DefaultTuning().Grinch),
 			func() time.Time { return now }, func(int) int { return 0 })}
 	s, err := discordgo.New("Bot fixture")
 	if err != nil {
@@ -557,7 +557,7 @@ func TestGrinchIgnoresButtonsOfOlderAnnouncements(t *testing.T) {
 		return nil, nil
 	})
 	b := &grinchBot{guild: "200", channel: "400",
-		encounter: app.NewGrinchEncounter(&giftfixture.Store{}, "200", "scope", core.DefaultTuning().Grinch, time.Now, func(int) int { return 0 })}
+		encounter: app.NewGrinchEncounter(&giftfixture.Store{}, "200", "scope", classicFight(core.DefaultTuning().Grinch), time.Now, func(int) int { return 0 })}
 	for _, customID := range []string{"grinch:fight:registration:0", "grinch:fight:lobby:0", "grinch:fight:join:999:1"} {
 		b.button(s, &discordgo.Interaction{
 			ID: "300", ChannelID: "400", Message: &discordgo.Message{ID: "999", Flags: discordgo.MessageFlagsEphemeral},
@@ -565,4 +565,13 @@ func TestGrinchIgnoresButtonsOfOlderAnnouncements(t *testing.T) {
 			Data:   discordgo.MessageComponentInteractionData{CustomID: customID},
 		})
 	}
+}
+
+// classicFight keeps the numbers these tests were written for: fixed damage, no wait between
+// clicks, no counterattack, no last chance, and a one-minute fight clock.
+func classicFight(rules core.GrinchRules) core.GrinchRules {
+	rules.HitsPerPlayer, rules.MinHits, rules.ClickCooldown, rules.CounterattackPercent = 0, 0, 0, 0
+	rules.LastChance = 0
+	rules.FightDuration = time.Minute
+	return rules
 }

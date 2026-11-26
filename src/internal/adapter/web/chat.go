@@ -21,7 +21,9 @@ const fixtureUserID = "fixture"
 var chatPage string
 
 func NewHandler(service app.Service, grinchStore app.GrinchStore) http.Handler {
-	return newHandler(service, newGrinchFixture(time.Now, grinchStore, service.Tuning().Grinch), app.NewActivityDrops(service))
+	grinch := newGrinchFixture(time.Now, grinchStore, service.Tuning().Grinch)
+	service.AuraEncounter(grinch.encounter)
+	return newHandler(service, grinch, app.NewActivityDrops(service))
 }
 
 func newHandler(service app.Service, grinch grinchFixture, activity ...*app.ActivityDrops) http.Handler {
@@ -239,7 +241,7 @@ func replyStats(w http.ResponseWriter, r *http.Request, service app.Service, tre
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	if choice == gifttext.StatsServerView {
-		io.WriteString(w, gifttext.ServerStats(stats))
+		io.WriteString(w, strings.Join(gifttext.ServerStats(stats), "\n"))
 		return
 	}
 	blocks, _ := gifttext.Leaderboard(choice, stats, func(userID string) string { return userID })
@@ -250,9 +252,9 @@ func replyWater(w http.ResponseWriter, r *http.Request, tree *app.Tree) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	member := app.Member{ServerID: fixtureServerID, UserID: fixtureUserID}
 	mention := func(userID string) string { return userID }
-	updated, goodDeeds, err := tree.Water(r.Context(), member)
+	updated, watering, err := tree.Water(r.Context(), member)
 	if err == nil || errors.Is(err, app.ErrGoodDeedNotSaved) {
-		io.WriteString(w, gifttext.Watered(member.UserID, goodDeeds, updated, tree.Rules(), tree.Now(), mention))
+		io.WriteString(w, gifttext.Watered(member.UserID, watering, updated, tree.Rules(), tree.Now(), mention))
 		return
 	}
 	if errors.Is(err, core.ErrTreeEventOver) {

@@ -18,13 +18,13 @@ While registration is open, the fight message SHALL show the Grinch image, the t
 
 ### Requirement: Cards during the fight
 
-While the fight is running, the message SHALL show the boss HP and a card for each of the eight players who dealt the most damage, with the player's current HP and damage. A summary line SHALL cover the other players.
+While the fight is running, the message SHALL show the boss HP and a card for each of the eight players who dealt the most damage, with the player's current HP. A summary line SHALL cover the other players. The damage each player deals SHALL appear only in the final standings, not while the fight runs.
 
 #### Scenario: Damage and HP change
 
 - **GIVEN** a running fight with two players
 - **WHEN** one player deals damage and the other loses HP in the defense phase
-- **THEN** the boss HP, the first player's damage, and the second player's HP change on the message
+- **THEN** the boss HP and the second player's HP change on the message, and no player damage is written
 
 #### Scenario: More than eight players
 

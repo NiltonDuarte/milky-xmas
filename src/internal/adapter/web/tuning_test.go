@@ -62,6 +62,7 @@ func TestLocalChatAppliesTunedGiftRain(t *testing.T) {
 
 func TestLocalChatAppliesTunedGrinchFight(t *testing.T) {
 	tuning := core.DefaultTuning()
+	tuning.Grinch = classicFight(tuning.Grinch)
 	tuning.Grinch.EarlyStartPlayers = 1
 	tuning.Grinch.SnowballsBossHP = 9000
 	tuning.Grinch.SnowballDamage = 100

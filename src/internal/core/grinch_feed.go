@@ -10,6 +10,7 @@ const (
 	// Player side: who is attacking and the damage it did.
 	EventHit    GrinchEventKind = "hit"
 	EventDefend GrinchEventKind = "defend"
+	EventRevive GrinchEventKind = "revive"
 	// Boss side: what the Grinch did to the players and what they took back from him.
 	EventPhase    GrinchEventKind = "phase"
 	EventMiss     GrinchEventKind = "miss"
@@ -25,7 +26,8 @@ type GrinchEvent struct {
 	Member string
 	// Damage is the HP percent a hit or defense took from the Grinch.
 	Damage float64
-	// Amount is the HP percent a miss cost the player, or the gift points or Snowballs a player took back.
+	// Amount is the HP percent a miss cost the player or a revival gave back, or the gift points or
+	// Snowballs a player took back.
 	Amount int
 	// Phase is the phase the fight entered, for EventPhase.
 	Phase GrinchPhase

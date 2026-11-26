@@ -26,6 +26,7 @@ type grinchBot struct {
 	encounter    *app.GrinchEncounter
 	lastActivity atomic.Int64
 	shown        shownPicture
+	avatars      *avatarEmojis
 }
 
 func grinchCommand() *discordgo.ApplicationCommand {
@@ -52,7 +53,7 @@ func (b bot) summonGrinch(s *discordgo.Session, i *discordgo.Interaction, option
 		if grinch == nil {
 			return "Use this command in a configured Grinch channel."
 		}
-		display := grinchDisplay{s, grinch.channel, grinch.encounter.Rules(), &grinch.shown}
+		display := grinchDisplay{s, grinch.channel, grinch.encounter.Rules(), &grinch.shown, grinch.avatars}
 		if _, err := grinch.encounter.Sync(ctx, display); err != nil {
 			logInteractionError(i.ID, "reconcile Grinch encounter", err)
 		}
@@ -90,7 +91,7 @@ func (b *grinchBot) run(ctx context.Context, s *discordgo.Session) {
 	defer refresh.Stop()
 	roll := time.NewTicker(b.encounter.Rules().SpawnCheckInterval)
 	defer roll.Stop()
-	display := grinchDisplay{s, b.channel, b.encounter.Rules(), &b.shown}
+	display := grinchDisplay{s, b.channel, b.encounter.Rules(), &b.shown, b.avatars}
 	initial, cancel := context.WithTimeout(ctx, 3*time.Second)
 	_, err := b.encounter.RefreshBoard(initial, display)
 	cancel()
@@ -141,13 +142,16 @@ func (b *grinchBot) button(s *discordgo.Session, i *discordgo.Interaction) {
 			b.startButton(s, i, parts[1], i.Message.ID, at)
 		}
 		return
-	case string(core.GrinchSnowballs), string(core.GrinchDefense), string(core.GrinchAttack), string(core.GrinchFinalAttack):
+	case string(core.GrinchSnowballs), string(core.GrinchDefense), string(core.GrinchAttack), string(core.GrinchFinalAttack), grinchReviveID:
 	default:
 		return // Not a button of the current fight message.
 	}
-	slot, err := strconv.Atoi(parts[3])
-	if err != nil {
-		return
+	var slot int
+	if parts[2] != grinchReviveID { // A revival button carries a gift rarity instead of a slot.
+		var err error
+		if slot, err = strconv.Atoi(parts[3]); err != nil {
+			return
+		}
 	}
 	var round int
 	if len(parts) == 5 {
@@ -163,13 +167,21 @@ func (b *grinchBot) button(s *discordgo.Session, i *discordgo.Interaction) {
 		return
 	}
 	playContext, stopPlay := context.WithTimeout(context.Background(), 2*time.Second)
-	_, _, err = b.encounter.Play(playContext, parts[1], i.Message.ID, core.GrinchMove{
+	move := core.GrinchMove{
 		Phase: core.GrinchPhase(parts[2]), Slot: slot, DefenseRound: round, FinalRound: round, Member: i.Member.User.ID, RequestID: i.ID, At: at,
-	})
+	}
+	if parts[2] == grinchReviveID {
+		move.Phase, move.Revive = "", core.GiftRarity(parts[3])
+	}
+	_, reply, err := b.encounter.Play(playContext, parts[1], i.Message.ID, move)
 	stopPlay()
-	if err != nil {
+	switch {
+	case err != nil:
 		logInteractionError(i.ID, "play Grinch action", err)
 		privateFollowup(s, i, "Could not record your action. Try again.")
+	case move.Revive != "":
+		// A revival costs a gift, so the player hears how it went.
+		privateFollowup(s, i, reply)
 	}
 }
 
@@ -195,6 +207,9 @@ func privateFollowup(s *discordgo.Session, i *discordgo.Interaction, text string
 }
 
 const grinchImageName = "grinch.jpg"
+
+// grinchReviveID is the part of a button ID that asks to get back up with a gift.
+const grinchReviveID = "revive"
 const maxImageName = "maxpee.jpg"
 
 //go:embed grinch.jpg
@@ -272,13 +287,14 @@ type grinchDisplay struct {
 	channel string
 	rules   core.GrinchRules
 	shown   *shownPicture
+	avatars *avatarEmojis
 }
 
 func (display grinchDisplay) Announce(ctx context.Context, state core.Grinch) (string, time.Time, error) {
 	state.Phase = core.GrinchLobby
 	state.StartedAt = time.Now()
 	message, err := display.session.ChannelMessageSendComplex(display.channel, &discordgo.MessageSend{
-		Components:      grinchView(display.rules, state, []string{grinchImageName}, false, false),
+		Components:      display.avatars.components(grinchView(display.rules, state, []string{grinchImageName}, false, false)),
 		Flags:           discordgo.MessageFlagsIsComponentsV2,
 		Files:           []*discordgo.File{{Name: grinchImageName, ContentType: "image/jpeg", Reader: bytes.NewReader(grinchImage)}},
 		AllowedMentions: &discordgo.MessageAllowedMentions{},
@@ -321,7 +337,7 @@ func (display grinchDisplay) Update(ctx context.Context, state core.Grinch) erro
 		images = nil
 	}
 	edit := func(files []*discordgo.File, images []string, attach, denied bool) *discordgo.MessageEdit {
-		components := grinchView(display.rules, state, images, attach, denied)
+		components := display.avatars.components(grinchView(display.rules, state, images, attach, denied))
 		edit := &discordgo.MessageEdit{
 			ID: state.MessageID, Channel: display.channel, Components: &components, Flags: discordgo.MessageFlagsIsComponentsV2,
 			AllowedMentions: &discordgo.MessageAllowedMentions{Parse: []discordgo.AllowedMentionType{}},
@@ -422,7 +438,7 @@ func grinchMessage(rules core.GrinchRules, state core.Grinch) (string, []discord
 		}
 	case core.GrinchFinalAttack:
 		content += fmt.Sprintf("\n⚔️ Attack for %s damage, pick 🎁 for %s gift points, or pick ❄️ for %s.",
-			core.FormatHundredths(rules.FinalHitDamage), giftPointRange(rules), snowballReward(rules))
+			core.FormatHundredths(state.FinalDamage(rules)), giftPointRange(rules), snowballReward(rules))
 		if state.FinalRound == 0 {
 			rows = []discordgo.MessageComponent{discordgo.ActionsRow{Components: []discordgo.MessageComponent{button(0, "⚔️", "Attack"), button(core.GrinchSnowballSlot, "❄️", "Snowball")}}}
 			break
@@ -447,6 +463,29 @@ func grinchMessage(rules core.GrinchRules, state core.Grinch) (string, []discord
 	}
 	if state.Joined != nil {
 		content += fmt.Sprintf("\n🎅 **%d players**", len(state.Joined)) // There is no Join button. Anyone can attack.
+	}
+	if rules.ClickCooldown > 0 {
+		content += fmt.Sprintf("\n-# Wait %s between your moves.", spanText(rules.ClickCooldown))
+	}
+	if rules.CanRevive() && state.SomeoneDown() && len(rows) > 0 {
+		if ends := state.LastChanceEnds(rules); !ends.IsZero() {
+			content += fmt.Sprintf("\n💀 **Everyone is down!** Use a gift to get back up, or the Grinch wins <t:%d:R>.", ends.Unix())
+		} else {
+			content += "\nOut of HP? Use one of your gifts to get back up."
+		}
+		var gifts []discordgo.MessageComponent
+		for _, gift := range []struct {
+			rarity core.GiftRarity
+			label  string
+		}{{core.NormalGift, "Normal"}, {core.RareGift, "Rare"}, {core.EpicGift, "Epic"}} {
+			if hp := rules.ReviveHP(gift.rarity); hp > 0 {
+				gifts = append(gifts, discordgo.Button{
+					Label: fmt.Sprintf("%s · %d%% HP", gift.label, hp), Emoji: &discordgo.ComponentEmoji{Name: "🎁"},
+					Style: discordgo.SuccessButton, CustomID: fmt.Sprintf("grinch:%s:%s:%s", state.ID, grinchReviveID, gift.rarity),
+				})
+			}
+		}
+		rows = append(rows, discordgo.ActionsRow{Components: gifts})
 	}
 	return content, rows
 }

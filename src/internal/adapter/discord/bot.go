@@ -22,6 +22,7 @@ type bot struct {
 	drops    *dropBot
 	tree     *app.Tree
 	quotes   *app.QuoteFeed
+	avatars  *avatarEmojis // Nil shows mentions without avatars.
 }
 
 func Run(ctx context.Context, token, guildID string, service app.Service, setup *app.GuildSetup, encounter func(string, string) *app.GrinchEncounter, tree *app.Tree) error {
@@ -37,6 +38,8 @@ func Run(ctx context.Context, token, guildID string, service app.Service, setup 
 		return fmt.Errorf("create Discord session: %w", err)
 	}
 	session.Identify.Intents = discordgo.IntentGuilds | discordgo.IntentGuildMessages
+	b.avatars = newAvatarEmojis(session, guildID)
+	channels.avatars, b.drops.avatars = b.avatars, b.avatars
 	session.AddHandler(func(s *discordgo.Session, event *discordgo.GuildCreate) {
 		b.guildAvailable(runCtx, s, event.Guild)
 	})
@@ -46,6 +49,7 @@ func Run(ctx context.Context, token, guildID string, service app.Service, setup 
 		}
 	})
 	session.AddHandler(func(s *discordgo.Session, event *discordgo.MessageCreate) {
+		b.seeAuthor(event)
 		b.observeDrop(s, event)
 		b.observeQuote(s, event)
 		if worker := channels.get(event.GuildID, event.ChannelID); worker != nil {
@@ -60,6 +64,11 @@ func Run(ctx context.Context, token, guildID string, service app.Service, setup 
 	if err := b.registerCommands(ctx, session); err != nil {
 		return err
 	}
+	self, err := session.User("@me", discordgo.WithContext(ctx))
+	if err != nil {
+		return fmt.Errorf("look up Discord bot user: %w", err)
+	}
+	go b.avatars.run(runCtx, self.ID) // A bot's user ID is its application ID.
 	log.Printf("Discord bot ready with /setup and gameplay commands (configured test guild %q)", guildID)
 	<-ctx.Done()
 	return nil
@@ -126,6 +135,11 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.InteractionCreate) {
 	if !b.permitsGuild(event.GuildID) {
 		return
+	}
+	if event.Member != nil {
+		member := *event.Member
+		member.GuildID = event.GuildID
+		b.avatars.see(&member)
 	}
 	if event.Type == discordgo.InteractionMessageComponent {
 		data, ok := event.Data.(discordgo.MessageComponentInteractionData)
@@ -275,4 +289,17 @@ func interactionAge(id string) time.Duration {
 		return 0
 	}
 	return time.Since(created).Round(time.Millisecond)
+}
+
+// seeAuthor notes the avatar of someone who spoke.
+func (b bot) seeAuthor(event *discordgo.MessageCreate) {
+	if !b.permitsGuild(event.GuildID) || event.Author == nil || event.WebhookID != "" {
+		return
+	}
+	member := discordgo.Member{}
+	if event.Member != nil {
+		member = *event.Member
+	}
+	member.User, member.GuildID = event.Author, event.GuildID
+	b.avatars.see(&member)
 }

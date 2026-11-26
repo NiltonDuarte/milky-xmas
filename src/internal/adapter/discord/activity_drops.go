@@ -28,7 +28,8 @@ var activeDropImage []byte
 var giftRainImage []byte
 
 type dropBot struct {
-	drops *app.ActivityDrops
+	avatars *avatarEmojis
+	drops   *app.ActivityDrops
 	// lifetime is how long a drop stays open. Tests shorten it.
 	lifetime time.Duration
 }
@@ -74,7 +75,7 @@ func (b *dropBot) expire(session *discordgo.Session, channelID, messageID, dropI
 	if !ok {
 		return // Already finished, for example when the tenth Gift Rain gift was collected.
 	}
-	showDropEnd(session, channelID, messageID, gifttext.DropExpired(summary.Claims, userMention))
+	showDropEnd(session, channelID, messageID, b.avatars.message(gifttext.DropExpired(summary.Claims, userMention)))
 }
 
 func userMention(userID string) string { return "<@" + userID + ">" }
@@ -152,7 +153,7 @@ func (b *dropBot) button(session *discordgo.Session, interaction *discordgo.Inte
 		if message := interaction.Message; message != nil {
 			switch {
 			case award.Finished != nil:
-				showDropEnd(session, interaction.ChannelID, message.ID, gifttext.DropFinished(award.Finished.Claims, userMention))
+				showDropEnd(session, interaction.ChannelID, message.ID, b.avatars.message(gifttext.DropFinished(award.Finished.Claims, userMention)))
 			case award.Kind == core.RandomActiveDrop:
 				components := dropComponents(parts[1], award.Taken)
 				if _, err := session.ChannelMessageEditComplex(&discordgo.MessageEdit{

@@ -23,11 +23,12 @@ func loadPlayer(ctx context.Context, reader playerReader, member app.Member) (co
 	var record core.GiftRecord
 	var lastClaim string
 	err := reader.QueryRowContext(ctx, `
-		SELECT normal, rare, epic, snowballs, yellow_snowballs, coal, aura, last_claim
+		SELECT normal, rare, epic, snowballs, yellow_snowballs, coal, aura, last_claim, aura_day, aura_raised, aura_lowered
 		FROM gift_players WHERE server_id = ? AND user_id = ?
 	`, member.ServerID, member.UserID).Scan(
 		&record.Inventory.Normal, &record.Inventory.Rare, &record.Inventory.Epic,
-		&record.Inventory.Snowballs, &record.Inventory.YellowSnowballs, &record.Inventory.Coal, &record.Aura, &lastClaim)
+		&record.Inventory.Snowballs, &record.Inventory.YellowSnowballs, &record.Inventory.Coal, &record.Aura, &lastClaim,
+		&record.AuraDay, &record.AuraRaised, &record.AuraLowered)
 	if errors.Is(err, sql.ErrNoRows) {
 		return core.GiftRecord{}, nil
 	}
@@ -38,6 +39,21 @@ func loadPlayer(ctx context.Context, reader playerReader, member app.Member) (co
 		record.LastClaim, err = time.Parse(time.RFC3339Nano, lastClaim)
 	}
 	return record, err
+}
+
+// LastAuraSend returns when a send to the recipient last moved the sender's aura that way.
+func (s *SQLite) LastAuraSend(ctx context.Context, sender app.Member, recipientID string, good bool) (time.Time, error) {
+	var at string
+	err := s.db.QueryRowContext(ctx, `
+		SELECT at FROM aura_sends WHERE server_id = ? AND user_id = ? AND peer_id = ? AND good = ?
+	`, sender.ServerID, sender.UserID, recipientID, good).Scan(&at)
+	if errors.Is(err, sql.ErrNoRows) {
+		return time.Time{}, nil
+	}
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Parse(time.RFC3339Nano, at)
 }
 
 // PlayerHistory returns every kept inventory change of a server.
@@ -139,6 +155,14 @@ func (s *SQLite) SaveTransfer(ctx context.Context, sender, recipient app.GiftUpd
 		if err := recordHistory(ctx, tx, side.update, side.peer); err != nil {
 			return false, err
 		}
+		if send := side.update.AuraSend; send != nil {
+			if _, err := tx.ExecContext(ctx, `
+				INSERT INTO aura_sends (server_id, user_id, peer_id, good, at) VALUES (?, ?, ?, ?, ?)
+				ON CONFLICT (server_id, user_id, peer_id, good) DO UPDATE SET at = excluded.at
+			`, side.update.Member.ServerID, side.update.Member.UserID, send.RecipientID, send.Good, claimTime(send.At)); err != nil {
+				return false, err
+			}
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return false, err
@@ -153,20 +177,23 @@ type playerWriter interface {
 func savePlayer(ctx context.Context, writer playerWriter, update app.GiftUpdate) (bool, error) {
 	next, previous := update.Next, update.Previous
 	result, err := writer.ExecContext(ctx, `
-		INSERT INTO gift_players (server_id, user_id, normal, rare, epic, snowballs, yellow_snowballs, coal, aura, last_claim)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO gift_players (server_id, user_id, normal, rare, epic, snowballs, yellow_snowballs, coal, aura, last_claim,
+			aura_day, aura_raised, aura_lowered)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (server_id, user_id) DO UPDATE SET
 			normal = excluded.normal, rare = excluded.rare, epic = excluded.epic,
 			snowballs = excluded.snowballs, yellow_snowballs = excluded.yellow_snowballs, coal = excluded.coal,
-			aura = excluded.aura, last_claim = excluded.last_claim
+			aura = excluded.aura, last_claim = excluded.last_claim,
+			aura_day = excluded.aura_day, aura_raised = excluded.aura_raised, aura_lowered = excluded.aura_lowered
 		WHERE gift_players.normal = ? AND gift_players.rare = ? AND gift_players.epic = ?
 			AND gift_players.snowballs = ? AND gift_players.yellow_snowballs = ? AND gift_players.coal = ?
 			AND gift_players.aura = ? AND gift_players.last_claim = ?
+			AND gift_players.aura_day = ? AND gift_players.aura_raised = ? AND gift_players.aura_lowered = ?
 	`, update.Member.ServerID, update.Member.UserID,
 		next.Inventory.Normal, next.Inventory.Rare, next.Inventory.Epic, next.Inventory.Snowballs, next.Inventory.YellowSnowballs, next.Inventory.Coal,
-		next.Aura, claimTime(next.LastClaim),
+		next.Aura, claimTime(next.LastClaim), next.AuraDay, next.AuraRaised, next.AuraLowered,
 		previous.Inventory.Normal, previous.Inventory.Rare, previous.Inventory.Epic, previous.Inventory.Snowballs, previous.Inventory.YellowSnowballs, previous.Inventory.Coal,
-		previous.Aura, claimTime(previous.LastClaim))
+		previous.Aura, claimTime(previous.LastClaim), previous.AuraDay, previous.AuraRaised, previous.AuraLowered)
 	if err != nil {
 		return false, err
 	}

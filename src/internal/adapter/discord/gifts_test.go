@@ -20,9 +20,9 @@ func TestDailyClaimInteraction(t *testing.T) {
 		user, reply string
 		roll        int
 	}{
-		{"alice", "## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected 1 gifts 🎁.\nGift rarity · normal ·\n```", 0},
+		{"alice", "## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected 1 gifts 🎁.\nGift rarity · normal ·\n```\n🌑 +1 Coal.", 0},
 		{"alice", "🎅 You already got the gift for today, the next gift 🎁 is in 24 hours.", 5},
-		{"bob", "## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected 10 gifts 🎁.\nGift rarity · normal ·\n```", 9},
+		{"bob", "## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected 10 gifts 🎁.\nGift rarity · normal ·\n```\n🌑 +1 Coal.", 9},
 	} {
 		roll = step.roll
 		session, err := discordgo.New("Bot fixture")

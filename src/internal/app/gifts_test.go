@@ -35,6 +35,10 @@ func (store *giftStoreFixture) SaveTransfer(_ context.Context, sender, recipient
 	return true, nil
 }
 
+func (store *giftStoreFixture) LastAuraSend(context.Context, Member, string, bool) (time.Time, error) {
+	return time.Time{}, nil
+}
+
 func TestClaimGift(t *testing.T) {
 	first := time.Date(2026, 12, 1, 18, 0, 0, 0, time.UTC)
 	now := first
@@ -57,16 +61,17 @@ func TestClaimGift(t *testing.T) {
 		t.Fatalf("failed save returned %+v, %v", claim, err)
 	}
 	store.saveError = nil
+	coal := core.DailyBonus{Coal: 1} // Players at aura zero get Coal too.
 	for _, step := range []struct {
 		member  Member
 		elapsed time.Duration
 		roll    int
 		want    GiftClaim
 	}{
-		{alice, 0, 0, GiftClaim{Collected: true, Rarity: core.RareGift, Amount: 1, Total: 1, NextClaim: first.Add(24 * time.Hour)}},
+		{alice, 0, 0, GiftClaim{Collected: true, Rarity: core.RareGift, Amount: 1, Total: 1, NextClaim: first.Add(24 * time.Hour), Bonus: coal}},
 		{alice, time.Hour, 5, GiftClaim{Total: 1, NextClaim: first.Add(24 * time.Hour), Remaining: 23 * time.Hour}},
-		{bob, time.Hour, 2, GiftClaim{Collected: true, Rarity: core.RareGift, Amount: 3, Total: 3, NextClaim: first.Add(25 * time.Hour)}},
-		{alice, 24 * time.Hour, 9, GiftClaim{Collected: true, Rarity: core.RareGift, Amount: 10, Total: 11, NextClaim: first.Add(48 * time.Hour)}},
+		{bob, time.Hour, 2, GiftClaim{Collected: true, Rarity: core.RareGift, Amount: 3, Total: 3, NextClaim: first.Add(25 * time.Hour), Bonus: coal}},
+		{alice, 24 * time.Hour, 9, GiftClaim{Collected: true, Rarity: core.RareGift, Amount: 10, Total: 11, NextClaim: first.Add(48 * time.Hour), Bonus: coal}},
 	} {
 		now = first.Add(step.elapsed)
 		roll = step.roll

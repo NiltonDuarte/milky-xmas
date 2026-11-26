@@ -90,17 +90,17 @@ func TestGiftTransferAuraAndSocksInteractions(t *testing.T) {
 		content string
 	}{
 		{alice.UserID, aura, gifttext.Aura(0)},
-		{alice.UserID, socks, gifttext.Inventory(core.Inventory{Normal: 0, Rare: 2, Epic: 0, Snowballs: 0, YellowSnowballs: 0, Coal: 2}, true)},
+		{alice.UserID, socks, gifttext.Inventory(core.Inventory{Normal: 0, Rare: 2, Epic: 0, Snowballs: 0, YellowSnowballs: 0, Coal: 3}, true)},
 		{alice.UserID, send("600", true, 1, "rare"), "Choose another player in this server."},
 		{alice.UserID, send(bob.UserID, false, 1.5, "rare"), "Enter a positive whole number of items."},
 		{alice.UserID, send(bob.UserID, false, 1, "rare"), "Sent 1 🎁 rare gift to Bob. Your 😇 good deeds are going up."},
-		{alice.UserID, send(bob.UserID, false, 1, "rare"), "Sent 1 🎁 rare gift to Bob. Your 😇 good deeds are going up."},
-		{alice.UserID, aura, gifttext.Aura(20)},
+		{alice.UserID, send(bob.UserID, false, 1, "rare"), "Sent 1 🎁 rare gift to Bob. Your aura did not change: it already counted a send to them today."},
+		{alice.UserID, aura, gifttext.Aura(10)},
 		{bob.UserID, aura, gifttext.Aura(0)},
-		{alice.UserID, socks, gifttext.Inventory(core.Inventory{Normal: 0, Rare: 0, Epic: 0, Snowballs: 0, YellowSnowballs: 0, Coal: 2}, true)},
+		{alice.UserID, socks, gifttext.Inventory(core.Inventory{Normal: 0, Rare: 0, Epic: 0, Snowballs: 0, YellowSnowballs: 0, Coal: 3}, true)},
 		{bob.UserID, socks, gifttext.Inventory(core.Inventory{Normal: 0, Rare: 2, Epic: 0, Snowballs: 0, YellowSnowballs: 0, Coal: 0}, true)},
 		{alice.UserID, send(bob.UserID, false, 2, "coal"), "Sent 2 🌑 Coal to Bob. Your 😈 bad deeds are increasing. Beware!"},
-		{alice.UserID, aura, gifttext.Aura(10)},
+		{alice.UserID, aura, gifttext.Aura(0)},
 	} {
 		session, err := discordgo.New("Bot fixture")
 		if err != nil {

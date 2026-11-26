@@ -26,7 +26,7 @@ func TestStatsCountWhatPlayersDid(t *testing.T) {
 	to := app.Recipient{Member: bob}
 	for _, step := range []func() error{
 		func() error { return service.SendGift(t.Context(), alice, to, core.RareGift, 2) },
-		func() error { return service.SendItem(t.Context(), alice, to, app.CoalItem, 12) },
+		func() error { _, err := service.SendItem(t.Context(), alice, to, app.CoalItem, 12); return err },
 		func() error { _, err := service.ThrowSnowball(t.Context(), alice, to, core.NormalSnowball); return err },
 		func() error { _, err := service.ThrowSnowball(t.Context(), alice, to, core.YellowSnowball); return err },
 		func() error { _, _, err := tree.Water(t.Context(), bob); return err },

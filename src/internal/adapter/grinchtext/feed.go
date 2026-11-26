@@ -129,6 +129,8 @@ func BossLines(feed []core.GrinchEvent, mention func(string) string, limit int) 
 		case core.EventMiss:
 			lines = append(lines, fmt.Sprintf("💥 “%s”", pick(linesMiss, event.Roll)),
 				fmt.Sprintf("↳ %s was hit by a snowball: -%d%% HP", mention(event.Member), event.Amount))
+		case core.EventRevive:
+			lines = append(lines, "👽 “Back already?!”", fmt.Sprintf("↳ %s got back up with %d%% HP", mention(event.Member), event.Amount))
 		case core.EventGift:
 			lines = append(lines, fmt.Sprintf("🎁 “%s”", pick(linesGift, event.Roll)),
 				fmt.Sprintf("↳ %s took back %s", mention(event.Member), count(event.Amount, "gift point")))

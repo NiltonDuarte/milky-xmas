@@ -34,10 +34,8 @@ func (odds RarityOdds) Roll(roll int) GiftRarity {
 // GiftTuning holds the rarity odds shared by the daily claim and the drops.
 type GiftTuning struct {
 	DailyRarity RarityOdds
-	// GoodDeedsThreshold is the aura, on the good side of the scale, from which BoostedRarity
-	// applies to a Random Active Drop.
-	GoodDeedsThreshold int
-	BoostedRarity      RarityOdds
+	// BoostedRarity applies to a Random Active Drop of a player on the Nice list.
+	BoostedRarity RarityOdds
 }
 
 // DailyGiftRarity takes a uniform roll in [0, GiftRarityRolls).
@@ -45,10 +43,10 @@ func (tuning GiftTuning) DailyGiftRarity(roll int) GiftRarity {
 	return tuning.DailyRarity.Roll(roll)
 }
 
-// ActiveDropRarity takes a uniform roll in [0, GiftRarityRolls). Players whose aura is at or
-// above the threshold have a better chance of rare and epic gifts.
-func (tuning GiftTuning) ActiveDropRarity(roll int, aura Aura) GiftRarity {
-	if int(aura) < tuning.GoodDeedsThreshold {
+// ActiveDropRarity takes a uniform roll in [0, GiftRarityRolls). Players on the Nice list have a
+// better chance of rare and epic gifts.
+func (tuning GiftTuning) ActiveDropRarity(roll int, nice bool) GiftRarity {
+	if !nice {
 		return tuning.DailyRarity.Roll(roll)
 	}
 	return tuning.BoostedRarity.Roll(roll)
@@ -138,6 +136,25 @@ type GrinchRules struct {
 	GiftPointsMax       int
 	FinalSnowballReward int64
 
+	// HitsPerPlayer and MinHits set how many hits clear the snowball, attack, and final phases:
+	// HitsPerPlayer for each player in the fight, and never under MinHits. With both at zero the
+	// damage numbers above apply as they are.
+	HitsPerPlayer int
+	MinHits       int
+	// ClickCooldown is how long a player waits between two actions of a fight.
+	ClickCooldown time.Duration
+	// CounterattackPercent is the chance that the Grinch hits back at an attacker, costing as much
+	// HP as a missed defense.
+	CounterattackPercent int
+	// A fallen player gets back up by spending one of their own gifts, with the HP, in percent,
+	// of its rarity. Zero means that rarity cannot bring anyone back.
+	ReviveNormalHP int
+	ReviveRareHP   int
+	ReviveEpicHP   int
+	// LastChance is how long the Grinch waits, with nobody left standing, for somebody to get
+	// back up.
+	LastChance time.Duration
+
 	LossCoal int64
 	// LossYellowPerGroupMember multiplies the number of registered players.
 	LossYellowPerGroupMember int64
@@ -155,6 +172,7 @@ type Tuning struct {
 	Grinch GrinchRules
 	Tree   TreeRules
 	Quotes QuoteRules
+	Aura   AuraRules
 }
 
 // The default numbers, documented in docs/activity-drops-numbers.md and
@@ -166,21 +184,19 @@ const (
 	GiftRainMessageRange    = 96
 	GiftRainClaimLimit      = 10
 	RainCoalPercent         = 25
-	GoodDeedsBoostThreshold = 25
 	GiftDropLifetime        = 10 * time.Minute
 	GiftRainClaimCooldown   = time.Minute
 
 	GrinchJoinDuration = time.Minute
-	GrinchDuration     = time.Minute
+	GrinchDuration     = 3 * time.Minute
 )
 
 // DefaultTuning returns the numbers the bot uses without a tuning file.
 func DefaultTuning() Tuning {
 	return Tuning{
 		Gifts: GiftTuning{
-			DailyRarity:        RarityOdds{Normal: 70, Rare: 25, Epic: 5},
-			GoodDeedsThreshold: GoodDeedsBoostThreshold,
-			BoostedRarity:      RarityOdds{Normal: 50, Rare: 35, Epic: 15},
+			DailyRarity:   RarityOdds{Normal: 70, Rare: 25, Epic: 5},
+			BoostedRarity: RarityOdds{Normal: 50, Rare: 35, Epic: 15},
 		},
 		Drops: DropTuning{
 			Lifetime:          GiftDropLifetime,
@@ -202,11 +218,19 @@ func DefaultTuning() Tuning {
 			RegistrationDuration:     GrinchJoinDuration,
 			EarlyStartPlayers:        3,
 			FightDuration:            GrinchDuration,
+			HitsPerPlayer:            8,
+			MinHits:                  15,
+			ClickCooldown:            2 * time.Second,
+			CounterattackPercent:     10,
+			ReviveNormalHP:           25,
+			ReviveRareHP:             50,
+			ReviveEpicHP:             100,
+			LastChance:               20 * time.Second,
 			SnowballsDuration:        2 * time.Minute,
 			SnowballDamage:           417,
 			SnowballsBossHP:          7500,
 			DefenseBossHP:            4500,
-			DefenseMissHPLoss:        10,
+			DefenseMissHPLoss:        20,
 			DefenseMaxDefenses:       6,
 			AttackDamage:             667,
 			AttackHeavyDamage:        700,
@@ -221,6 +245,7 @@ func DefaultTuning() Tuning {
 		},
 		Tree:   DefaultTreeRules(),
 		Quotes: DefaultQuoteRules(),
+		Aura:   DefaultAuraRules(),
 	}
 }
 
@@ -267,9 +292,6 @@ func (tuning Tuning) Validate() error {
 
 	gifts := tuning.Gifts
 	odds("gifts.daily_rarity", gifts.DailyRarity)
-	if gifts.GoodDeedsThreshold < 0 || gifts.GoodDeedsThreshold > int(AuraMax) {
-		bad("gifts.good_deeds_boost.threshold", "must be between 0 and %d, got %d", AuraMax, gifts.GoodDeedsThreshold)
-	}
 	odds("gifts.good_deeds_boost.rarity", gifts.BoostedRarity)
 
 	drops := tuning.Drops
@@ -313,6 +335,14 @@ func (tuning Tuning) Validate() error {
 		bad("grinch.defense.miss_hp_loss_percent", "must be between 1 and 100, got %d", g.DefenseMissHPLoss)
 	}
 	atLeast("grinch.defense.max_defenses", g.DefenseMaxDefenses, 1)
+	atLeast("grinch.hits.per_player", g.HitsPerPlayer, 0)
+	atLeast("grinch.hits.minimum", g.MinHits, 0)
+	atLeastZero("grinch.click_cooldown", g.ClickCooldown)
+	percent("grinch.counterattack_percent", g.CounterattackPercent)
+	percent("grinch.revive.normal_hp_percent", g.ReviveNormalHP)
+	percent("grinch.revive.rare_hp_percent", g.ReviveRareHP)
+	percent("grinch.revive.epic_hp_percent", g.ReviveEpicHP)
+	atLeastZero("grinch.revive.last_chance", g.LastChance)
 	atLeast("grinch.final_attack.gift_points.min", g.GiftPointsMin, 1)
 	if g.GiftPointsMax < g.GiftPointsMin {
 		bad("grinch.final_attack.gift_points.max", "must be at least min (%d), got %d", g.GiftPointsMin, g.GiftPointsMax)
@@ -347,6 +377,29 @@ func (tuning Tuning) Validate() error {
 	}
 	atLeast("quotes.every_messages", tuning.Quotes.EveryMessages, 1)
 	atLeastZero("quotes.min_interval", tuning.Quotes.MinInterval)
+
+	aura := tuning.Aura
+	if aura.NiceAt < 1 || aura.NiceAt > int(AuraMax) {
+		bad("aura.nice_at", "must be between 1 and %d, got %d", AuraMax, aura.NiceAt)
+	}
+	if aura.NaughtyAt > -1 || aura.NaughtyAt < int(AuraMin) {
+		bad("aura.naughty_at", "must be between %d and -1, got %d", AuraMin, aura.NaughtyAt)
+	}
+	atLeastZero("aura.send_cooldown", aura.SendCooldown)
+	percent("aura.daily_limit", aura.DailyLimit)
+	atLeast("aura.daily_coal", aura.DailyCoal, 0)
+	atLeast("aura.nice.daily_extra_gifts", aura.Nice.DailyExtraGifts, 0)
+	atLeast("aura.nice.water_extra_points", aura.Nice.WaterExtraPoints, 0)
+	percent("aura.nice.miss_hp_loss_percent", aura.Nice.MissHPLossPercent)
+	percent("aura.nice.boss_damage_bonus_percent", aura.Nice.BossDamageBonusPercent)
+	atLeast("aura.naughty.water_less_points", aura.Naughty.WaterLessPoints, 0)
+	percent("aura.naughty.miss_hp_loss_percent", aura.Naughty.MissHPLossPercent)
+	atLeast("aura.naughty.daily_yellow_snowballs", aura.Naughty.DailyYellowSnowballs, 0)
+	atLeastZero("aura.naughty.rain_claim_cooldown", aura.Naughty.RainClaimCooldown)
+	percent("aura.naughty.rain_double_percent", aura.Naughty.RainDoublePercent)
+	if aura.Naughty.LossCoal < 0 {
+		bad("aura.naughty.loss_coal", "must not be negative, got %d", aura.Naughty.LossCoal)
+	}
 	return errors.Join(problems...)
 }
 

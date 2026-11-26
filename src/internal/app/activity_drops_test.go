@@ -47,6 +47,10 @@ func (store *dropStoreFixture) SaveTransfer(context.Context, GiftUpdate, GiftUpd
 	return false, errors.New("unused")
 }
 
+func (store *dropStoreFixture) LastAuraSend(context.Context, Member, string, bool) (time.Time, error) {
+	return time.Time{}, nil
+}
+
 func (store *dropStoreFixture) AdventDoors(context.Context, Member, int) (uint32, error) {
 	return 0, nil
 }

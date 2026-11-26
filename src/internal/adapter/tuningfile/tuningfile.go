@@ -131,8 +131,7 @@ type document struct {
 	Gifts struct {
 		DailyRarity    odds `yaml:"daily_rarity"`
 		GoodDeedsBoost struct {
-			Threshold whole `yaml:"threshold"`
-			Rarity    odds  `yaml:"rarity"`
+			Rarity odds `yaml:"rarity"`
 		} `yaml:"good_deeds_boost"`
 	} `yaml:"gifts"`
 	Drops struct {
@@ -161,7 +160,19 @@ type document struct {
 			EarlyStartPlayers whole    `yaml:"early_start_players"`
 		} `yaml:"registration"`
 		FightDuration duration `yaml:"fight_duration"`
-		Snowballs     struct {
+		Hits          struct {
+			PerPlayer whole `yaml:"per_player"`
+			Minimum   whole `yaml:"minimum"`
+		} `yaml:"hits"`
+		ClickCooldown        duration `yaml:"click_cooldown"`
+		CounterattackPercent whole    `yaml:"counterattack_percent"`
+		Revive               struct {
+			NormalHPPercent whole    `yaml:"normal_hp_percent"`
+			RareHPPercent   whole    `yaml:"rare_hp_percent"`
+			EpicHPPercent   whole    `yaml:"epic_hp_percent"`
+			LastChance      duration `yaml:"last_chance"`
+		} `yaml:"revive"`
+		Snowballs struct {
 			Duration    duration `yaml:"duration"`
 			Damage      float64  `yaml:"damage"`
 			BossHPAfter float64  `yaml:"boss_hp_after"`
@@ -202,6 +213,27 @@ type document struct {
 		EveryMessages whole    `yaml:"every_messages"`
 		MinInterval   duration `yaml:"min_interval"`
 	} `yaml:"quotes"`
+	Aura struct {
+		NiceAt       whole    `yaml:"nice_at"`
+		NaughtyAt    whole    `yaml:"naughty_at"`
+		SendCooldown duration `yaml:"send_cooldown"`
+		DailyLimit   whole    `yaml:"daily_limit"`
+		DailyCoal    whole    `yaml:"daily_coal"`
+		Nice         struct {
+			DailyExtraGifts        whole `yaml:"daily_extra_gifts"`
+			WaterExtraPoints       whole `yaml:"water_extra_points"`
+			MissHPLossPercent      whole `yaml:"miss_hp_loss_percent"`
+			BossDamageBonusPercent whole `yaml:"boss_damage_bonus_percent"`
+		} `yaml:"nice"`
+		Naughty struct {
+			WaterLessPoints      whole    `yaml:"water_less_points"`
+			MissHPLossPercent    whole    `yaml:"miss_hp_loss_percent"`
+			DailyYellowSnowballs whole    `yaml:"daily_yellow_snowballs"`
+			RainDoublePercent    whole    `yaml:"rain_double_percent"`
+			RainClaimCooldown    duration `yaml:"rain_claim_cooldown"`
+			LossCoal             whole    `yaml:"loss_coal"`
+		} `yaml:"naughty"`
+	} `yaml:"aura"`
 }
 
 // percent writes hundredths of HP as a percentage, for the file.
@@ -219,7 +251,6 @@ func defaultsDocument() document {
 	d := core.DefaultTuning()
 	var doc document
 	doc.Gifts.DailyRarity = oddsDocument(d.Gifts.DailyRarity)
-	doc.Gifts.GoodDeedsBoost.Threshold = whole(d.Gifts.GoodDeedsThreshold)
 	doc.Gifts.GoodDeedsBoost.Rarity = oddsDocument(d.Gifts.BoostedRarity)
 	doc.Drops.Lifetime = duration(d.Drops.Lifetime)
 	doc.Drops.RandomActive.OneIn = whole(d.Drops.RandomActiveOneIn)
@@ -233,6 +264,10 @@ func defaultsDocument() document {
 	doc.Grinch.Registration.StartWindow = duration(g.StartWindow)
 	doc.Grinch.Registration.Duration, doc.Grinch.Registration.EarlyStartPlayers = duration(g.RegistrationDuration), whole(g.EarlyStartPlayers)
 	doc.Grinch.FightDuration = duration(g.FightDuration)
+	doc.Grinch.Hits.PerPlayer, doc.Grinch.Hits.Minimum = whole(g.HitsPerPlayer), whole(g.MinHits)
+	doc.Grinch.ClickCooldown, doc.Grinch.CounterattackPercent = duration(g.ClickCooldown), whole(g.CounterattackPercent)
+	doc.Grinch.Revive.NormalHPPercent, doc.Grinch.Revive.RareHPPercent = whole(g.ReviveNormalHP), whole(g.ReviveRareHP)
+	doc.Grinch.Revive.EpicHPPercent, doc.Grinch.Revive.LastChance = whole(g.ReviveEpicHP), duration(g.LastChance)
 	doc.Grinch.Snowballs.Duration = duration(g.SnowballsDuration)
 	doc.Grinch.Snowballs.Damage, doc.Grinch.Snowballs.BossHPAfter = percent(g.SnowballDamage), percent(g.SnowballsBossHP)
 	doc.Grinch.Defense.BossHPAfter, doc.Grinch.Defense.MissHPLossPercent = percent(g.DefenseBossHP), whole(g.DefenseMissHPLoss)
@@ -249,6 +284,16 @@ func defaultsDocument() document {
 	doc.Tree.EventEnd = timestamp(tree.EventEnd)
 	doc.Tree.WaterAura = whole(tree.WaterAura)
 	doc.Quotes.EveryMessages, doc.Quotes.MinInterval = whole(d.Quotes.EveryMessages), duration(d.Quotes.MinInterval)
+	aura := d.Aura
+	doc.Aura.NiceAt, doc.Aura.NaughtyAt, doc.Aura.SendCooldown = whole(aura.NiceAt), whole(aura.NaughtyAt), duration(aura.SendCooldown)
+	doc.Aura.Nice.DailyExtraGifts, doc.Aura.Nice.WaterExtraPoints = whole(aura.Nice.DailyExtraGifts), whole(aura.Nice.WaterExtraPoints)
+	doc.Aura.Nice.MissHPLossPercent, doc.Aura.Nice.BossDamageBonusPercent = whole(aura.Nice.MissHPLossPercent), whole(aura.Nice.BossDamageBonusPercent)
+	doc.Aura.Naughty.DailyYellowSnowballs, doc.Aura.Naughty.RainDoublePercent = whole(aura.Naughty.DailyYellowSnowballs), whole(aura.Naughty.RainDoublePercent)
+	doc.Aura.Naughty.LossCoal = whole(aura.Naughty.LossCoal)
+	doc.Aura.Naughty.MissHPLossPercent = whole(aura.Naughty.MissHPLossPercent)
+	doc.Aura.Naughty.RainClaimCooldown = duration(aura.Naughty.RainClaimCooldown)
+	doc.Aura.Naughty.WaterLessPoints = whole(aura.Naughty.WaterLessPoints)
+	doc.Aura.DailyLimit, doc.Aura.DailyCoal = whole(aura.DailyLimit), whole(aura.DailyCoal)
 	return doc
 }
 
@@ -266,7 +311,6 @@ func (doc document) tuning() (core.Tuning, error) {
 	}
 	var t core.Tuning
 	t.Gifts.DailyRarity = doc.Gifts.DailyRarity.core()
-	t.Gifts.GoodDeedsThreshold = int(doc.Gifts.GoodDeedsBoost.Threshold)
 	t.Gifts.BoostedRarity = doc.Gifts.GoodDeedsBoost.Rarity.core()
 	t.Drops.Lifetime = time.Duration(doc.Drops.Lifetime)
 	t.Drops.RandomActiveOneIn = int(doc.Drops.RandomActive.OneIn)
@@ -299,6 +343,14 @@ func (doc document) tuning() (core.Tuning, error) {
 		GiftPointsMin:            int(g.FinalAttack.GiftPoints.Min),
 		GiftPointsMax:            int(g.FinalAttack.GiftPoints.Max),
 		FinalSnowballReward:      int64(g.FinalAttack.SnowballsReward),
+		HitsPerPlayer:            int(g.Hits.PerPlayer),
+		MinHits:                  int(g.Hits.Minimum),
+		ClickCooldown:            time.Duration(g.ClickCooldown),
+		CounterattackPercent:     int(g.CounterattackPercent),
+		ReviveNormalHP:           int(g.Revive.NormalHPPercent),
+		ReviveRareHP:             int(g.Revive.RareHPPercent),
+		ReviveEpicHP:             int(g.Revive.EpicHPPercent),
+		LastChance:               time.Duration(g.Revive.LastChance),
 		LossCoal:                 int64(g.LossRewards.Coal),
 		LossYellowPerGroupMember: int64(g.LossRewards.YellowSnowballsPerGroupMember),
 	}
@@ -308,5 +360,21 @@ func (doc document) tuning() (core.Tuning, error) {
 		EventEnd: time.Time(doc.Tree.EventEnd), WaterAura: int(doc.Tree.WaterAura),
 	}
 	t.Quotes = core.QuoteRules{EveryMessages: int(doc.Quotes.EveryMessages), MinInterval: time.Duration(doc.Quotes.MinInterval)}
+	a := doc.Aura
+	t.Aura = core.AuraRules{
+		NiceAt: int(a.NiceAt), NaughtyAt: int(a.NaughtyAt), SendCooldown: time.Duration(a.SendCooldown),
+		DailyLimit: int(a.DailyLimit), DailyCoal: int(a.DailyCoal),
+		Nice: core.NicePerks{
+			DailyExtraGifts: int(a.Nice.DailyExtraGifts), WaterExtraPoints: int(a.Nice.WaterExtraPoints),
+			MissHPLossPercent: int(a.Nice.MissHPLossPercent), BossDamageBonusPercent: int(a.Nice.BossDamageBonusPercent),
+		},
+		Naughty: core.NaughtyPerks{
+			RainClaimCooldown:    time.Duration(a.Naughty.RainClaimCooldown),
+			WaterLessPoints:      int(a.Naughty.WaterLessPoints),
+			MissHPLossPercent:    int(a.Naughty.MissHPLossPercent),
+			DailyYellowSnowballs: int(a.Naughty.DailyYellowSnowballs), RainDoublePercent: int(a.Naughty.RainDoublePercent),
+			LossCoal: int64(a.Naughty.LossCoal),
+		},
+	}
 	return t, errors.Join(problems...)
 }

@@ -43,14 +43,16 @@ func TestStatsMenus(t *testing.T) {
 		text  []string
 		not   string
 	}{
-		{"command", command, nil, discordgo.InteractionResponseDeferredChannelMessageWithSource, []string{"ack", "edit"},
-			[]string{"Choose what you want to see.", "stats:view"}, "stats:board"},
+		{"command", command, nil, discordgo.InteractionResponseDeferredChannelMessageWithSource, []string{"ack", "store", "edit"},
+			[]string{"🌑 Coal sent: **3**", "stats:view", "stats:board", "Pick a leaderboard", "## 🌌 Milky Way Galaxy", `"accent_color":8084694`}, "<@alice>"},
 		{"server", choose(statsViewID, "server"), nil, discordgo.InteractionResponseDeferredMessageUpdate, []string{"ack", "store", "edit"},
-			[]string{"🌑 Coal sent: **3**", "stats:view"}, "stats:board"},
-		{"leaderboards", choose(statsViewID, "boards"), nil, discordgo.InteractionResponseUpdateMessage, []string{"ack"},
-			[]string{"Pick a leaderboard", "stats:board"}, "<@alice>"},
+			[]string{"🌑 Coal sent: **3**", "stats:view", "stats:board"}, "<@alice>"},
+		{"leaderboards", choose(statsViewID, "boards"), nil, discordgo.InteractionResponseDeferredMessageUpdate, []string{"ack", "store", "edit"},
+			[]string{"🌑 Coal sent: **3**", "stats:board"}, "<@alice>"},
+		{"server in the second menu", choose(statsBoardID, "server"), nil, discordgo.InteractionResponseDeferredMessageUpdate, []string{"ack", "store", "edit"},
+			[]string{"🌑 Coal sent: **3**", "stats:board"}, "<@alice>"},
 		{"bad eggs", choose(statsBoardID, "bad"), nil, discordgo.InteractionResponseDeferredMessageUpdate, []string{"ack", "store", "edit"},
-			[]string{"Bad eggs", "1. <@alice> — 15", "stats:view", "stats:board"}, "Nobody yet"},
+			[]string{"Bad eggs", "🥇 <@alice> — **15**", "stats:view", "stats:board", `"accent_color":15158332`}, "Nobody yet"},
 		{"failed read", choose(statsBoardID, "bad"), errors.New("disk gone"), discordgo.InteractionResponseDeferredMessageUpdate,
 			[]string{"ack", "store", "edit"}, []string{"Could not read the statistics. Try again.", "stats:board"}, "<@alice>"},
 	} {
@@ -76,9 +78,6 @@ func TestStatsMenus(t *testing.T) {
 					}
 					if err := json.Unmarshal(body, &response); err != nil || response.Type != tt.ack {
 						t.Errorf("acknowledgement = %s, %v", body, err)
-					}
-					if response.Type == discordgo.InteractionResponseUpdateMessage {
-						shown = text
 					}
 					return fakeResponse(http.StatusNoContent, ""), nil
 				}

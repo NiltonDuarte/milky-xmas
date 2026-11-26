@@ -25,8 +25,8 @@ func TestStatsInChat(t *testing.T) {
 	post("/water")
 	for command, want := range map[string]string{
 		"/stats":          "Waterings: **1**",
-		"/stats plants":   "1. fixture — 1",
-		"/stats good":     "1. fixture — 1",
+		"/stats plants":   "🥇 fixture — **1**",
+		"/stats good":     "🥇 fixture — **1**",
 		"/stats bad":      "Nobody yet.",
 		"/stats gifters":  "Coal sent",
 		"/stats throwers": "Yellow snowballs",

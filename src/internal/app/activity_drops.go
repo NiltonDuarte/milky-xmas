@@ -40,9 +40,10 @@ type liveDrop struct {
 
 // DropClaimRecord is one collected prize, in collection order.
 type DropClaimRecord struct {
-	UserID string
-	Coal   bool
-	Rarity core.GiftRarity
+	UserID  string
+	Coal    bool
+	Doubled bool // The gift came twice, a Naughty list perk.
+	Rarity  core.GiftRarity
 }
 
 // DropSummary lists who collected what from a finished drop.
@@ -134,9 +135,10 @@ type GiftDropClaim struct {
 }
 
 type GiftDropAward struct {
-	Kind   core.GiftDropKind
-	Rarity core.GiftRarity
-	Coal   bool
+	Kind    core.GiftDropKind
+	Rarity  core.GiftRarity
+	Coal    bool
+	Doubled bool // The gift came twice, a Naughty list perk.
 	// Taken has one bit per opened slot of a Random Active Drop.
 	Taken uint8
 	// Finished is set when this claim ended the drop, with the full list of collections.
@@ -190,13 +192,21 @@ func (drops *ActivityDrops) Claim(ctx context.Context, claim GiftDropClaim) (Gif
 			return GiftDropAward{}, ErrDropSlotTaken
 		}
 	}
-	if drop.Kind == core.GiftRainDrop && now.Sub(drops.rainClaims[claim.Member]) < tuning.GiftRain.ClaimCooldown {
-		return GiftDropAward{}, ErrDropCooldown
+	if since := now.Sub(drops.rainClaims[claim.Member]); drop.Kind == core.GiftRainDrop && since < tuning.GiftRain.ClaimCooldown {
+		// The Naughty list may wait less, which only the player's record can tell.
+		record, err := drops.service.gifts.Load(ctx, claim.Member)
+		if err != nil {
+			return GiftDropAward{}, fmt.Errorf("load drop inventory: %w", err)
+		}
+		if since < drops.service.tuning.Aura.RainCooldown(record.Aura, tuning.GiftRain.ClaimCooldown) {
+			return GiftDropAward{}, ErrDropCooldown
+		}
 	}
 	coalRoll, rarityRoll := 0, drops.service.random(core.GiftRarityRolls)
 	if drop.Kind == core.GiftRainDrop {
 		coalRoll, rarityRoll = rarityRoll, drops.service.random(core.GiftRarityRolls)
 	}
+	doubleRoll := -1
 	for ctx.Err() == nil {
 		record, err := drops.service.gifts.Load(ctx, claim.Member)
 		if err != nil {
@@ -211,8 +221,20 @@ func (drops *ActivityDrops) Claim(ctx context.Context, claim GiftDropClaim) (Gif
 		case drop.Kind == core.GiftRainDrop:
 			result.Rarity = drops.service.tuning.Gifts.DailyGiftRarity(rarityRoll)
 			next, err = core.AwardGift(record, result.Rarity)
+			// Only a Naughty list player draws the extra roll, once.
+			if err == nil && drops.service.tuning.Aura.List(record.Aura) == core.NaughtyList {
+				if doubleRoll < 0 {
+					doubleRoll = drops.service.random(100)
+				}
+				if drops.service.tuning.Aura.RainDoubles(record.Aura, doubleRoll) {
+					if again, full := core.AwardGift(next, result.Rarity); full == nil {
+						next, result.Doubled = again, true
+					}
+				}
+			}
 		default:
-			result.Rarity = drops.service.tuning.Gifts.ActiveDropRarity(rarityRoll, record.Aura)
+			nice := drops.service.tuning.Aura.List(record.Aura) == core.NiceList
+			result.Rarity = drops.service.tuning.Gifts.ActiveDropRarity(rarityRoll, nice)
 			next, err = core.AwardGift(record, result.Rarity)
 		}
 		if err != nil {
@@ -227,7 +249,7 @@ func (drops *ActivityDrops) Claim(ctx context.Context, claim GiftDropClaim) (Gif
 			drop.taken |= slotBit
 			drop.results = append(drop.results, result)
 			drops.drops[drop.ID] = drop
-			award := GiftDropAward{Kind: drop.Kind, Rarity: result.Rarity, Coal: result.Coal, Taken: drop.taken}
+			award := GiftDropAward{Kind: drop.Kind, Rarity: result.Rarity, Coal: result.Coal, Doubled: result.Doubled, Taken: drop.taken}
 			if drop.Kind == core.GiftRainDrop {
 				drops.rainClaims[claim.Member] = now
 				if len(drop.results) >= tuning.GiftRain.ClaimsToEnd {

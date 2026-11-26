@@ -58,7 +58,7 @@ func TestActiveDropRarityBoost(t *testing.T) {
 		{49, 25, NormalGift}, {50, 25, RareGift}, {84, 25, RareGift}, {85, 25, EpicGift},
 		{70, 50, RareGift}, {99, 50, EpicGift}, {69, -50, NormalGift},
 	} {
-		if got := defaults.Gifts.ActiveDropRarity(tt.roll, tt.good); got != tt.want {
+		if got := defaults.Gifts.ActiveDropRarity(tt.roll, defaults.Aura.List(tt.good) == NiceList); got != tt.want {
 			t.Errorf("ActiveDropRarity(%d, %d) = %s, want %s", tt.roll, tt.good, got, tt.want)
 		}
 	}

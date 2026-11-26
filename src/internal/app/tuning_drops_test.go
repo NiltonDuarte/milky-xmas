@@ -128,7 +128,7 @@ func TestRainCoalAndBoostOddsAreTuned(t *testing.T) {
 	}
 
 	tuning = core.DefaultTuning()
-	tuning.Gifts.GoodDeedsThreshold = 10
+	tuning.Aura.NiceAt = 10
 	tuning.Gifts.BoostedRarity = core.RarityOdds{Normal: 0, Rare: 0, Epic: 100}
 	tuning.Drops.RandomActiveOneIn = 1
 	drops, store = tunedDrops(t, &now, tuning, func(int) int { return 0 })

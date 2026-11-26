@@ -35,7 +35,7 @@ func TestGrinchCombat(t *testing.T) {
 				t.Fatalf("defense started at %+v", fight)
 			}
 			hit(GrinchDefense, 1, 0, start.Add(12*time.Second))
-			if fight.PlayerDamage["0"] != 10 || fight.Health(testRules) != 75 {
+			if fight.PlayerDamage["0"] != 20 || fight.Health(testRules) != 75 {
 				t.Fatalf("snowflake result: %+v", fight)
 			}
 			// One safe defense per player, but never more than six.
@@ -181,7 +181,7 @@ func TestGrinchDefeat(t *testing.T) {
 	fight := Grinch{
 		ID: "fight", Phase: GrinchDefense, StartedAt: now, TimedAt: now,
 		HP: 7500, Board: 1, Joined: map[string]bool{"alice": true, "bob": true},
-		Accepted: map[string]bool{}, PlayerDamage: map[string]int{"alice": 90, "bob": 90},
+		Accepted: map[string]bool{}, PlayerDamage: map[string]int{"alice": 80, "bob": 80},
 	}
 	for _, member := range []string{"alice", "bob"} {
 		fight.Move(testRules, GrinchMove{Phase: GrinchDefense, Slot: 1, Member: member, RequestID: member, At: now.Add(time.Second), NextBoard: 5, DefenseRound: fight.DefenseRound})
@@ -332,7 +332,7 @@ func TestGrinchDefenseBoardRerollsAndRejectsStaleClicks(t *testing.T) {
 	}
 	move.RequestID, move.DefenseRound = "snowflake", 2
 	fight.Move(testRules, move)
-	if fight.Health(testRules) != 65 || fight.PlayerDamage["bob"] != 10 || fight.DefenseRound != 3 || fight.Board == 2 {
+	if fight.Health(testRules) != 65 || fight.PlayerDamage["bob"] != 20 || fight.DefenseRound != 3 || fight.Board == 2 {
 		t.Fatalf("snowflake did not change the board: %+v", fight)
 	}
 }
@@ -342,7 +342,7 @@ func TestGrinchDefenseBoardRerollsAndRejectsStaleClicks(t *testing.T) {
 var testRules = stepRules()
 
 func stepRules() GrinchRules {
-	rules := DefaultTuning().Grinch
+	rules := classicFight(DefaultTuning().Grinch)
 	rules.SnowballDamage, rules.AttackDamage, rules.AttackHeavyDamage, rules.FinalHitDamage = 100, 500, 525, 100
 	return rules
 }
@@ -488,11 +488,11 @@ func TestGrinchDamageLeaderboardShowsDamageAndOnlyTheFinalAttackAwardsPoints(t *
 	}
 }
 
-// With the shipped numbers the group needs at most six hits in each phase, however many play.
-func TestGrinchDefaultsNeedAtMostSixHitsPerPhase(t *testing.T) {
+// With the shipped numbers each attack phase takes eight hits per player, and never under fifteen.
+func TestGrinchDefaultHitsGrowWithThePlayers(t *testing.T) {
 	rules := DefaultTuning().Grinch
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
-	for _, players := range []int{1, 3, 20} {
+	for _, players := range []int{1, 3, 5} {
 		fight := Grinch{ID: "f", Phase: GrinchSnowballs, HP: GrinchBossHP, StartedAt: now,
 			Joined: map[string]bool{}, PlayerDamage: map[string]int{}, Accepted: map[string]bool{},
 		}
@@ -500,9 +500,9 @@ func TestGrinchDefaultsNeedAtMostSixHitsPerPhase(t *testing.T) {
 			fight.Joined[strconv.Itoa(player)] = true
 		}
 		hits := map[GrinchPhase]int{}
-		for sequence := 0; fight.Phase != GrinchWon && sequence < 100; sequence++ {
+		for sequence := 0; fight.Phase != GrinchWon && sequence < 400; sequence++ {
 			phase := fight.Phase
-			move := GrinchMove{Phase: phase, Member: strconv.Itoa(sequence % players), RequestID: strconv.Itoa(sequence), At: now,
+			move := GrinchMove{Phase: phase, Member: strconv.Itoa(sequence % players), RequestID: strconv.Itoa(sequence), At: now.Add(time.Duration(sequence) * 2 * time.Second),
 				NextBoard: 5, FinalBoard: 2, FinalRound: fight.FinalRound, DefenseRound: fight.DefenseRound}
 			if phase == GrinchDefense {
 				for fight.Board&(1<<move.Slot) == 0 {
@@ -520,9 +520,21 @@ func TestGrinchDefaultsNeedAtMostSixHitsPerPhase(t *testing.T) {
 			}
 			hits[phase]++
 		}
-		want := map[GrinchPhase]int{GrinchSnowballs: 6, GrinchDefense: min(players, 6), GrinchAttack: 6, GrinchFinalAttack: 6}
+		needed := map[int]int{1: 15, 3: 24, 5: 40}[players]
+		// Rounding the damage up lets five players finish the last 5% one hit early.
+		final := map[int]int{1: 15, 3: 24, 5: 39}[players]
+		want := map[GrinchPhase]int{GrinchSnowballs: needed, GrinchDefense: min(players, 6), GrinchAttack: needed, GrinchFinalAttack: final}
 		if fight.Phase != GrinchWon || !maps.Equal(hits, want) {
 			t.Errorf("%d players needed %v hits, want %v (phase %s, HP %d)", players, hits, want, fight.Phase, fight.HP)
 		}
 	}
+}
+
+// classicFight keeps the numbers these tests were written for: fixed damage, no wait between
+// clicks, no counterattack, no last chance, and a one-minute fight clock.
+func classicFight(rules GrinchRules) GrinchRules {
+	rules.HitsPerPlayer, rules.MinHits, rules.ClickCooldown, rules.CounterattackPercent = 0, 0, 0, 0
+	rules.LastChance = 0
+	rules.FightDuration = time.Minute
+	return rules
 }

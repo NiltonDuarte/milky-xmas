@@ -19,14 +19,13 @@
 gifts:
   # Chances de raridade do gift em %. Os três somam 100.
   # Valem para /daily claim, para os gifts da Gift Rain e para o Random Active Drop
-  # de quem está abaixo do limite de Good deeds.
+  # de quem não está na Nice list.
   daily_rarity:
     normal: 70
     rare: 25
     epic: 5
-  # Bônus do Random Active Drop para quem tem Good deeds altos.
+  # Bônus do Random Active Drop para quem está na Nice list (aura.nice_at).
   good_deeds_boost:
-    threshold: 25     # aura (de -50 a +50) a partir da qual o bônus vale
     rarity:           # chances em %, somam 100
       normal: 50
       rare: 35
@@ -57,31 +56,44 @@ grinch:
     duration: 1m            # contagem regressiva que começa no primeiro clique em Start
     early_start_players: 3  # com este número de jogadores que apertaram Start a luta começa na hora
 
-  fight_duration: 1m        # relógio de combate, começa quando o boss chega ao HP de snowballs.boss_hp_after
+  fight_duration: 3m        # relógio de combate, começa quando o boss chega ao HP de snowballs.boss_hp_after
+
+  # Quantos acertos cada fase de ataque (snowballs, ataque, final) pede: per_player para cada
+  # jogador na luta, nunca menos que minimum. Com os dois em 0, valem os danos de cada fase abaixo.
+  hits:
+    per_player: 8
+    minimum: 15
+  click_cooldown: 2s            # espera de cada jogador entre duas ações na luta
+  counterattack_percent: 10     # chance de o Grinch revidar em quem atacou (tira o mesmo HP de um erro na defesa)
+  revive:                       # quem caiu volta gastando um gift próprio
+    normal_hp_percent: 25       # HP com que volta usando um gift Normal (0 = não serve)
+    rare_hp_percent: 50         # usando um Rare
+    epic_hp_percent: 100        # usando um Epic
+    last_chance: 20s            # com todos caídos, quanto o Grinch espera antes de vencer
 
   # Fase 1: cliques de snowball. O grupo tem este tempo para baixar o boss até boss_hp_after;
   # se o tempo acabar antes, o boss vence.
   snowballs:
     duration: 2m            # tempo para baixar o boss até boss_hp_after
-    damage: 4.17            # HP do boss por clique: 6 cliques do grupo vencem a fase
+    damage: 4.17            # HP do boss por clique: vale só com grinch.hits zerado
     boss_hp_after: 75       # a fase termina quando o boss chega a este HP
 
   # Fase 2: defesa. O dano total da fase (snowballs.boss_hp_after - defense.boss_hp_after)
   # é dividido entre as defesas necessárias: uma por jogador, até max_defenses.
   defense:
     boss_hp_after: 45
-    miss_hp_loss_percent: 10   # % do HP máximo do jogador perdido ao errar
+    miss_hp_loss_percent: 20   # % do HP máximo do jogador perdido ao errar
     max_defenses: 6            # nunca são necessárias mais defesas que isto
 
   # Fase 3: ataque. Os últimos golpes são cortados para não passar de boss_hp_after.
   attack:
-    damage: 6.67            # HP do boss por clique em ☃️: até 6 cliques vencem a fase
+    damage: 6.67            # HP do boss por clique em ☃️: vale só com grinch.hits zerado
     heavy_damage: 7         # HP do boss por clique em 🧊
     boss_hp_after: 5
 
   # Fase 4: ataque final, até o boss chegar a 0.
   final_attack:
-    hit_damage: 0.84        # HP do boss tirado por ⚔️: 6 golpes vencem a fase
+    hit_damage: 0.84        # vale só com grinch.hits zerado
     hit_score: 2            # pontos que ⚔️ dá ao jogador (guardados para uso futuro; o ranking de dano mostra só o dano)
     gift_points:            # 🎁 dá pontos de presente sorteados nesta faixa
       min: 1
@@ -107,3 +119,23 @@ quotes:
   every_messages: 3       # mensagens de jogadores no canal para sair uma frase
   min_interval: 3h        # intervalo mínimo entre duas frases no mesmo canal
                           # (every_messages: 1 vira "a cada X tempo enquanto houver conversa")
+
+# Nice list e Naughty list: vantagens conforme a aura (de -50 a +50).
+aura:
+  nice_at: 25           # aura a partir da qual a pessoa está na Nice list
+  naughty_at: -25       # aura a partir da qual (para baixo) está na Naughty list
+  send_cooldown: 24h    # a aura só conta um envio por pessoa neste prazo, em cada direção (0s conta todos)
+  daily_limit: 15       # quanto a aura sobe e quanto desce, no máximo, por dia (vira às 00:00 UTC; 0 = sem limite)
+  daily_coal: 1         # Coal que o /daily claim dá a quem tem aura 0 ou menor
+  nice:                 # além do bônus de raridade no Random Active Drop
+    daily_extra_gifts: 1            # gifts a mais no /daily claim
+    water_extra_points: 1           # % de água a mais por rega
+    miss_hp_loss_percent: 34        # % de HP perdido ao errar a defesa (normal: grinch.defense)
+    boss_damage_bonus_percent: 20   # % de dano a mais nos ataques ao Grinch
+  naughty:
+    water_less_points: 1            # % de água a menos por rega (a rega soma no mínimo 1%)
+    miss_hp_loss_percent: 10        # % de HP perdido ao errar a defesa
+    daily_yellow_snowballs: 1       # Yellow Snowballs a mais no /daily claim
+    rain_double_percent: 25         # chance de o gift da Gift Rain vir em dobro
+    rain_claim_cooldown: 30s        # espera entre coletas de Gift Rain (normal: drops.gift_rain.claim_cooldown)
+    loss_coal: 0                    # Coal recebido quando o Grinch vence (normal: grinch.loss_rewards)

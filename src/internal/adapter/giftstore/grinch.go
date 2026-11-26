@@ -50,6 +50,9 @@ func (s *SQLite) SaveGrinch(ctx context.Context, scope string, revision int64, s
 		if err != nil {
 			return false, err
 		}
+		if reward.SpentGift != "" && previous.Inventory.Gifts(reward.SpentGift) < 1 {
+			return false, core.ErrInsufficientGift
+		}
 		next := previous
 		next.Inventory = previous.Inventory.AddGrinchReward(reward)
 		update := app.GiftUpdate{Member: member, Previous: previous, Next: next, Reason: app.ReasonGrinchReward}

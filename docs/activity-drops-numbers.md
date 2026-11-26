@@ -28,8 +28,8 @@ Arquivos de origem: `src/internal/core/tuning.go` (padrões e validação), `cor
 
 | Jogador (`gifts.daily_rarity` e `gifts.good_deeds_boost.rarity`) | Normal | Rare | Epic |
 | --- | --- | --- | --- |
-| Good deeds **abaixo de 50%** | 70% | 25% | 5% |
-| Good deeds **de 50% ou mais** (`gifts.good_deeds_boost.threshold`) | **50%** | **35%** | **15%** |
+| Fora da Nice list (aura **abaixo de +25**) | 70% | 25% | 5% |
+| Nice list, aura **+25 ou mais** (`aura.nice_at`) | **50%** | **35%** | **15%** |
 
 - O sorteio é um número de 0 a 99. Sem bônus: 0-69 normal, 70-94 rare, 95-99 epic. Com bônus: 0-49 normal, 50-84 rare, 85-99 epic. (`core.GiftTuning.ActiveDropRarity`)
 - O gift não mexe no cooldown do daily nem na aura.
@@ -99,7 +99,7 @@ Arquivo: [`tuning.yaml`](../tuning.yaml), apontado por `MILKY_TUNING_CONFIG` (Di
 | Espera entre coletas da chuva | `drops.gift_rain.claim_cooldown` | `1m` | 0 ou mais |
 | Chance de Coal na chuva | `drops.gift_rain.coal_percent` | `25` | 0 a 100 |
 | Raridade do daily e da chuva | `gifts.daily_rarity.{normal,rare,epic}` | `70`, `25`, `5` | cada um de 0 a 100, soma 100 |
-| Limite de Good deeds do bônus | `gifts.good_deeds_boost.threshold` | `50` | 0 a 100 |
+| Aura da Nice list | `aura.nice_at` | `25` | 1 a 50 |
 | Raridade com bônus | `gifts.good_deeds_boost.rarity.{normal,rare,epic}` | `50`, `35`, `15` | soma 100 |
 
 - `gifts.daily_rarity` vale também para `/daily claim`.

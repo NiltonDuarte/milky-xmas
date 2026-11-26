@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/NiltonDuarte/milky-xmas/src/internal/app"
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
 
@@ -32,19 +33,25 @@ func treeText(tree core.Tree, rules core.TreeRules, now time.Time) string {
 	return text.String()
 }
 
-// WateredBlocks is the message after a successful watering. goodDeeds is how far the player's
-// aura moved, and is left out when it did not move.
-func WateredBlocks(member string, goodDeeds int, tree core.Tree, rules core.TreeRules, now time.Time, mention func(string) string) []string {
-	first := fmt.Sprintf("💧 %s watered the tree! +%d%%", mention(member), rules.WaterPoints)
-	if goodDeeds > 0 {
-		first += fmt.Sprintf("\n😇 Good deeds +%d", goodDeeds)
+// WateredBlocks is the message after a successful watering. The good deeds are left out when the
+// player's aura did not move.
+func WateredBlocks(member string, watering app.Watering, tree core.Tree, rules core.TreeRules, now time.Time, mention func(string) string) []string {
+	first := fmt.Sprintf("💧 %s watered the tree! +%d%%", mention(member), watering.Added)
+	switch {
+	case watering.ListChange > 0:
+		first += fmt.Sprintf(" (😇 Nice list +%d%%)", watering.ListChange)
+	case watering.ListChange < 0:
+		first += fmt.Sprintf(" (😈 Naughty list %d%%)", watering.ListChange)
+	}
+	if watering.GoodDeeds > 0 {
+		first += fmt.Sprintf("\n😇 Good deeds +%d", watering.GoodDeeds)
 	}
 	return []string{first, treeText(tree, rules, now)}
 }
 
 // Watered is WateredBlocks as one text.
-func Watered(member string, goodDeeds int, tree core.Tree, rules core.TreeRules, now time.Time, mention func(string) string) string {
-	return strings.Join(WateredBlocks(member, goodDeeds, tree, rules, now, mention), "\n")
+func Watered(member string, watering app.Watering, tree core.Tree, rules core.TreeRules, now time.Time, mention func(string) string) string {
+	return strings.Join(WateredBlocks(member, watering, tree, rules, now, mention), "\n")
 }
 
 // TreeRejection explains why a watering did not happen. It is empty for unexpected errors.

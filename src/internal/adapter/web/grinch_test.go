@@ -38,9 +38,8 @@ func TestLocalGrinch(t *testing.T) {
 	}
 	send("/grinch hit 1", "75.00/100% HP\ndefense")
 	send("/grinch view", "👽 The Grinch\n👽 “")
-	send("/grinch view", "⚔️ The players\n⚔️ fixture · 1.00 dmg")
 	// The deterministic board is 0b01010101. Slot 2 is an unsafe defense.
-	send("/grinch hit 2", "was hit by a snowball: -10% HP")
+	send("/grinch hit 2", "was hit by a snowball: -20% HP")
 	send("/grinch hit 2", "45.00/100% HP\nattack")
 	for range 7 {
 		send("/grinch hit 1", "HP\nattack")
@@ -91,7 +90,16 @@ func TestLocalGrinch(t *testing.T) {
 
 // stepGrinchRules keeps small hits, so the walkthrough passes through each phase step by step.
 func stepGrinchRules() core.GrinchRules {
-	rules := core.DefaultTuning().Grinch
+	rules := classicFight(core.DefaultTuning().Grinch)
 	rules.SnowballDamage, rules.AttackDamage, rules.AttackHeavyDamage, rules.FinalHitDamage = 100, 500, 525, 100
+	return rules
+}
+
+// classicFight keeps the numbers these tests were written for: fixed damage, no wait between
+// clicks, no counterattack, no last chance, and a one-minute fight clock.
+func classicFight(rules core.GrinchRules) core.GrinchRules {
+	rules.HitsPerPlayer, rules.MinHits, rules.ClickCooldown, rules.CounterattackPercent = 0, 0, 0, 0
+	rules.LastChance = 0
+	rules.FightDuration = time.Minute
 	return rules
 }

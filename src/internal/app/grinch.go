@@ -15,6 +15,9 @@ type GrinchStore interface {
 	SaveGrinch(context.Context, string, int64, core.Grinch, string, map[string]core.GrinchReward) (bool, error)
 }
 
+// NeedGift is the reply to a revival without a gift of the chosen rarity.
+const NeedGift = "You don't have a gift of that rarity."
+
 type GrinchDisplay interface {
 	Announce(context.Context, core.Grinch) (string, time.Time, error)
 	Update(context.Context, core.Grinch) error
@@ -28,6 +31,15 @@ type GrinchEncounter struct {
 	now       func() time.Time
 	random    func(int) int
 	displayMu sync.Mutex
+	// players, when set, holds the aura that gives players their list's perks.
+	players GiftStore
+	aura    core.AuraRules
+}
+
+// AuraEncounter makes the encounter apply the perks of the players this service stores.
+func (service Service) AuraEncounter(encounter *GrinchEncounter) *GrinchEncounter {
+	encounter.players, encounter.aura = service.gifts, service.tuning.Aura
+	return encounter
 }
 
 func NewGrinchEncounter(store GrinchStore, server, scope string, rules core.GrinchRules, now func() time.Time, random func(int) int) *GrinchEncounter {
@@ -107,11 +119,33 @@ func (e *GrinchEncounter) Play(ctx context.Context, id, message string, move cor
 	var reply string
 	next := uint8(e.random(254) + 1) // Both emoji types appear.
 	move.Roll = e.random(1_000_000)  // Picks the Grinch's line.
+	move.CounterRoll = e.random(100)
 	if move.Phase == core.GrinchAttack || move.Phase == core.GrinchFinalAttack {
 		move.FinalBoard = uint8(e.random(14) + 1) // Both attack and gift tiles.
 	}
 	if move.Phase == core.GrinchFinalAttack {
 		move.GiftPoints = e.random(e.rules.GiftPointsMax-e.rules.GiftPointsMin+1) + e.rules.GiftPointsMin
+	}
+	if e.players != nil {
+		record, err := e.players.Load(ctx, Member{ServerID: e.server, UserID: move.Member})
+		if err != nil {
+			return core.Grinch{}, "", fmt.Errorf("load aura: %w", err)
+		}
+		move.Perks = e.aura.GrinchPerks(record.Aura, e.rules)
+	}
+	if move.Revive != "" {
+		// Without an inventory to take the gift from, nobody gets back up.
+		var record core.GiftRecord
+		if e.players != nil {
+			var err error
+			if record, err = e.players.Load(ctx, Member{ServerID: e.server, UserID: move.Member}); err != nil {
+				return core.Grinch{}, "", fmt.Errorf("load gifts: %w", err)
+			}
+		}
+		if record.Inventory.Gifts(move.Revive) < 1 {
+			state, _, err := e.store.LoadGrinch(ctx, e.scope)
+			return state, NeedGift, err
+		}
 	}
 	state, _, err := e.changeWithRewards(ctx, func(g *core.Grinch) (bool, map[string]core.GrinchReward) {
 		if g.ID != id || g.MessageID == "" || g.MessageID != message {
@@ -127,6 +161,9 @@ func (e *GrinchEncounter) Play(ctx context.Context, id, message string, move cor
 		count := len(g.Accepted)
 		reply = g.Move(e.rules, move)
 		accepted := len(g.Accepted) != count
+		if accepted && move.Revive != "" {
+			return true, map[string]core.GrinchReward{move.Member: {SpentGift: move.Revive}}
+		}
 		if accepted && move.Phase == core.GrinchFinalAttack && move.Slot == core.GrinchSnowballSlot {
 			return true, map[string]core.GrinchReward{move.Member: {Snowballs: e.rules.FinalSnowballReward}}
 		}

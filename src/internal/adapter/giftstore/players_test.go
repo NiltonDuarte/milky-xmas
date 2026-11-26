@@ -101,7 +101,7 @@ func TestGiftTransfersCompeteForLastGift(t *testing.T) {
 		}
 	}
 	record, err := stores[0].Load(ctx, sender)
-	if err != nil || success != 1 || record.Inventory.GiftTotal() != 0 || record.Aura != 30 {
+	if err != nil || success != 1 || record.Inventory.GiftTotal() != 0 || record.Aura != 15 { // The daily limit.
 		t.Errorf("sender = %+v, err = %v, successful transfers = %d", record, err, success)
 	}
 	var received int64

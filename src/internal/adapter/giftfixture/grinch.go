@@ -58,5 +58,7 @@ func cloneGrinch(state core.Grinch) core.Grinch {
 	state.PlayerFeed = slices.Clone(state.PlayerFeed)
 	state.BossFeed = slices.Clone(state.BossFeed)
 	state.Accepted = maps.Clone(state.Accepted)
+	state.Perks = maps.Clone(state.Perks)
+	state.LastMove = maps.Clone(state.LastMove)
 	return state
 }

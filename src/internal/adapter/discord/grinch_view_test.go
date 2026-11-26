@@ -127,7 +127,7 @@ func TestGrinchViewShowsPlayerCardsDuringTheFight(t *testing.T) {
 	}
 	text := viewText(t, view)
 	for _, want := range []string{
-		"**<@p00>**\n❤️ 100% HP · ⚔️ 20.00 damage", "**<@p01>**\n💀 Out of HP · ⚔️ 10.00 damage", "👽 Grinch · 40.00/100% HP",
+		"**<@p00>**\n❤️ 100% HP", "**<@p01>**\n💀 Out of HP", "👽 Grinch · 40.00/100% HP",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("view misses %q in %q", want, text)
@@ -150,8 +150,8 @@ func TestGrinchViewCapsCardsAndStaysWithinDiscordsLimit(t *testing.T) {
 		if got := strings.Count(text, "**<@"); got != grinchCardLimit {
 			t.Errorf("%s: %d cards, want %d", phase, got, grinchCardLimit)
 		}
-		// p08 to p11 are the four players without a card. p11 is out of HP, so three still stand. Their damage is 4+3+2+1 = 10.
-		if want := "➕ 4 more players · 3 still standing · ⚔️ 100.00 damage"; !strings.Contains(text, want) {
+		// p08 to p11 are the four players without a card. p11 is out of HP, so three still stand.
+		if want := "➕ 4 more players · 3 still standing"; !strings.Contains(text, want) {
 			t.Errorf("%s: view misses %q in %q", phase, want, text)
 		}
 		if count := componentCount(t, view); count > 40 {
@@ -231,7 +231,7 @@ func TestGrinchFinalMessageWithoutPermissionToAttachFiles(t *testing.T) {
 	})
 	state := fightWithPlayers(core.GrinchEscaped, 25)
 	state.EndedAt = time.Now()
-	if err := (grinchDisplay{session, "400", core.DefaultTuning().Grinch, nil}).Update(t.Context(), state); err != nil {
+	if err := (grinchDisplay{session, "400", core.DefaultTuning().Grinch, nil, nil}).Update(t.Context(), state); err != nil {
 		t.Fatal(err)
 	}
 	if want := []string{"with files", "without files"}; !slices.Equal(attempts, want) {
@@ -239,26 +239,24 @@ func TestGrinchFinalMessageWithoutPermissionToAttachFiles(t *testing.T) {
 	}
 }
 
-func TestGrinchViewShowsTheBossAndPlayerAreas(t *testing.T) {
+func TestGrinchViewShowsOnlyTheBossArea(t *testing.T) {
 	rules := core.DefaultTuning().Grinch
 	fight := fightWithPlayers(core.GrinchDefense, 2)
 	text := viewText(t, grinchView(rules, fight, []string{grinchImageName}, false, false))
-	for _, want := range []string{"👽 **The Grinch**\n*The Grinch is watching…*", "⚔️ **The players**\n*Nobody has attacked yet.*"} {
-		if !strings.Contains(text, want) {
-			t.Errorf("empty areas miss %q in %q", want, text)
-		}
+	if want := "👽 **The Grinch**\n*The Grinch is watching…*"; !strings.Contains(text, want) {
+		t.Errorf("empty area misses %q in %q", want, text)
 	}
 
 	fight.BossFeed = []core.GrinchEvent{{Kind: core.EventPhase, Phase: core.GrinchDefense, Roll: 0}, {Kind: core.EventMiss, Member: "p01", Amount: 10, Roll: 3}}
 	fight.PlayerFeed = []core.GrinchEvent{{Kind: core.EventHit, Member: "p00", Damage: 1}, {Kind: core.EventDefend, Member: "p01", Damage: 15, Roll: 0}}
 	text = viewText(t, grinchView(rules, fight, []string{grinchImageName}, false, false))
-	for _, want := range []string{
-		"👽 **The Grinch**\n💥 “Max, mark it down: one direct hit!”\n↳ <@p01> was hit by a snowball: -10% HP\n👽 “Fine! Let's see you dodge THIS!”\n↳ Defense: hide behind the tree!",
-		"⚔️ **The players**\n🎄 <@p01> · 15.00 dmg · “Nothing to see here, just a big tree.”\n⚔️ <@p00> · 1.00 dmg",
-	} {
-		if !strings.Contains(text, want) {
-			t.Errorf("view misses %q in %q", want, text)
-		}
+	want := "👽 **The Grinch**\n💥 “Max, mark it down: one direct hit!”\n↳ <@p01> was hit by a snowball: -10% HP\n👽 “Fine! Let's see you dodge THIS!”\n↳ Defense: hide behind the tree!"
+	if !strings.Contains(text, want) {
+		t.Errorf("view misses %q in %q", want, text)
+	}
+	// What the players deal is left for the final standings.
+	if strings.Contains(text, "The players") || strings.Contains(text, "dmg") || strings.Contains(text, "damage") {
+		t.Errorf("the running fight shows damage: %q", text)
 	}
 	// The areas belong to a fight in progress, not to registration or the final message.
 	lobby := viewText(t, grinchView(rules, fightWithPlayers(core.GrinchLobby, 1), []string{grinchImageName}, false, false))
@@ -266,32 +264,27 @@ func TestGrinchViewShowsTheBossAndPlayerAreas(t *testing.T) {
 	ended.EndedAt = time.Now()
 	final := viewText(t, grinchView(rules, ended, []string{grinchImageName}, false, false))
 	for name, text := range map[string]string{"lobby": lobby, "final": final} {
-		if strings.Contains(text, "The Grinch**") || strings.Contains(text, "The players**") {
+		if strings.Contains(text, "The Grinch**") {
 			t.Errorf("%s shows the fight areas: %q", name, text)
 		}
 	}
 }
 
-// The message must not change size as events come in: both areas always have the same number of lines.
+// The message must not change size as events come in: the area always has the same number of lines.
 func TestGrinchActivityAreasKeepTheirHeight(t *testing.T) {
-	lines := func(state core.Grinch) (boss, players int) {
-		area := grinchActivity(state, nil, nil)
-		texts := area.Components
-		return strings.Count(texts[0].(discordgo.TextDisplay).Content, "\n"), strings.Count(texts[2].(discordgo.TextDisplay).Content, "\n")
+	lines := func(state core.Grinch) int {
+		return strings.Count(grinchActivity(state, nil, nil).Components[0].(discordgo.TextDisplay).Content, "\n")
 	}
 	empty := fightWithPlayers(core.GrinchDefense, 2)
 	full := fightWithPlayers(core.GrinchDefense, 2)
 	for i := range 10 {
 		full.BossFeed = append(full.BossFeed, core.GrinchEvent{Kind: core.EventMiss, Member: "p01", Amount: 10, Roll: i})
-		full.PlayerFeed = append(full.PlayerFeed, core.GrinchEvent{Kind: core.EventDefend, Member: "p00", Damage: 1, Roll: i})
 	}
 	one := fightWithPlayers(core.GrinchDefense, 2)
 	one.BossFeed = []core.GrinchEvent{{Kind: core.EventGift, Member: "p00", Amount: 2}}
-	one.PlayerFeed = []core.GrinchEvent{{Kind: core.EventHit, Member: "p00", Damage: 1}}
-	wantBoss, wantPlayers := 2*grinchtext.BossEvents, grinchtext.PlayerEvents
 	for name, state := range map[string]core.Grinch{"empty": empty, "one event": one, "more events than fit": full} {
-		if boss, players := lines(state); boss != wantBoss || players != wantPlayers {
-			t.Errorf("%s: the areas have %d and %d lines after their titles, want %d and %d", name, boss, players, wantBoss, wantPlayers)
+		if got := lines(state); got != 2*grinchtext.BossEvents {
+			t.Errorf("%s: the area has %d lines after its title, want %d", name, got, 2*grinchtext.BossEvents)
 		}
 	}
 	// The activity is a box of its own, apart from the panel with the image and buttons.
@@ -301,7 +294,7 @@ func TestGrinchActivityAreasKeepTheirHeight(t *testing.T) {
 	}
 }
 
-func TestGrinchButtonsSitInTheActivityBoxBelowTheTextAreas(t *testing.T) {
+func TestGrinchButtonsSitInTheActivityBoxBelowTheTextArea(t *testing.T) {
 	rules := core.DefaultTuning().Grinch
 	for _, phase := range []core.GrinchPhase{core.GrinchSnowballs, core.GrinchDefense, core.GrinchAttack, core.GrinchFinalAttack} {
 		fight := fightWithPlayers(phase, 3)
@@ -315,9 +308,8 @@ func TestGrinchButtonsSitInTheActivityBoxBelowTheTextAreas(t *testing.T) {
 			t.Errorf("%s: the panel with the image has the buttons", phase)
 		}
 		box := view[1].(discordgo.Container).Components
-		if len(box) < 4 || box[0].Type() != discordgo.TextDisplayComponent || box[1].Type() != discordgo.SeparatorComponent ||
-			box[2].Type() != discordgo.TextDisplayComponent || box[3].Type() != discordgo.ActionsRowComponent {
-			t.Errorf("%s: the activity box is not the Grinch's text, a separator, the players' text, and then the buttons", phase)
+		if len(box) < 2 || box[0].Type() != discordgo.TextDisplayComponent || box[1].Type() != discordgo.ActionsRowComponent {
+			t.Errorf("%s: the activity box is not the Grinch's text and then the buttons", phase)
 		}
 		for _, card := range view[2:] {
 			if hasRow(card) {

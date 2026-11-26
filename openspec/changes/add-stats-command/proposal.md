@@ -4,8 +4,8 @@ Players and moderators want to see what happened in the event: server totals and
 
 ## What Changes
 
-- `/stats` opens a private panel with a drop-down for server stats or leaderboards.
-- The leaderboards have a second drop-down: Bad eggs, Good eggs, Throwers, Gifters, and Plant moms and dads.
+- `/stats` opens a private panel with a drop-down for server stats or leaderboards, a second one below it, and the server stats until something is picked.
+- The second drop-down holds Server stats and the leaderboards: Bad eggs, Good eggs, Throwers, Gifters, and Plant moms and dads.
 
 ## Capabilities
 

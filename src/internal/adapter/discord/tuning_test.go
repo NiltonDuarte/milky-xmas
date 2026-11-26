@@ -23,9 +23,9 @@ func TestGrinchMessagesQuoteTheDefaultNumbers(t *testing.T) {
 	}{
 		{"lobby", core.Grinch{ID: "f", Phase: core.GrinchLobby, StartedAt: start, HP: core.GrinchBossHP}, "**0/3 to start early**"},
 		{"snowballs", core.Grinch{ID: "f", Phase: core.GrinchSnowballs, StartedAt: start, HP: 9000},
-			"Escapes <t:" + strconv.FormatInt(start.Add(2*time.Minute).Unix(), 10) + ":R>\nThrow snowballs to bring the Grinch down to **75 HP** before time runs out, or he wins. Then the one-minute timer starts."},
+			"Escapes <t:" + strconv.FormatInt(start.Add(2*time.Minute).Unix(), 10) + ":R>\nThrow snowballs to bring the Grinch down to **75 HP** before time runs out, or he wins. Then the 3-minute timer starts."},
 		{"final", core.Grinch{ID: "f", Phase: core.GrinchFinalAttack, StartedAt: start, TimedAt: start, HP: 500},
-			"⚔️ Attack for 0.84 damage, pick 🎁 for 1–5 gift points, or pick ❄️ for 1 Snowball."},
+			"⚔️ Attack for 0.34 damage, pick 🎁 for 1–5 gift points, or pick ❄️ for 1 Snowball."},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			if content, _ := grinchMessage(rules, tt.state); !strings.Contains(content, tt.want) {
@@ -36,7 +36,7 @@ func TestGrinchMessagesQuoteTheDefaultNumbers(t *testing.T) {
 }
 
 func TestGrinchMessagesQuoteTunedNumbers(t *testing.T) {
-	rules := core.DefaultTuning().Grinch
+	rules := classicFight(core.DefaultTuning().Grinch)
 	rules.EarlyStartPlayers = 2
 	rules.RegistrationDuration = 2 * time.Minute
 	rules.SnowballsBossHP = 8250

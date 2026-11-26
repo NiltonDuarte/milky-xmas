@@ -16,9 +16,9 @@ func (rules GrinchRules) SnowballEarned() string {
 	return fmt.Sprintf("❄️ You earned %d Snowballs!", rules.FinalSnowballReward)
 }
 
-// SnowflakeHit is the reply for a missed defense.
-func (rules GrinchRules) SnowflakeHit() string {
-	return fmt.Sprintf("Snowflake! You lost %d%% of your maximum HP.", rules.DefenseMissHPLoss)
+// SnowflakeHit is the reply for a missed defense that cost the given share of maximum HP.
+func SnowflakeHit(percent int) string {
+	return fmt.Sprintf("Snowflake! You lost %d%% of your maximum HP.", percent)
 }
 
 type GrinchPhase string
@@ -49,6 +49,12 @@ type GrinchMove struct {
 	GiftPoints   int
 	// Roll is a random number for the Grinch's lines. See GrinchEvent.
 	Roll int
+	// Perks is what the player's list gives them. It counts when the player enters the fight.
+	Perks *GrinchPerks
+	// CounterRoll is a random number in [0, 100) that decides whether the Grinch hits back.
+	CounterRoll int
+	// Revive, when set, spends one of the fallen player's gifts of that rarity to get back up.
+	Revive GiftRarity
 }
 
 // Grinch uses hundredths of HP for attack damage. Defense HP derives from the
@@ -78,6 +84,9 @@ type Grinch struct {
 	PlayerDamage   map[string]int
 	DamageDealt    map[string]GrinchDamage
 	Accepted       map[string]bool
+	Perks          map[string]GrinchPerks // Players on a list, as they entered the fight.
+	LastMove       map[string]time.Time   // Each player's last accepted action, for the cooldown.
+	DownAt         time.Time              // When the last player standing fell, if one may still get up.
 	Dirty          bool
 }
 
@@ -146,6 +155,13 @@ func (g *Grinch) Advance(rules GrinchRules, now time.Time) bool {
 		g.Phase, g.StartedAt = GrinchSnowballs, deadline
 		g.bossEvent(GrinchEvent{Kind: EventPhase, Phase: GrinchSnowballs, Roll: int(deadline.UnixMilli())})
 	}
+	if down := g.LastChanceEnds(rules); !down.IsZero() && !g.hasSurvivor() && !now.Before(down) {
+		if deadline := g.Deadline(rules); deadline.IsZero() || down.Before(deadline) {
+			g.end(rules, GrinchDefeat, down)
+			g.bossEvent(GrinchEvent{Kind: EventPhase, Phase: GrinchDefeat, Roll: int(down.UnixMilli())})
+			return true
+		}
+	}
 	if deadline := g.Deadline(rules); !deadline.IsZero() && !now.Before(deadline) {
 		g.end(rules, GrinchEscaped, deadline)
 		return true
@@ -172,6 +188,35 @@ func (g Grinch) hasSurvivor() bool {
 // Move applies a player's action. Anyone can take part, even after the fight has started: the first
 // action of a player that is accepted puts them in the fight, and a refused action does not.
 func (g *Grinch) Move(rules GrinchRules, move GrinchMove) string {
+	entering := !g.Joined[move.Member]
+	if entering {
+		delete(g.Perks, move.Member)
+		if move.Perks != nil {
+			if g.Perks == nil {
+				g.Perks = make(map[string]GrinchPerks)
+			}
+			g.Perks[move.Member] = *move.Perks
+		}
+	}
+	reply := g.join(rules, move)
+	if entering && !g.Joined[move.Member] {
+		delete(g.Perks, move.Member)
+	}
+	return reply
+}
+
+// perks is how the fight treats the player.
+func (g Grinch) perks(rules GrinchRules, member string) GrinchPerks {
+	if perks, ok := g.Perks[member]; ok {
+		return perks
+	}
+	return GrinchPerks{MissHPLoss: rules.DefenseMissHPLoss, LossCoal: rules.LossCoal}
+}
+
+// boosted adds the player's damage bonus to an attack.
+func (perks GrinchPerks) boosted(damage int) int { return damage * (100 + perks.DamageBonus) / 100 }
+
+func (g *Grinch) join(rules GrinchRules, move GrinchMove) string {
 	if move.Phase == GrinchLobby || g.Phase == GrinchLobby || g.Joined == nil || g.Joined[move.Member] {
 		return g.move(rules, move)
 	}
@@ -181,6 +226,118 @@ func (g *Grinch) Move(rules GrinchRules, move GrinchMove) string {
 		delete(g.Joined, move.Member)
 	}
 	return reply
+}
+
+// HitDamage is what one hit takes from the Grinch in a phase that has to remove span, whose
+// damage is fixed when the hits do not grow with the players.
+func (g Grinch) hitDamage(rules GrinchRules, span, fixed int) int {
+	needed := max(rules.MinHits, rules.HitsPerPlayer*len(g.Joined))
+	if needed <= 0 {
+		return fixed
+	}
+	return (span + needed - 1) / needed
+}
+
+// FinalDamage is what one final attack takes from the Grinch, before any list bonus.
+func (g Grinch) FinalDamage(rules GrinchRules) int {
+	return g.hitDamage(rules, rules.AttackBossHP, rules.FinalHitDamage)
+}
+
+// ReviveHP is the HP, in percent, a gift of the rarity brings a fallen player back with.
+func (rules GrinchRules) ReviveHP(rarity GiftRarity) int {
+	switch rarity {
+	case NormalGift:
+		return rules.ReviveNormalHP
+	case RareGift:
+		return rules.ReviveRareHP
+	case EpicGift:
+		return rules.ReviveEpicHP
+	default:
+		return 0
+	}
+}
+
+// CanRevive reports whether any gift can bring a fallen player back.
+func (rules GrinchRules) CanRevive() bool {
+	return rules.ReviveNormalHP > 0 || rules.ReviveRareHP > 0 || rules.ReviveEpicHP > 0
+}
+
+// LastChanceEnds is when the Grinch wins unless somebody gets back up. It is zero while somebody
+// is standing.
+func (g Grinch) LastChanceEnds(rules GrinchRules) time.Time {
+	if g.DownAt.IsZero() || !g.EndedAt.IsZero() {
+		return time.Time{}
+	}
+	return g.DownAt.Add(rules.LastChance)
+}
+
+// SomeoneDown reports whether a player in the fight is out of HP.
+func (g Grinch) SomeoneDown() bool {
+	for member := range g.Joined {
+		if g.PlayerDamage[member] >= 100 {
+			return true
+		}
+	}
+	return false
+}
+
+// hurt takes HP from a player and records it for the boss' text area. When nobody is left standing
+// the Grinch wins, after the last chance to get back up if gifts can do that.
+func (g *Grinch) hurt(rules GrinchRules, move GrinchMove, percent int) {
+	g.PlayerDamage[move.Member] += percent
+	g.bossEvent(GrinchEvent{Kind: EventMiss, Member: move.Member, Amount: percent, Roll: move.Roll})
+	if g.PlayerDamage[move.Member] < 100 || g.hasSurvivor() {
+		return
+	}
+	if rules.CanRevive() && rules.LastChance > 0 {
+		g.DownAt = move.At
+		return
+	}
+	g.end(rules, GrinchDefeat, move.At)
+	g.bossEvent(GrinchEvent{Kind: EventPhase, Phase: GrinchDefeat, Roll: move.Roll})
+}
+
+// counterattack may let the Grinch hit back at a player who attacked, and returns the words that
+// tell them so.
+func (g *Grinch) counterattack(rules GrinchRules, move GrinchMove) string {
+	if rules.CounterattackPercent <= 0 || move.CounterRoll < 100-rules.CounterattackPercent || !g.EndedAt.IsZero() {
+		return ""
+	}
+	percent := g.perks(rules, move.Member).MissHPLoss
+	g.hurt(rules, move, percent)
+	return fmt.Sprintf(" The Grinch hit you back: -%d%% HP.", percent)
+}
+
+// revive gets a fallen player back up with the gift they chose.
+func (g *Grinch) revive(rules GrinchRules, move GrinchMove) string {
+	switch g.Phase {
+	case GrinchSnowballs, GrinchDefense, GrinchAttack, GrinchFinalAttack:
+	default:
+		return "This part of the fight has ended."
+	}
+	if g.PlayerDamage[move.Member] < 100 {
+		return "You are still standing. A gift only brings you back after you fall."
+	}
+	hp := rules.ReviveHP(move.Revive)
+	if hp <= 0 {
+		return "That gift cannot bring you back."
+	}
+	g.PlayerDamage[move.Member] = 100 - hp
+	g.bossEvent(GrinchEvent{Kind: EventRevive, Member: move.Member, Amount: hp})
+	g.accept(move)
+	return fmt.Sprintf("You are back with %d%% HP!", hp)
+}
+
+// accept counts an action and starts the player's wait for the next one.
+func (g *Grinch) accept(move GrinchMove) {
+	if g.LastMove == nil {
+		g.LastMove = make(map[string]time.Time)
+	}
+	g.LastMove[move.Member] = move.At
+	g.Accepted[move.RequestID], g.Dirty = true, true
+	if g.hasSurvivor() {
+		g.DownAt = time.Time{}
+	}
 }
 
 func (g *Grinch) move(rules GrinchRules, move GrinchMove) string {
@@ -211,20 +368,27 @@ func (g *Grinch) move(rules GrinchRules, move GrinchMove) string {
 		}
 		return "✅ You're in the fight! You can attack now."
 	}
+	if move.Revive != "" {
+		return g.revive(rules, move)
+	}
 	if g.Phase != move.Phase || move.At.Before(g.StartedAt) {
 		return "This part of the fight has ended."
 	}
 	if g.PlayerDamage[move.Member] >= 100 {
 		return "You have no HP left in this fight."
 	}
+	if last, ok := g.LastMove[move.Member]; ok && move.At.Sub(last) < rules.ClickCooldown {
+		return "Slow down! Wait a moment before your next move."
+	}
 	var reply string
 	damage := GrinchDamage{}
+	perks := g.perks(rules, move.Member)
 	switch g.Phase {
 	case GrinchSnowballs:
 		if move.Slot != 0 {
 			return "The snowball phase has ended."
 		}
-		applied := min(rules.SnowballDamage, g.HP-rules.SnowballsBossHP)
+		applied := min(perks.boosted(g.hitDamage(rules, GrinchBossHP-rules.SnowballsBossHP, rules.SnowballDamage)), g.HP-rules.SnowballsBossHP)
 		g.HP -= applied
 		damage.Hundredths = applied
 		reply = fmt.Sprintf("Snowball hit for %s HP.", FormatHundredths(applied))
@@ -241,13 +405,8 @@ func (g *Grinch) move(rules GrinchRules, move GrinchMove) string {
 			return "That defense tile is unavailable."
 		}
 		if g.Board&(1<<move.Slot) == 0 {
-			g.PlayerDamage[move.Member] += rules.DefenseMissHPLoss
-			reply = rules.SnowflakeHit()
-			g.bossEvent(GrinchEvent{Kind: EventMiss, Member: move.Member, Amount: rules.DefenseMissHPLoss, Roll: move.Roll})
-			if g.PlayerDamage[move.Member] >= 100 && !g.hasSurvivor() {
-				g.end(rules, GrinchDefeat, move.At)
-				g.bossEvent(GrinchEvent{Kind: EventPhase, Phase: GrinchDefeat, Roll: move.Roll})
-			}
+			reply = SnowflakeHit(perks.MissHPLoss)
+			g.hurt(rules, move, perks.MissHPLoss)
 		} else {
 			g.Defenses++
 			damage.Defenses = 1
@@ -269,11 +428,11 @@ func (g *Grinch) move(rules GrinchRules, move GrinchMove) string {
 		if move.Slot < 0 || move.Slot >= 8 {
 			return "That attack tile is unavailable."
 		}
-		hit := rules.AttackDamage
+		hit := g.hitDamage(rules, rules.DefenseBossHP-rules.AttackBossHP, rules.AttackDamage)
 		if g.Board&(1<<move.Slot) != 0 {
-			hit = rules.AttackHeavyDamage
+			hit = hit * rules.AttackHeavyDamage / max(1, rules.AttackDamage)
 		}
-		damageApplied := min(g.HP-rules.AttackBossHP, hit)
+		damageApplied := min(g.HP-rules.AttackBossHP, perks.boosted(hit))
 		g.HP -= damageApplied
 		damage.Hundredths = damageApplied
 		reply = "Attack hit!"
@@ -306,7 +465,7 @@ func (g *Grinch) move(rules GrinchRules, move GrinchMove) string {
 			g.bossEvent(GrinchEvent{Kind: EventGift, Member: move.Member, Amount: move.GiftPoints, Roll: move.Roll})
 			reply = fmt.Sprintf("🎁 You earned %d gift points!", move.GiftPoints)
 		} else {
-			applied := min(g.HP, rules.FinalHitDamage)
+			applied := min(g.HP, perks.boosted(g.FinalDamage(rules)))
 			g.HP -= applied
 			damage.Hundredths, damage.Points = applied, rules.FinalHitScore
 			reply = fmt.Sprintf("Final attack hit for %s HP.", FormatHundredths(applied))
@@ -332,7 +491,10 @@ func (g *Grinch) move(rules GrinchRules, move GrinchMove) string {
 		total.Points += damage.Points // Only the final attack awards points.
 		g.DamageDealt[move.Member] = total
 	}
-	g.Accepted[move.RequestID] = true
-	g.Dirty = true
+	g.accept(move)
+	// Only an attack provokes the Grinch: a defense, a gift, or a Snowball does not.
+	if damage.Hundredths != 0 {
+		reply += g.counterattack(rules, move)
+	}
 	return reply
 }

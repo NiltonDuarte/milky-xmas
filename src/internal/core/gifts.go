@@ -70,6 +70,10 @@ type GiftRecord struct {
 	Inventory Inventory
 	LastClaim time.Time
 	Aura      Aura
+	// AuraDay is the UTC date AuraRaised and AuraLowered count for.
+	AuraDay     string
+	AuraRaised  int // Points the aura went up on AuraDay.
+	AuraLowered int // Points the aura went down on AuraDay.
 }
 
 var (

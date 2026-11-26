@@ -22,6 +22,8 @@ type privateReply struct {
 	Components []discordgo.MessageComponent
 	// ComponentsFirst puts the buttons and menus of a box above its text.
 	ComponentsFirst bool
+	// Accent, when set, colours the side of the box.
+	Accent int
 }
 
 type privateImage struct {
@@ -172,7 +174,11 @@ func boxedComponents(result privateReply) []discordgo.MessageComponent {
 	if !result.ComponentsFirst {
 		box = append(box, result.Components...)
 	}
-	return []discordgo.MessageComponent{discordgo.Container{Components: box}}
+	container := discordgo.Container{Components: box}
+	if result.Accent != 0 {
+		container.AccentColor = &result.Accent
+	}
+	return []discordgo.MessageComponent{container}
 }
 
 // file is the image as a new upload.

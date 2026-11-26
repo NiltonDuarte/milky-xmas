@@ -85,22 +85,16 @@ func fixedLines(lines []string, n int) string {
 	return strings.Join(lines, "\n")
 }
 
-// grinchActivity is a box of its own with two text areas of fixed height, what the Grinch says and
-// did to the players and who is attacking and the damage they do, and below them the buttons of
-// the phase, and below those a card for each player. Everything shares the one box.
+// grinchActivity is a box of its own with a text area of fixed height for what the Grinch says and
+// did to the players, and below it the buttons of the phase, and below those a card for each
+// player. The damage players do is left for the final standings, to keep the screen quiet.
 func grinchActivity(state core.Grinch, buttons, cards []discordgo.MessageComponent) discordgo.Container {
 	boss := grinchtext.BossLines(state.BossFeed, mentionUser, grinchtext.BossEvents)
 	if len(boss) == 0 {
 		boss = []string{"*The Grinch is watching…*"}
 	}
-	players := grinchtext.PlayerLines(state.PlayerFeed, mentionUser, grinchtext.PlayerEvents)
-	if len(players) == 0 {
-		players = []string{"*Nobody has attacked yet.*"}
-	}
 	box := []discordgo.MessageComponent{
 		discordgo.TextDisplay{Content: "👽 **The Grinch**\n" + fixedLines(boss, 2*grinchtext.BossEvents)},
-		discordgo.Separator{},
-		discordgo.TextDisplay{Content: "⚔️ **The players**\n" + fixedLines(players, grinchtext.PlayerEvents)},
 	}
 	box = append(box, buttons...)
 	if len(cards) > 0 {
@@ -161,17 +155,16 @@ func grinchCards(rules core.GrinchRules, state core.Grinch) []discordgo.MessageC
 		case hp <= 50:
 			marker = "🟨"
 		}
-		cards = append(cards, discordgo.TextDisplay{Content: fmt.Sprintf("%s **<@%s>**\n%s · ⚔️ %.2f damage", marker, score.Member, status, score.Points)})
+		cards = append(cards, discordgo.TextDisplay{Content: fmt.Sprintf("%s **<@%s>**\n%s", marker, score.Member, status)})
 	}
 	if len(scores) > grinchCardLimit {
-		others, standing, damage := scores[grinchCardLimit:], 0, 0.0
+		others, standing := scores[grinchCardLimit:], 0
 		for _, score := range others {
 			if state.PlayerDamage[score.Member] < 100 {
 				standing++
 			}
-			damage += score.Points
 		}
-		cards = append(cards, discordgo.TextDisplay{Content: fmt.Sprintf("➕ %d more players · %d still standing · ⚔️ %.2f damage", len(others), standing, damage)})
+		cards = append(cards, discordgo.TextDisplay{Content: fmt.Sprintf("➕ %d more players · %d still standing", len(others), standing)})
 	}
 	return cards
 }

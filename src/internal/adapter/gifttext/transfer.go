@@ -37,15 +37,23 @@ func Aura(aura core.Aura) string {
 	return fmt.Sprintf("```\n%s%s 😇 %s\n%s👆🏻\n```", left, string(bar), good, indent)
 }
 
-func Transfer(item string, quantity int64, recipient string) string {
+// Transfer confirms a send and says what it did to the sender's aura.
+func Transfer(item string, quantity int64, recipient string, aura app.AuraEffect) string {
+	var sent, effect string
 	if item == app.CoalItem {
-		return fmt.Sprintf("Sent %d %s Coal to %s. Your 😈 bad deeds are increasing. Beware!", quantity, CoalEmoji, recipient)
+		sent = fmt.Sprintf("Sent %d %s Coal to %s.", quantity, CoalEmoji, recipient)
+		effect = "Your 😈 bad deeds are increasing. Beware!"
+	} else {
+		sent = fmt.Sprintf("Sent %d 🎁 %s gift%s to %s.", quantity, item, plural(quantity), recipient)
+		effect = "Your 😇 good deeds are going up."
 	}
-	gift := "gifts"
-	if quantity == 1 {
-		gift = "gift"
+	switch aura {
+	case app.AuraRepeated:
+		effect = "Your aura did not change: it already counted a send to them today."
+	case app.AuraLimited:
+		effect = "Your aura did not change: it already moved as much as it can today."
 	}
-	return fmt.Sprintf("Sent %d 🎁 %s %s to %s. Your 😇 good deeds are going up.", quantity, item, gift, recipient)
+	return sent + " " + effect
 }
 
 func TransferRejection(err error) string {

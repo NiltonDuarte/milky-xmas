@@ -12,7 +12,7 @@ import (
 // The shell supplies the random number the core uses to pick the Grinch's lines.
 func TestPlayGivesTheFightARandomRollForTheGrinchsLines(t *testing.T) {
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
-	rules := core.DefaultTuning().Grinch
+	rules := classicFight(core.DefaultTuning().Grinch)
 	store := &giftfixture.Store{}
 	fight := core.Grinch{ID: "f", MessageID: "m", Phase: core.GrinchSnowballs, StartedAt: now, HP: rules.SnowballsBossHP + rules.SnowballDamage,
 		Joined: map[string]bool{"alice": true}, PlayerDamage: map[string]int{},
@@ -40,4 +40,13 @@ func TestPlayGivesTheFightARandomRollForTheGrinchsLines(t *testing.T) {
 	if err != nil || len(stored.BossFeed) != 1 || len(stored.PlayerFeed) != 1 {
 		t.Fatalf("stored fight = %+v, %v", stored, err)
 	}
+}
+
+// classicFight keeps the numbers these tests were written for: fixed damage, no wait between
+// clicks, no counterattack, no last chance, and a one-minute fight clock.
+func classicFight(rules core.GrinchRules) core.GrinchRules {
+	rules.HitsPerPlayer, rules.MinHits, rules.ClickCooldown, rules.CounterattackPercent = 0, 0, 0, 0
+	rules.LastChance = 0
+	rules.FightDuration = time.Minute
+	return rules
 }
