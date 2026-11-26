@@ -130,6 +130,10 @@ Run `/water` to water the server's Christmas tree. It starts withered at 10% wat
 
 In the Discord test server, run `/water` from two accounts and check the public message and image, then run it again right away to see the private refusal. Restart the bot with the same database to check the level continues.
 
+## Event history
+
+For the scoreboards at the end of the event, the bot's database keeps every finished Grinch fight (`grinch_history`) and every inventory or aura change with its reason (`player_history`). Waterings stay counted in the tree and opened Advent doors in `advent_openings`. Nothing shows these records yet.
+
 ## Tuning the numbers
 
 The balance numbers in [docs/activity-drops-numbers.md](docs/activity-drops-numbers.md) and [docs/grinch-fight-numbers.md](docs/grinch-fight-numbers.md) live in [tuning.yaml](tuning.yaml): drop odds and lifetimes, Gift Rain size and Coal chance, gift rarity odds, and every Grinch timer, HP milestone, damage value, and reward. The file holds the defaults with a comment per value. Without it the bot uses the same built-in numbers.

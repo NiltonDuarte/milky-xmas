@@ -40,7 +40,22 @@ func loadPlayer(ctx context.Context, reader playerReader, member app.Member) (co
 }
 
 func (s *SQLite) Save(ctx context.Context, update app.GiftUpdate) (bool, error) {
-	return savePlayer(ctx, s.db, update)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+	saved, err := savePlayer(ctx, tx, update)
+	if err != nil || !saved {
+		return false, err
+	}
+	if err := recordHistory(ctx, tx, update, ""); err != nil {
+		return false, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (s *SQLite) SaveTransfer(ctx context.Context, sender, recipient app.GiftUpdate) (bool, error) {
@@ -50,9 +65,15 @@ func (s *SQLite) SaveTransfer(ctx context.Context, sender, recipient app.GiftUpd
 	}
 	defer tx.Rollback()
 
-	for _, update := range []app.GiftUpdate{sender, recipient} {
-		saved, err := savePlayer(ctx, tx, update)
+	for _, side := range []struct {
+		update app.GiftUpdate
+		peer   string
+	}{{sender, recipient.Member.UserID}, {recipient, sender.Member.UserID}} {
+		saved, err := savePlayer(ctx, tx, side.update)
 		if err != nil || !saved {
+			return false, err
+		}
+		if err := recordHistory(ctx, tx, side.update, side.peer); err != nil {
 			return false, err
 		}
 	}
@@ -88,6 +109,23 @@ func savePlayer(ctx context.Context, writer playerWriter, update app.GiftUpdate)
 	}
 	changed, err := result.RowsAffected()
 	return changed == 1, err
+}
+
+// recordHistory keeps what one saved change added to or took from a player, for the event's
+// scoreboards. peer is the other player of a transfer. A change without a reason is not kept.
+func recordHistory(ctx context.Context, writer playerWriter, update app.GiftUpdate, peer string) error {
+	if update.Reason == "" {
+		return nil
+	}
+	next, previous := update.Next.Inventory, update.Previous.Inventory
+	_, err := writer.ExecContext(ctx, `
+		INSERT INTO player_history (server_id, user_id, peer_id, reason, normal, rare, epic, snowballs, yellow_snowballs, coal, aura, at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+	`, update.Member.ServerID, update.Member.UserID, peer, string(update.Reason),
+		next.Normal-previous.Normal, next.Rare-previous.Rare, next.Epic-previous.Epic,
+		next.Snowballs-previous.Snowballs, next.YellowSnowballs-previous.YellowSnowballs, next.Coal-previous.Coal,
+		update.Next.Aura-update.Previous.Aura)
+	return err
 }
 
 func claimTime(value time.Time) string {

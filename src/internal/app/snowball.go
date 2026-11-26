@@ -11,10 +11,10 @@ import (
 func (service Service) ThrowSnowball(ctx context.Context, sender Member, recipient Recipient, kind core.SnowballType) (int64, error) {
 	switch kind {
 	case core.NormalSnowball:
-		transfer, err := service.transfer(ctx, sender, recipient, core.TransferSnowball)
+		transfer, err := service.transfer(ctx, sender, recipient, ReasonThrowSnowball, core.TransferSnowball)
 		return transfer.recipient.Snowballs, err
 	case core.YellowSnowball:
-		transfer, err := service.transfer(ctx, sender, recipient, core.TransferYellowSnowball)
+		transfer, err := service.transfer(ctx, sender, recipient, ReasonThrowSnowball, core.TransferYellowSnowball)
 		return transfer.recipient.YellowSnowballs, err
 	default:
 		return 0, core.ErrSnowballType

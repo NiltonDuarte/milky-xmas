@@ -25,7 +25,23 @@ type GiftUpdate struct {
 	Member   Member
 	Previous core.GiftRecord
 	Next     core.GiftRecord
+	// Reason says what changed the inventory, so stores can keep a history for scoreboards.
+	Reason Reason
 }
+
+// Reason is what changed a player's inventory or aura.
+type Reason string
+
+const (
+	ReasonDaily         Reason = "daily_claim"
+	ReasonDrop          Reason = "drop_claim"
+	ReasonSendGift      Reason = "send_gift"
+	ReasonSendCoal      Reason = "send_coal"
+	ReasonThrowSnowball Reason = "throw_snowball"
+	ReasonModGift       Reason = "mod_gift"
+	ReasonGrinchReward  Reason = "grinch_reward"
+	ReasonWater         Reason = "water"
+)
 
 type GiftClaim struct {
 	Collected bool
@@ -56,7 +72,7 @@ func (service Service) ClaimGift(ctx context.Context, member Member) (GiftClaim,
 		if !collected {
 			return GiftClaim{Total: record.Inventory.GiftTotal(), NextClaim: next, Remaining: next.Sub(now)}, nil
 		}
-		saved, err := service.gifts.Save(ctx, GiftUpdate{Member: member, Previous: record, Next: updated})
+		saved, err := service.gifts.Save(ctx, GiftUpdate{Member: member, Previous: record, Next: updated, Reason: ReasonDaily})
 		if err != nil {
 			return GiftClaim{}, fmt.Errorf("save gift claim: %w", err)
 		}

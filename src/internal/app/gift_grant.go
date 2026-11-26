@@ -22,7 +22,7 @@ func (service Service) GiveGift(ctx context.Context, moderator Member, recipient
 		if err != nil {
 			return err
 		}
-		saved, err := service.gifts.Save(ctx, GiftUpdate{Member: target, Previous: record, Next: next})
+		saved, err := service.gifts.Save(ctx, GiftUpdate{Member: target, Previous: record, Next: next, Reason: ReasonModGift})
 		if err != nil {
 			return fmt.Errorf("save gift grant: %w", err)
 		}

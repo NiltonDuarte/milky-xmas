@@ -26,7 +26,8 @@ func (s *SQLite) LoadGrinch(ctx context.Context, scope string) (core.Grinch, int
 }
 
 func (s *SQLite) SaveGrinch(ctx context.Context, scope string, revision int64, state core.Grinch, server string, rewards map[string]core.GrinchReward) (bool, error) {
-	if len(rewards) == 0 {
+	finished := state.Phase == core.GrinchWon || state.Phase == core.GrinchDefeat || state.Phase == core.GrinchEscaped
+	if len(rewards) == 0 && !finished {
 		return saveGrinch(ctx, s.db, scope, revision, state)
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -38,6 +39,11 @@ func (s *SQLite) SaveGrinch(ctx context.Context, scope string, revision int64, s
 	if err != nil || !saved {
 		return false, err
 	}
+	if finished {
+		if err := recordFight(ctx, tx, scope, server, state); err != nil {
+			return false, err
+		}
+	}
 	for user, reward := range rewards {
 		member := app.Member{ServerID: server, UserID: user}
 		previous, err := loadPlayer(ctx, tx, member)
@@ -46,8 +52,12 @@ func (s *SQLite) SaveGrinch(ctx context.Context, scope string, revision int64, s
 		}
 		next := previous
 		next.Inventory = previous.Inventory.AddGrinchReward(reward)
-		saved, err := savePlayer(ctx, tx, app.GiftUpdate{Member: member, Previous: previous, Next: next})
+		update := app.GiftUpdate{Member: member, Previous: previous, Next: next, Reason: app.ReasonGrinchReward}
+		saved, err := savePlayer(ctx, tx, update)
 		if err != nil || !saved {
+			return false, err
+		}
+		if err := recordHistory(ctx, tx, update, ""); err != nil {
 			return false, err
 		}
 	}
@@ -55,6 +65,20 @@ func (s *SQLite) SaveGrinch(ctx context.Context, scope string, revision int64, s
 		return false, err
 	}
 	return true, nil
+}
+
+// recordFight keeps every finished fight, because grinch_encounters only holds the latest one of
+// each channel. A finished fight that is saved again replaces its own entry.
+func recordFight(ctx context.Context, writer playerWriter, scope, server string, state core.Grinch) error {
+	payload, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	_, err = writer.ExecContext(ctx, `
+		INSERT INTO grinch_history (scope, fight_id, server_id, payload) VALUES (?, ?, ?, ?)
+		ON CONFLICT (scope, fight_id) DO UPDATE SET payload = excluded.payload
+	`, scope, state.ID, server, payload)
+	return err
 }
 
 func saveGrinch(ctx context.Context, writer playerWriter, scope string, revision int64, state core.Grinch) (bool, error) {

@@ -218,7 +218,7 @@ func (drops *ActivityDrops) Claim(ctx context.Context, claim GiftDropClaim) (Gif
 		if err != nil {
 			return GiftDropAward{}, err
 		}
-		saved, err := drops.service.gifts.Save(ctx, GiftUpdate{Member: claim.Member, Previous: record, Next: next})
+		saved, err := drops.service.gifts.Save(ctx, GiftUpdate{Member: claim.Member, Previous: record, Next: next, Reason: ReasonDrop})
 		if err != nil {
 			return GiftDropAward{}, fmt.Errorf("save drop inventory: %w", err)
 		}

@@ -29,14 +29,14 @@ func (service Service) SendItem(ctx context.Context, sender Member, recipient Re
 	if item != CoalItem {
 		return service.SendGift(ctx, sender, recipient, core.GiftRarity(item), quantity)
 	}
-	_, err := service.transfer(ctx, sender, recipient, func(from, to core.GiftRecord) (core.GiftRecord, core.GiftRecord, error) {
+	_, err := service.transfer(ctx, sender, recipient, ReasonSendCoal, func(from, to core.GiftRecord) (core.GiftRecord, core.GiftRecord, error) {
 		return core.TransferCoal(from, to, quantity)
 	})
 	return err
 }
 
 func (service Service) SendGift(ctx context.Context, sender Member, recipient Recipient, rarity core.GiftRarity, quantity int64) error {
-	_, err := service.transfer(ctx, sender, recipient, func(from, to core.GiftRecord) (core.GiftRecord, core.GiftRecord, error) {
+	_, err := service.transfer(ctx, sender, recipient, ReasonSendGift, func(from, to core.GiftRecord) (core.GiftRecord, core.GiftRecord, error) {
 		return core.TransferGift(from, to, rarity, quantity)
 	})
 	return err
@@ -46,7 +46,7 @@ type inventoryTransfer struct {
 	recipient core.Inventory
 }
 
-func (service Service) transfer(ctx context.Context, sender Member, recipient Recipient, decide func(core.GiftRecord, core.GiftRecord) (core.GiftRecord, core.GiftRecord, error)) (inventoryTransfer, error) {
+func (service Service) transfer(ctx context.Context, sender Member, recipient Recipient, reason Reason, decide func(core.GiftRecord, core.GiftRecord) (core.GiftRecord, core.GiftRecord, error)) (inventoryTransfer, error) {
 	if !recipient.canReceiveFrom(sender) {
 		return inventoryTransfer{}, ErrInvalidRecipient
 	}
@@ -65,8 +65,8 @@ func (service Service) transfer(ctx context.Context, sender Member, recipient Re
 			return inventoryTransfer{}, err
 		}
 		saved, err := service.gifts.SaveTransfer(ctx,
-			GiftUpdate{Member: sender, Previous: from, Next: nextFrom},
-			GiftUpdate{Member: target, Previous: to, Next: nextTo})
+			GiftUpdate{Member: sender, Previous: from, Next: nextFrom, Reason: reason},
+			GiftUpdate{Member: target, Previous: to, Next: nextTo, Reason: reason})
 		if err != nil {
 			return inventoryTransfer{}, fmt.Errorf("save inventory transfer: %w", err)
 		}
