@@ -14,6 +14,7 @@ func TestGuildSettingsAndAnnouncements(t *testing.T) {
 	ctx := t.Context()
 	store := openGiftPlayers(t, path)
 	setup := app.NewGuildSetup(store)
+	setup.Introduce = true // Off by default for now.
 	var prompts, intros int
 	offline := true
 	failed := errors.New("missing channel permission")
@@ -76,5 +77,21 @@ func TestGuildSettingsAndAnnouncements(t *testing.T) {
 	other, err := setup.Settings(ctx, "another")
 	if err != nil || len(other.Channels) != 0 || other.Welcomed {
 		t.Fatalf("other guild settings = %+v, %v", other, err)
+	}
+}
+
+func TestChristmasIntroductionIsOffByDefault(t *testing.T) {
+	store := openGiftPlayers(t, filepath.Join(t.TempDir(), "settings.sqlite"))
+	post := func(_ context.Context, _, content string) error {
+		t.Errorf("posted %q", content)
+		return nil
+	}
+	setup := app.NewGuildSetup(store)
+	if saved, err := setup.Configure(t.Context(), "guild", "event", true, app.ChannelChoice{Boss: true}, post); !saved || err != nil {
+		t.Fatalf("configure = %v, %v", saved, err)
+	}
+	settings, err := setup.Settings(t.Context(), "guild")
+	if err != nil || settings.Channels["event"] != (app.ChannelSettings{Boss: true}) {
+		t.Fatalf("settings = %+v, %v", settings, err)
 	}
 }

@@ -46,7 +46,7 @@ func TestGiftTransferAndAuraInChat(t *testing.T) {
 		{"/send gift friend epic 2", http.StatusOK, "Sent 2 🎁 epic gifts to friend. Your 😇 good deeds are going up."},
 		{"/send gift friend epic 1", http.StatusBadRequest, "You don't have enough gifts of that rarity."},
 		{"/aura check", http.StatusOK, gifttext.Aura(50)},
-		{"/daily claim", http.StatusOK, "🎅 you already got the gift for today, the next gift 🎁 is in 24 hours."},
+		{"/daily claim", http.StatusOK, "🎅 You already got the gift for today, the next gift 🎁 is in 24 hours."},
 		{"/send gift friend coal 3", http.StatusBadRequest, "You don't have enough Coal."},
 		{"/aura check", http.StatusOK, gifttext.Aura(50)},
 		{"/send gift friend coal 2", http.StatusOK, "Sent 2 🌑 Coal to friend. Your 😈 bad deeds are increasing. Beware!"},

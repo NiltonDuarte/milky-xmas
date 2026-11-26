@@ -21,7 +21,7 @@ func TestDailyClaimInteraction(t *testing.T) {
 		roll        int
 	}{
 		{"alice", "## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected 1 gifts 🎁.\nGift rarity · normal ·\n```", 0},
-		{"alice", "🎅 you already got the gift for today, the next gift 🎁 is in 24 hours.", 5},
+		{"alice", "🎅 You already got the gift for today, the next gift 🎁 is in 24 hours.", 5},
 		{"bob", "## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected 10 gifts 🎁.\nGift rarity · normal ·\n```", 9},
 	} {
 		roll = step.roll

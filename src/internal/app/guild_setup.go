@@ -14,6 +14,10 @@ What is that!? It's a Christmas party starting at the Milkyway Galaxy!`
 
 const GuildSetupPrompt = "Welcome to Milky Xmas! Moderators, use /setup channel to choose where commands work and where the Grinch can appear. Use /setup view to see your choices."
 
+// introductionEnabled turns on the opening message of a boss channel. It is off for now; the
+// message and its elf army button are kept so it can be turned back on here.
+const introductionEnabled = false
+
 var ErrManageGuild = errors.New("Manage Server permission is required")
 
 type ChannelSettings struct {
@@ -46,10 +50,12 @@ type SetupAnnouncement func(context.Context, string, string) error
 type GuildSetup struct {
 	store GuildSettingsStore
 	locks sync.Map
+	// Introduce posts ChristmasIntroduction when a channel is first enabled for the boss.
+	Introduce bool
 }
 
 func NewGuildSetup(store GuildSettingsStore) *GuildSetup {
-	return &GuildSetup{store: store}
+	return &GuildSetup{store: store, Introduce: introductionEnabled}
 }
 
 func (setup *GuildSetup) lock(guild string) func() {
@@ -105,7 +111,7 @@ func (setup *GuildSetup) Configure(ctx context.Context, guild, channel string, c
 	if err := setup.store.SaveGuildSettings(ctx, guild, settings); err != nil {
 		return false, err
 	}
-	if !choice.Boss || selection.Introduced {
+	if !setup.Introduce || !choice.Boss || selection.Introduced {
 		return true, nil
 	}
 	if err := post(ctx, channel, ChristmasIntroduction); err != nil {

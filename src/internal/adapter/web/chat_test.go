@@ -72,8 +72,8 @@ func TestDailyClaimInChat(t *testing.T) {
 		reply   string
 	}{
 		{0, 0, "## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected 1 gifts 🎁.\nGift rarity · normal ·\n```"},
-		{30 * time.Minute, 3, "🎅 you already got the gift for today, the next gift 🎁 is in 23 hours 30 minutes."},
-		{24*time.Hour - time.Second, 6, "🎅 you already got the gift for today, the next gift 🎁 is in 1 minute."},
+		{30 * time.Minute, 3, "🎅 You already got the gift for today, the next gift 🎁 is in 23 hours 30 minutes."},
+		{24*time.Hour - time.Second, 6, "🎅 You already got the gift for today, the next gift 🎁 is in 1 minute."},
 		{24 * time.Hour, 9, "## 🎅🏻 Christmas won’t be Christmas without any presents.\n```\nYou collected 10 gifts 🎁.\nGift rarity · normal ·\n```"},
 	} {
 		now = first.Add(step.elapsed)

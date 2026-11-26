@@ -84,7 +84,7 @@ The local chat has no buttons: `/advent view` lists the doors in your order, and
 
 When the bot joins a server, it asks moderators to configure it in the system channel or another text channel where it can post. Use `/setup channel` with a text channel and set `commands` and `boss` independently. Repeat for each channel. Both can be turned off to remove access. `/setup view` shows the configured channels. Setup requires **Manage Server** or **Administrator** permission.
 
-Select a general channel with commands on and boss off. Select an event channel with boss on. The bot posts the Christmas introduction when that channel is first enabled for the boss. If it cannot post, grant **View Channel** and **Send Messages**, then repeat the setup. Check that `/hello` works in the general channel and is refused in an unselected channel. Restart the bot and check that `/setup view` still shows the same choices.
+Select a general channel with commands on and boss off. Select an event channel with boss on. The Christmas introduction, with its elf army button, is turned off for now (`introductionEnabled` in `app/guild_setup.go`); when on, the bot posts it the first time a channel is enabled for the boss. Check that `/hello` works in the general channel and is refused in an unselected channel. Restart the bot and check that `/setup view` still shows the same choices.
 
 ## Christmas quotes
 

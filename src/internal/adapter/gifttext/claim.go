@@ -20,7 +20,7 @@ func Claim(claim app.GiftClaim) string {
 	if rest := minutes % 60; rest > 0 {
 		parts = append(parts, units(rest, "minute"))
 	}
-	return "🎅 you already got the gift for today, the next gift 🎁 is in " + strings.Join(parts, " ") + "."
+	return "🎅 You already got the gift for today, the next gift 🎁 is in " + strings.Join(parts, " ") + "."
 }
 
 func units(amount int, unit string) string {
