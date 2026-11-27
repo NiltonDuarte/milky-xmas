@@ -17,7 +17,7 @@ func TestHelpInteraction(t *testing.T) {
 		listed  []string
 		missing []string
 	}{
-		{"member", 0, []string{"/daily claim", "/helpmemilky"}, []string{"/give gift", "/grinch summon", "/setup"}},
+		{"member", 0, []string{"/daily claim", "/help me-milky"}, []string{"/give gift", "/grinch summon", "/setup"}},
 		{"moderator", discordgo.PermissionManageMessages, []string{"/give gift", "/grinch summon"}, []string{"/setup"}},
 		{"server manager", discordgo.PermissionManageGuild, []string{"/setup view"}, []string{"/give gift"}},
 		{"administrator", discordgo.PermissionAdministrator, []string{"/give gift", "/setup channel"}, nil},
@@ -56,17 +56,24 @@ func TestHelpInteraction(t *testing.T) {
 			b.handleInteraction(session, &discordgo.InteractionCreate{Interaction: &discordgo.Interaction{
 				ID: "300", AppID: "100", Token: "fixture-token", GuildID: "200", Type: discordgo.InteractionApplicationCommand,
 				Member: &discordgo.Member{User: &discordgo.User{ID: "alice"}, Permissions: tt.perms},
-				Data:   discordgo.ApplicationCommandInteractionData{CommandType: discordgo.ChatApplicationCommand, Name: "helpmemilky"},
+				Data:   helpData(),
 			}})
 			if calls != 2 {
 				t.Errorf("expected two requests, got %d", calls)
 			}
 		})
 	}
-	if alias := helpAliasCommand(); alias.Name != "help" || len(alias.Options) != 0 || alias.DefaultMemberPermissions != nil {
-		t.Errorf("unexpected /help registration: %+v", alias)
-	}
-	if command := helpCommand(); command.Name != "helpmemilky" || len(command.Options) != 0 || command.DefaultMemberPermissions != nil {
+	command := helpCommand()
+	if command.Name != "help" || command.DefaultMemberPermissions != nil || len(command.Options) != 1 ||
+		command.Options[0].Name != "me-milky" || command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand {
 		t.Errorf("unexpected help registration: %+v", command)
+	}
+}
+
+// helpData is "/help me-milky" as Discord sends it.
+func helpData() discordgo.ApplicationCommandInteractionData {
+	return discordgo.ApplicationCommandInteractionData{
+		CommandType: discordgo.ChatApplicationCommand, Name: "help",
+		Options: []*discordgo.ApplicationCommandInteractionDataOption{{Name: "me-milky", Type: discordgo.ApplicationCommandOptionSubCommand}},
 	}
 }

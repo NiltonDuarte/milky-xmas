@@ -149,7 +149,7 @@ func TestSetupChannels(t *testing.T) {
 		}
 	}
 	mod := int64(discordgo.PermissionManageGuild)
-	invoke("400", "hello", 0, nil, "Commands are disabled", true)
+	invoke("400", "help", 0, helpData().Options, "Commands are disabled", true)
 	invoke("402", "setup", 0, set("400", true, true), "You need Manage Server", true)
 	invoke("402", "setup", mod, set("400", true, false), "commands on · boss off", true)
 	invoke("402", "setup", mod, set("401", false, true), "commands off · boss on", true)
@@ -167,8 +167,8 @@ func TestSetupChannels(t *testing.T) {
 	}
 	view := []*discordgo.ApplicationCommandInteractionDataOption{{Name: "view", Type: discordgo.ApplicationCommandOptionSubCommand}}
 	invoke("402", "setup", mod, view, "Commands · <#400>\nGrinch · <#401>", true)
-	invoke("400", "hello", 0, nil, "Hello, world!", false)
-	invoke("401", "hello", 0, nil, "Commands are disabled", true)
+	invoke("400", "help", 0, helpData().Options, "Milky Xmas commands", true)
+	invoke("401", "help", 0, helpData().Options, "Commands are disabled", true)
 	summon := []*discordgo.ApplicationCommandInteractionDataOption{{Name: "summon", Type: discordgo.ApplicationCommandOptionSubCommand}}
 	invoke("400", "grinch", discordgo.PermissionManageMessages, summon, "Use this command in a configured Grinch channel.", true)
 	invoke("401", "grinch", discordgo.PermissionManageMessages, summon, "Commands are disabled", true)
@@ -177,7 +177,7 @@ func TestSetupChannels(t *testing.T) {
 		t.Fatal("disabled boss channel still has a worker")
 	}
 	invoke("402", "setup", mod, set("400", false, false), "commands off · boss off", true)
-	invoke("400", "hello", 0, nil, "Commands are disabled", true)
+	invoke("400", "help", 0, helpData().Options, "Commands are disabled", true)
 
 	withQuotes := set("402", false, false)
 	withQuotes[0].Options = append(withQuotes[0].Options,

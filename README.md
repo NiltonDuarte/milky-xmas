@@ -16,7 +16,7 @@ openspec validate --all --strict --no-interactive
 openspec validate --archived --no-interactive
 ```
 
-The test suite checks FCIS dependency direction, the greeting rule, and command handling through both adapters.
+The test suite checks FCIS dependency direction, the core rules, and command handling through both adapters.
 
 ## Local acceptance testing
 
@@ -26,7 +26,7 @@ Start the local chat from the repository root.
 go run ./src/cmd/web
 ```
 
-Open [http://127.0.0.1:8080](http://127.0.0.1:8080) and send `/hello`. The transcript should show your command and the bot's reply, `Hello, world!`. Send `/unknown` to see an error that lists the supported commands, then send `/hello` again to verify recovery.
+Open [http://127.0.0.1:8080](http://127.0.0.1:8080) and send `/help me-milky`. The transcript should show your command and the list of commands. Send `/unknown` to see an error that lists the supported commands, then send `/help me-milky` again to verify recovery.
 
 Send `/daily claim` to collect a random 1–10 gifts. The transcript shows “🎅🏻 Christmas won’t be Christmas without any presents. You collected X gifts 🎁.” with the amount awarded in place of X, followed by the rarity. Send it again immediately to see how long remains until the next claim. The local fixture shares one test identity across tabs and resets when the web process restarts.
 
@@ -46,7 +46,7 @@ Start the bot:
 go run ./src/cmd/discord
 ```
 
-Wait for the startup log to report that the bot is ready. In Discord, enable commands in a text channel with `/setup channel`, then send the Milky Xmas `/hello` command there. The expected result is one public reply, `Hello, world!`. Check that the command is available in the configured server and can be used by a member with application command permissions.
+Wait for the startup log to report that the bot is ready. In Discord, enable commands in a text channel with `/setup channel`, then send the Milky Xmas `/help me-milky` command there. The expected result is a private list of commands. Check that the command is available in the configured server and can be used by a member with application command permissions.
 
 In the test server, invoke `/daily claim`. Check that you see the same success message as in the local chat with an amount from 1 to 10 in a private reply. Invoke it again immediately and check that it shows the remaining cooldown. Restart the bot with the same database and try again to check that the original cooldown persists.
 
@@ -98,7 +98,7 @@ The local chat has no buttons: `/advent view` lists the doors in your order, and
 
 When the bot joins a server, it asks moderators to configure it in the system channel or another text channel where it can post. Use `/setup channel` with a text channel and set `commands` and `boss` independently. Repeat for each channel. Both can be turned off to remove access. `/setup view` shows the configured channels. Setup requires **Manage Server** or **Administrator** permission.
 
-Select a general channel with commands on and boss off. Select an event channel with boss on. The Christmas introduction, with its elf army button, is turned off for now (`introductionEnabled` in `app/guild_setup.go`); when on, the bot posts it the first time a channel is enabled for the boss. Check that `/hello` works in the general channel and is refused in an unselected channel. Restart the bot and check that `/setup view` still shows the same choices.
+Select a general channel with commands on and boss off. Select an event channel with boss on. The Christmas introduction, with its elf army button, is turned off for now (`introductionEnabled` in `app/guild_setup.go`); when on, the bot posts it the first time a channel is enabled for the boss. Check that `/help me-milky` works in the general channel and is refused in an unselected channel. Restart the bot and check that `/setup view` still shows the same choices.
 
 ## Christmas quotes
 
@@ -128,7 +128,7 @@ The Grinch announcement shows the Grinch image below the registration text. In t
 
 If the Grinch escapes or defeats all players, the final battle message shows only Max's image, with no Grinch image. A victory shows only the Grinch. Check both endings in the Discord test server.
 
-Run `/help` or `/helpmemilky` to list the commands you can use. In Discord, moderator commands appear only for members with the permission: Manage Messages for `/give gift` and `/grinch summon`, Manage Server for `/setup`. The reply is private. The list is written by hand in `gifttext/help.go`, so update it when a command is added or renamed. In the Discord test server, run it with a regular account and with a moderator account and compare the lists.
+Run `/help me-milky` to list the commands you can use. In Discord, moderator commands appear only for members with the permission: Manage Messages for `/give gift` and `/grinch summon`, Manage Server for `/setup`. The reply is private. The list is written by hand in `gifttext/help.go`, so update it when a command is added or renamed. In the Discord test server, run it with a regular account and with a moderator account and compare the lists.
 
 ## Activity drop updates
 
@@ -151,6 +151,10 @@ In the Discord test server, run `/water` from two accounts and check the public 
 ## Christmas spirit
 
 When the event ends, a moderator (Manage Messages) runs `/spirit` to post the Christmas spirit of the server: every player's good deeds and bad deeds added up from their current aura, with the winning side. The same picture is shown for either side until one exists for bad deeds; the current one is a watermarked preview to be replaced.
+
+## Event guide
+
+`/guide` opens a private guide with a menu of topics: daily gifts and stocking, sending and opening gifts, gift drops, aura, snowballs, the Grinch fight, the tree, the Advent calendar, and statistics. Its numbers come from the tuning in use; the wording is in `src/internal/adapter/gifttext/guide.go`, so update it when a player action or rule changes. In the local chat use `/guide` or `/guide <topic>`.
 
 ## Stats and leaderboards
 

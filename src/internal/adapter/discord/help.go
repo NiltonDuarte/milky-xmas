@@ -10,15 +10,11 @@ import (
 
 func helpCommand() *discordgo.ApplicationCommand {
 	return &discordgo.ApplicationCommand{
-		Type: discordgo.ChatApplicationCommand, Name: gifttext.HelpCommand, Description: "List the commands you can use",
+		Type: discordgo.ChatApplicationCommand, Name: gifttext.HelpCommand, Description: "Help with Milky Xmas",
+		Options: []*discordgo.ApplicationCommandOption{
+			{Type: discordgo.ApplicationCommandOptionSubCommand, Name: gifttext.HelpSubcommand, Description: "List the commands you can use"},
+		},
 	}
-}
-
-// helpAliasCommand is the short name of the same list.
-func helpAliasCommand() *discordgo.ApplicationCommand {
-	command := helpCommand()
-	command.Name = gifttext.HelpAlias
-	return command
 }
 
 func (b bot) handleHelp(session *discordgo.Session, interaction *discordgo.Interaction) {

@@ -80,11 +80,6 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 		return fmt.Errorf("look up Discord bot user: %w", err)
 	}
 	commands := []*discordgo.ApplicationCommand{
-		{
-			Type:        discordgo.ChatApplicationCommand,
-			Name:        app.HelloCommand,
-			Description: "Get a greeting from Milky Xmas",
-		},
 		dailyCommand(),
 		sendCommand(),
 		giveCommand(),
@@ -104,8 +99,8 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 		waterCommand(),
 		spiritCommand(),
 		statsCommand(),
+		guideCommand(),
 		helpCommand(),
-		helpAliasCommand(),
 		setupCommand(),
 	}
 	wanted := make(map[string]bool, len(commands))
@@ -150,6 +145,8 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 			b.adventButton(session, event.Interaction)
 		} else if ok && strings.HasPrefix(data.CustomID, "stats:") {
 			b.statsSelect(session, event.Interaction, data)
+		} else if ok && strings.HasPrefix(data.CustomID, "guide:") {
+			b.guideSelect(session, event.Interaction, data)
 		} else if ok && data.CustomID == elfButtonID {
 			b.elfButton(session, event.Interaction)
 		} else if ok && strings.HasPrefix(data.CustomID, "grinch:") {
@@ -212,8 +209,13 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 			b.handleStats(session, event.Interaction)
 		}
 		return
-	case gifttext.HelpCommand, gifttext.HelpAlias:
+	case gifttext.GuideCommand:
 		if len(data.Options) == 0 {
+			b.handleGuide(session, event.Interaction)
+		}
+		return
+	case gifttext.HelpCommand:
+		if sub := commandSubcommand(data.Options, gifttext.HelpSubcommand); sub != nil && len(sub.Options) == 0 {
 			b.handleHelp(session, event.Interaction)
 		}
 		return
@@ -246,21 +248,6 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 	case dailyCommandName:
 		b.handleDailyClaim(session, event.Interaction, data.Options)
 		return
-	}
-
-	reply, err := b.service.Reply(data.Name)
-	if err != nil {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 2500*time.Millisecond)
-	defer cancel()
-	err = session.InteractionRespond(event.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{Content: reply},
-	}, discordgo.WithContext(ctx))
-	if err != nil {
-		logInteractionError(event.ID, "acknowledge /"+data.Name, err)
 	}
 }
 

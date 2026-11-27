@@ -2,10 +2,10 @@ package gifttext
 
 import "strings"
 
-// HelpCommand and its shortcut HelpAlias show the same list.
+// The list of commands is "/help me-milky".
 const (
-	HelpCommand = "helpmemilky"
-	HelpAlias   = "help"
+	HelpCommand    = "help"
+	HelpSubcommand = "me-milky"
 )
 
 // HelpAccess says which restricted command groups the player may use.
@@ -19,7 +19,6 @@ func Help(access HelpAccess) string {
 	var text strings.Builder
 	text.WriteString("## 🎅 Milky Xmas commands\n```\n")
 	for _, line := range []string{
-		"/hello                          Get a greeting",
 		"/daily claim                    Claim your daily gifts",
 		"/look in-your-stocking          See your gifts and items",
 		"/send gift <player> <item> <n>  Send gifts or Coal",
@@ -29,7 +28,8 @@ func Help(access HelpAccess) string {
 		"/advent view                    See your Advent doors",
 		"/water                          Water the Christmas tree",
 		"/stats                          Server stats and leaderboards",
-		"/help, /helpmemilky             Show this list",
+		"/guide                          Learn how to play the event",
+		"/help me-milky                  Show this list",
 	} {
 		text.WriteString(line + "\n")
 	}

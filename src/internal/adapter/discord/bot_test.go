@@ -25,7 +25,7 @@ func TestRegisterCommands(t *testing.T) {
 			return fakeResponse(http.StatusOK, `{"id":"100"}`), nil
 		case "/api/v9/applications/100/guilds/200/commands":
 			if request.Method == http.MethodGet {
-				return fakeResponse(http.StatusOK, `[{"id":"900","name":"socks"},{"id":"300","name":"hello"}]`), nil
+				return fakeResponse(http.StatusOK, `[{"id":"900","name":"socks"},{"id":"300","name":"daily"}]`), nil
 			}
 			var command discordgo.ApplicationCommand
 			if err := json.NewDecoder(request.Body).Decode(&command); err != nil {
@@ -33,7 +33,6 @@ func TestRegisterCommands(t *testing.T) {
 			}
 			commands = append(commands, command.Name)
 			if command.Type != discordgo.ChatApplicationCommand ||
-				((command.Name == "hello") && len(command.Options) != 0) ||
 				(command.Name == "daily" && (len(command.Options) != 1 || command.Options[0].Type != discordgo.ApplicationCommandOptionSubCommand || command.Options[0].Name != "claim")) {
 				t.Errorf("unexpected registered command: %+v", command)
 			}
@@ -82,7 +81,7 @@ func TestRegisterCommands(t *testing.T) {
 					t.Errorf("unexpected aura command: %+v", command)
 				}
 			}
-			return fakeResponse(http.StatusCreated, `{"id":"300","name":"hello"}`), nil
+			return fakeResponse(http.StatusCreated, `{"id":"300","name":"daily"}`), nil
 		case "/api/v9/applications/100/guilds/200/commands/900":
 			return fakeResponse(http.StatusNoContent, ""), nil
 		default:
@@ -94,7 +93,7 @@ func TestRegisterCommands(t *testing.T) {
 	if err := (bot{guildID: "200"}).registerCommands(t.Context(), session); err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(commands, ","); got != "hello,daily,send,give,open,aura,look,advent,grinch,throw,water,spirit,stats,helpmemilky,help,setup" {
+	if got := strings.Join(commands, ","); got != "daily,send,give,open,aura,look,advent,grinch,throw,water,spirit,stats,guide,help,setup" {
 		t.Errorf("registered commands = %q", got)
 	}
 	want := "GET /api/v9/users/@me" + strings.Repeat("\nPOST /api/v9/applications/100/guilds/200/commands", len(commands)) +
@@ -111,11 +110,12 @@ func TestHandleInteraction(t *testing.T) {
 		commandType          discordgo.ApplicationCommandType
 		wantCalls            int
 	}{
-		{"hello", "200", "hello", discordgo.InteractionApplicationCommand, discordgo.ChatApplicationCommand, 1},
-		{"other guild", "201", "hello", discordgo.InteractionApplicationCommand, discordgo.ChatApplicationCommand, 0},
+		{"help", "200", "help", discordgo.InteractionApplicationCommand, discordgo.ChatApplicationCommand, 2},
+		{"other guild", "201", "help", discordgo.InteractionApplicationCommand, discordgo.ChatApplicationCommand, 0},
 		{"unknown command", "200", "unknown", discordgo.InteractionApplicationCommand, discordgo.ChatApplicationCommand, 0},
-		{"non-slash command", "200", "hello", discordgo.InteractionApplicationCommand, discordgo.UserApplicationCommand, 0},
-		{"non-command", "200", "hello", discordgo.InteractionMessageComponent, discordgo.ChatApplicationCommand, 0},
+		{"removed command", "200", "hello", discordgo.InteractionApplicationCommand, discordgo.ChatApplicationCommand, 0},
+		{"non-slash command", "200", "help", discordgo.InteractionApplicationCommand, discordgo.UserApplicationCommand, 0},
+		{"non-command", "200", "help", discordgo.InteractionMessageComponent, discordgo.ChatApplicationCommand, 0},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			session, err := discordgo.New("Bot fake-token")
@@ -125,6 +125,9 @@ func TestHandleInteraction(t *testing.T) {
 			calls := 0
 			session.Client.Transport = transportFunc(func(request *http.Request) (*http.Response, error) {
 				calls++
+				if calls > 1 {
+					return fakeResponse(http.StatusOK, `{"id":"123"}`), nil
+				}
 				if request.Method != http.MethodPost || request.URL.Path != "/api/v9/interactions/300/interaction-token/callback" {
 					t.Errorf("unexpected acknowledgement request: %s %s", request.Method, request.URL.Path)
 				}
@@ -132,23 +135,27 @@ func TestHandleInteraction(t *testing.T) {
 				if err := json.NewDecoder(request.Body).Decode(&response); err != nil {
 					t.Fatal(err)
 				}
-				if response.Type != discordgo.InteractionResponseChannelMessageWithSource ||
-					response.Data == nil || response.Data.Content != "Hello, world!" || response.Data.Flags != 0 {
+				if response.Type != discordgo.InteractionResponseDeferredChannelMessageWithSource ||
+					response.Data == nil || response.Data.Flags != discordgo.MessageFlagsEphemeral {
 					t.Errorf("unexpected acknowledgement type %v and data %+v", response.Type, response.Data)
 				}
 				return fakeResponse(http.StatusNoContent, ""), nil
 			})
 
+			data := helpData()
+			data.Name, data.CommandType = tt.command, tt.commandType
 			b := bot{guildID: "200", service: app.Service{}}
 			b.handleInteraction(session, &discordgo.InteractionCreate{Interaction: &discordgo.Interaction{
 				ID:      "300",
+				AppID:   "100",
 				Token:   "interaction-token",
 				GuildID: tt.guild,
 				Type:    tt.interactionType,
-				Data:    discordgo.ApplicationCommandInteractionData{Name: tt.command, CommandType: tt.commandType},
+				Member:  &discordgo.Member{User: &discordgo.User{ID: "alice"}},
+				Data:    data,
 			}})
 			if calls != tt.wantCalls {
-				t.Errorf("acknowledgements = %d, want %d", calls, tt.wantCalls)
+				t.Errorf("requests = %d, want %d", calls, tt.wantCalls)
 			}
 		})
 	}

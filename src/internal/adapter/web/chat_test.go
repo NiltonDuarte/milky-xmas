@@ -28,16 +28,16 @@ func TestChatPage(t *testing.T) {
 }
 
 func TestChatCommands(t *testing.T) {
-	handler := web.NewHandler(app.Service{}, nil)
+	handler := web.NewHandler(app.NewService(&giftfixture.Store{}, time.Now, func(int) int { return 0 }), nil)
 	for _, tt := range []struct {
 		name, input, origin, reply string
 		status                     int
 	}{
-		{name: "hello", input: "/hello", status: http.StatusOK, reply: "Hello, world!"},
-		{name: "unknown", input: "/unknown", status: http.StatusBadRequest, reply: "Unknown command. Try /hello, /daily claim, /advent view, /grinch view, /send gift, /open gift, /aura check, /look in-your-stocking, /water, /spirit, /stats, or /helpmemilky."},
-		{name: "missing slash", input: "hello", status: http.StatusBadRequest, reply: "Unknown command. Try /hello, /daily claim, /advent view, /grinch view, /send gift, /open gift, /aura check, /look in-your-stocking, /water, /spirit, /stats, or /helpmemilky."},
-		{name: "hello after error", input: "/hello", status: http.StatusOK, reply: "Hello, world!"},
-		{name: "foreign origin", input: "/hello", origin: "https://example.org", status: http.StatusForbidden},
+		{name: "guide", input: "/guide", status: http.StatusOK},
+		{name: "unknown", input: "/unknown", status: http.StatusBadRequest, reply: "Unknown command. Try /daily claim, /advent view, /grinch view, /send gift, /open gift, /aura check, /look in-your-stocking, /water, /spirit, /stats, /guide, or /help me-milky."},
+		{name: "missing slash", input: "guide", status: http.StatusBadRequest, reply: "Unknown command. Try /daily claim, /advent view, /grinch view, /send gift, /open gift, /aura check, /look in-your-stocking, /water, /spirit, /stats, /guide, or /help me-milky."},
+		{name: "help after error", input: "/help me-milky", status: http.StatusOK},
+		{name: "foreign origin", input: "/guide", origin: "https://example.org", status: http.StatusForbidden},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			form := url.Values{"command": {tt.input}}

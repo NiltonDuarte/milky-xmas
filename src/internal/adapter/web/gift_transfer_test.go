@@ -104,10 +104,11 @@ func TestHelpInChat(t *testing.T) {
 		code    int
 		contain string
 	}{
-		{"/helpmemilky", http.StatusOK, "/look in-your-stocking"},
-		{"/helpmemilky", http.StatusOK, "/give gift"},
-		{"/help", http.StatusOK, "/throw snowball <player> <type>"},
-		{"/helpmemilky now", http.StatusBadRequest, "Use /helpmemilky."},
+		{"/help me-milky", http.StatusOK, "/look in-your-stocking"},
+		{"/help me-milky", http.StatusOK, "/give gift"},
+		{"/help me-milky", http.StatusOK, "/throw snowball <player> <type>"},
+		{"/help", http.StatusBadRequest, "Use /help me-milky."},
+		{"/helpmemilky", http.StatusBadRequest, "Unknown command."},
 	} {
 		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader("command="+url.QueryEscape(step.command)))
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")

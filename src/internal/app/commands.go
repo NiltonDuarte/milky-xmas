@@ -1,15 +1,10 @@
 package app
 
 import (
-	"errors"
 	"time"
 
 	"github.com/NiltonDuarte/milky-xmas/src/internal/core"
 )
-
-const HelloCommand = "hello"
-
-var ErrUnknownCommand = errors.New("unknown command")
 
 type Service struct {
 	gifts  GiftStore
@@ -30,11 +25,4 @@ func (service Service) Tuning() core.Tuning {
 func (service Service) WithTuning(tuning core.Tuning) Service {
 	service.tuning = tuning
 	return service
-}
-
-func (Service) Reply(command string) (string, error) {
-	if command != HelloCommand {
-		return "", ErrUnknownCommand
-	}
-	return core.Greeting(), nil
 }

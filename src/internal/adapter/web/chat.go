@@ -93,9 +93,12 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 			case "/" + gifttext.StatsCommand:
 				replyStats(w, r, service, tree, args)
 				return
-			case "/" + gifttext.HelpCommand, "/" + gifttext.HelpAlias:
-				if len(args) != 0 {
-					http.Error(w, "Use /helpmemilky.", http.StatusBadRequest)
+			case "/" + gifttext.GuideCommand:
+				replyGuide(w, service, args)
+				return
+			case "/" + gifttext.HelpCommand:
+				if len(args) != 1 || args[0] != gifttext.HelpSubcommand {
+					http.Error(w, "Use /help me-milky.", http.StatusBadRequest)
 					return
 				}
 				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -119,18 +122,7 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 			}
 		}
 
-		command, ok := strings.CutPrefix(text, "/")
-		if !ok {
-			command = ""
-		}
-		reply, err := service.Reply(command)
-		if err != nil {
-			http.Error(w, "Unknown command. Try /"+app.HelloCommand+", /daily claim, /advent view, /grinch view, /send gift, /open gift, /aura check, /look in-your-stocking, /water, /spirit, /stats, or /helpmemilky.", http.StatusBadRequest)
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		io.WriteString(w, reply)
+		http.Error(w, "Unknown command. Try /daily claim, /advent view, /grinch view, /send gift, /open gift, /aura check, /look in-your-stocking, /water, /spirit, /stats, /guide, or /help me-milky.", http.StatusBadRequest)
 	})
 	return http.NewCrossOriginProtection().Handler(mux)
 }
@@ -248,6 +240,24 @@ func replyStats(w http.ResponseWriter, r *http.Request, service app.Service, tre
 		return
 	}
 	blocks, _ := gifttext.Leaderboard(choice, stats, func(userID string) string { return userID })
+	io.WriteString(w, strings.Join(blocks, "\n"))
+}
+
+func replyGuide(w http.ResponseWriter, service app.Service, args []string) {
+	topic := gifttext.GuideStart
+	if len(args) == 1 {
+		topic = args[0]
+	}
+	blocks, ok := gifttext.Guide(topic, service.Tuning())
+	if len(args) > 1 || !ok {
+		topics := make([]string, len(gifttext.GuideTopics))
+		for i, choice := range gifttext.GuideTopics {
+			topics[i] = choice.Value
+		}
+		http.Error(w, "Use /guide "+strings.Join(topics, ", ")+".", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	io.WriteString(w, strings.Join(blocks, "\n"))
 }
 

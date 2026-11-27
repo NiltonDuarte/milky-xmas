@@ -11,7 +11,7 @@ func TestHelpByAccess(t *testing.T) {
 		access       HelpAccess
 		want, absent []string
 	}{
-		{"player", HelpAccess{}, []string{"/daily claim", "/look in-your-stocking", "/helpmemilky"}, []string{"/give gift", "/grinch summon", "/setup"}},
+		{"player", HelpAccess{}, []string{"/daily claim", "/look in-your-stocking", "/help me-milky"}, []string{"/give gift", "/grinch summon", "/setup"}},
 		{"moderator", HelpAccess{Moderator: true}, []string{"/daily claim", "/give gift", "/grinch summon"}, []string{"/setup"}},
 		{"manager", HelpAccess{Manager: true}, []string{"/daily claim", "/setup view", "/setup channel"}, []string{"/give gift", "/grinch summon"}},
 		{"both", HelpAccess{Moderator: true, Manager: true}, []string{"/give gift", "/setup channel"}, nil},
