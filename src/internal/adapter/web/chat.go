@@ -94,7 +94,11 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 				replyStats(w, r, service, tree, args)
 				return
 			case "/" + gifttext.GuideCommand:
-				replyGuide(w, service, args)
+				replyGuide(w, service, args, gifttext.GuideCommand, gifttext.GuideTopics, gifttext.Guide)
+				return
+			case "/" + gifttext.ModGuideCommand:
+				// The local chat player can use the moderator tools.
+				replyGuide(w, service, args, gifttext.ModGuideCommand, gifttext.ModGuideTopics, gifttext.ModGuide)
 				return
 			case "/" + gifttext.HelpCommand:
 				if len(args) != 1 || args[0] != gifttext.HelpSubcommand {
@@ -122,7 +126,7 @@ func newHandler(service app.Service, grinch grinchFixture, activity ...*app.Acti
 			}
 		}
 
-		http.Error(w, "Unknown command. Try /daily claim, /advent view, /grinch view, /send gift, /open gift, /aura check, /look in-your-stocking, /water, /spirit, /stats, /guide, or /help me-milky.", http.StatusBadRequest)
+		http.Error(w, "Unknown command. Try /daily claim, /advent view, /grinch view, /send gift, /open gift, /aura check, /look in-your-stocking, /water, /spirit, /stats, /guide, /mod-guide, or /help me-milky.", http.StatusBadRequest)
 	})
 	return http.NewCrossOriginProtection().Handler(mux)
 }
@@ -243,18 +247,21 @@ func replyStats(w http.ResponseWriter, r *http.Request, service app.Service, tre
 	io.WriteString(w, strings.Join(blocks, "\n"))
 }
 
-func replyGuide(w http.ResponseWriter, service app.Service, args []string) {
+// replyGuide shows one topic of a guide.
+func replyGuide(w http.ResponseWriter, service app.Service, args []string, command string, choices []gifttext.StatsChoice,
+	guide func(string, core.Tuning) ([]string, bool),
+) {
 	topic := gifttext.GuideStart
 	if len(args) == 1 {
 		topic = args[0]
 	}
-	blocks, ok := gifttext.Guide(topic, service.Tuning())
+	blocks, ok := guide(topic, service.Tuning())
 	if len(args) > 1 || !ok {
-		topics := make([]string, len(gifttext.GuideTopics))
-		for i, choice := range gifttext.GuideTopics {
+		topics := make([]string, len(choices))
+		for i, choice := range choices {
 			topics[i] = choice.Value
 		}
-		http.Error(w, "Use /guide "+strings.Join(topics, ", ")+".", http.StatusBadRequest)
+		http.Error(w, "Use /"+command+" "+strings.Join(topics, ", ")+".", http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")

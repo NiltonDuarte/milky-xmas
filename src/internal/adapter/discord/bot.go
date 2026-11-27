@@ -100,6 +100,7 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 		spiritCommand(),
 		statsCommand(),
 		guideCommand(),
+		modGuideCommand(),
 		helpCommand(),
 		setupCommand(),
 	}
@@ -147,6 +148,8 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 			b.statsSelect(session, event.Interaction, data)
 		} else if ok && strings.HasPrefix(data.CustomID, "guide:") {
 			b.guideSelect(session, event.Interaction, data)
+		} else if ok && strings.HasPrefix(data.CustomID, "modguide:") {
+			b.modGuideSelect(session, event.Interaction, data)
 		} else if ok && data.CustomID == elfButtonID {
 			b.elfButton(session, event.Interaction)
 		} else if ok && strings.HasPrefix(data.CustomID, "grinch:") {
@@ -212,6 +215,11 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 	case gifttext.GuideCommand:
 		if len(data.Options) == 0 {
 			b.handleGuide(session, event.Interaction)
+		}
+		return
+	case gifttext.ModGuideCommand:
+		if len(data.Options) == 0 {
+			b.handleModGuide(session, event.Interaction)
 		}
 		return
 	case gifttext.HelpCommand:

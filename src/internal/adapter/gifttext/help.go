@@ -37,6 +37,7 @@ func Help(access HelpAccess) string {
 	if access.Moderator || access.Manager {
 		text.WriteString("\n**Moderator commands**\n```\n")
 		if access.Moderator {
+			text.WriteString("/mod-guide                             Everything about the bot\n")
 			text.WriteString("/give gift <player> <amount> <rarity>  Give gifts to a player\n")
 			text.WriteString("/grinch summon                         Summon the Grinch\n")
 			text.WriteString("/spirit                                Reveal the Christmas spirit\n")

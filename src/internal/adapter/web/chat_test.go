@@ -34,8 +34,8 @@ func TestChatCommands(t *testing.T) {
 		status                     int
 	}{
 		{name: "guide", input: "/guide", status: http.StatusOK},
-		{name: "unknown", input: "/unknown", status: http.StatusBadRequest, reply: "Unknown command. Try /daily claim, /advent view, /grinch view, /send gift, /open gift, /aura check, /look in-your-stocking, /water, /spirit, /stats, /guide, or /help me-milky."},
-		{name: "missing slash", input: "guide", status: http.StatusBadRequest, reply: "Unknown command. Try /daily claim, /advent view, /grinch view, /send gift, /open gift, /aura check, /look in-your-stocking, /water, /spirit, /stats, /guide, or /help me-milky."},
+		{name: "unknown", input: "/unknown", status: http.StatusBadRequest, reply: "Unknown command. Try /daily claim, /advent view, /grinch view, /send gift, /open gift, /aura check, /look in-your-stocking, /water, /spirit, /stats, /guide, /mod-guide, or /help me-milky."},
+		{name: "missing slash", input: "guide", status: http.StatusBadRequest, reply: "Unknown command. Try /daily claim, /advent view, /grinch view, /send gift, /open gift, /aura check, /look in-your-stocking, /water, /spirit, /stats, /guide, /mod-guide, or /help me-milky."},
 		{name: "help after error", input: "/help me-milky", status: http.StatusOK},
 		{name: "foreign origin", input: "/guide", origin: "https://example.org", status: http.StatusForbidden},
 	} {

@@ -156,6 +156,10 @@ When the event ends, a moderator (Manage Messages) runs `/spirit` to post the Ch
 
 `/guide` opens a private guide with a menu of topics: daily gifts and stocking, sending and opening gifts, gift drops, aura, snowballs, the Grinch fight, the tree, the Advent calendar, and statistics. Its numbers come from the tuning in use; the wording is in `src/internal/adapter/gifttext/guide.go`, so update it when a player action or rule changes. In the local chat use `/guide` or `/guide <topic>`.
 
+## Moderator guide
+
+`/mod-guide` is the same kind of private guide for moderators. Discord shows it to members with Manage Messages or Administrator. It covers setup, moderator commands, every number the bot is using, what is saved, and what a restart loses. Its wording is in `src/internal/adapter/gifttext/mod_guide.go`. In the local chat use `/mod-guide <topic>`.
+
 ## Stats and leaderboards
 
 Anyone can run `/stats` to open a private panel. It shows two drop-downs and, below them, the server stats, named **Milky Way Galaxy** (tree level, waterings, gifts and Coal sent, snowballs thrown, drops collected, and Grinch fights). In the second drop-down pick a leaderboard (Bad eggs, Good eggs, Throwers, Gifters, or Plant moms and dads) or **Milky Way Galaxy**, the last choice; the side of the panel changes colour with it. Each lists the top ten, with medals for the first three and a bar comparing each player with the first place. Bad and Good eggs add up deed points without one side lowering the other and without the aura's limit. In the local chat use `/stats server`, `/stats bad`, `good`, `throwers`, `gifters`, or `plants`.

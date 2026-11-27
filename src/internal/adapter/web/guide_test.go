@@ -19,9 +19,12 @@ func TestGuideInChat(t *testing.T) {
 		status int
 		text   string
 	}{
-		"/guide":         {http.StatusOK, "## 🎄 Milky Xmas guide"},
-		"/guide tree":    {http.StatusOK, "## 🌲 Christmas tree"},
-		"/guide nothing": {http.StatusBadRequest, "Use /guide start, gifts"},
+		"/guide":          {http.StatusOK, "## 🎄 Milky Xmas guide"},
+		"/guide tree":     {http.StatusOK, "## 🌲 Christmas tree"},
+		"/guide nothing":  {http.StatusBadRequest, "Use /guide start, gifts"},
+		"/mod-guide":      {http.StatusOK, "## 🛠️ Moderator guide"},
+		"/mod-guide aura": {http.StatusOK, "## 😇 Aura"},
+		"/mod-guide x":    {http.StatusBadRequest, "Use /mod-guide start, setup"},
 	} {
 		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(url.Values{"command": {command}}.Encode()))
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")

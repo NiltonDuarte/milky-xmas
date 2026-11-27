@@ -93,7 +93,7 @@ func TestRegisterCommands(t *testing.T) {
 	if err := (bot{guildID: "200"}).registerCommands(t.Context(), session); err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(commands, ","); got != "daily,send,give,open,aura,look,advent,grinch,throw,water,spirit,stats,guide,help,setup" {
+	if got := strings.Join(commands, ","); got != "daily,send,give,open,aura,look,advent,grinch,throw,water,spirit,stats,guide,mod-guide,help,setup" {
 		t.Errorf("registered commands = %q", got)
 	}
 	want := "GET /api/v9/users/@me" + strings.Repeat("\nPOST /api/v9/applications/100/guilds/200/commands", len(commands)) +
