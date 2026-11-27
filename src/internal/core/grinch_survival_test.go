@@ -31,10 +31,15 @@ func TestGrinchCooldownCounterattackAndRevival(t *testing.T) {
 	if fight.PlayerDamage["bob"] != 100 || !fight.SomeoneDown() || !fight.DownAt.IsZero() || !fight.EndedAt.IsZero() {
 		t.Fatalf("after the counterattack: bob %d, down at %v", fight.PlayerDamage["bob"], fight.DownAt)
 	}
-	if reply := move("alice", "4", 4*time.Second, 0, EpicGift); fight.Accepted["4"] {
-		t.Fatalf("a standing player used a gift: %q", reply)
+	// A standing player's gift brings back the one who fell.
+	if reply := move("alice", "4", 4*time.Second, 0, EpicGift); reply != "You brought them back with 100% HP!" || fight.PlayerDamage["bob"] != 0 || fight.NextFallen() != "" {
+		t.Fatalf("helping bob = %q, bob %d, next %q", reply, fight.PlayerDamage["bob"], fight.NextFallen())
+	}
+	if reply := move("alice", "4b", 4*time.Second, 0, EpicGift); fight.Accepted["4b"] || reply != "Nobody needs a gift right now." {
+		t.Fatalf("with nobody down = %q", reply)
 	}
 	// Getting back up does not wait for the click cooldown.
+	fight.PlayerDamage["bob"], fight.Fallen = 100, []string{"bob"}
 	if reply := move("bob", "5", 2*time.Second, 0, RareGift); reply != "You are back with 50% HP!" || fight.PlayerDamage["bob"] != 50 {
 		t.Fatalf("revival = %q, bob %d", reply, fight.PlayerDamage["bob"])
 	}
@@ -60,5 +65,20 @@ func TestDefenseTakesSeveralHitsAndClicksDoNotWait(t *testing.T) {
 	rules := DefaultTuning().Grinch
 	if rules.ClickCooldown != 0 || rules.DefensesNeeded(1) != 8 || rules.DefensesNeeded(3) != 12 || rules.DefensesNeeded(20) != 30 {
 		t.Fatalf("defaults: cooldown %s, defenses %d/%d/%d", rules.ClickCooldown, rules.DefensesNeeded(1), rules.DefensesNeeded(3), rules.DefensesNeeded(20))
+	}
+}
+
+func TestFinalRowSnowballMoves(t *testing.T) {
+	rules := DefaultTuning().Grinch
+	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
+	fight := Grinch{Phase: GrinchFinalAttack, StartedAt: now, TimedAt: now, HP: 500, FinalRound: 1, FinalBoard: 1, SnowballLeft: 3,
+		Joined: map[string]bool{"alice": true}, PlayerDamage: map[string]int{}, DamageDealt: map[string]GrinchDamage{}, Accepted: map[string]bool{}}
+	// The Snowball is the second button, so the first is tile 0, a gift, and the third is tile 1, an attack.
+	if fight.SnowballSlot() != 1 || !fight.FinalGift(0) || fight.FinalGift(2) {
+		t.Fatalf("row: snowball at %d, gift %v %v", fight.SnowballSlot(), fight.FinalGift(0), fight.FinalGift(2))
+	}
+	reply := fight.Move(rules, GrinchMove{Phase: GrinchFinalAttack, Member: "alice", RequestID: "1", At: now, FinalRound: 1, Slot: 1, FinalBoard: 2, SnowballLeft: 4})
+	if reply != rules.SnowballEarned() || fight.SnowballSlot() != 0 {
+		t.Fatalf("pick = %q, snowball now at %d", reply, fight.SnowballSlot())
 	}
 }

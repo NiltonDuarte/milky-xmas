@@ -122,6 +122,7 @@ func (e *GrinchEncounter) Play(ctx context.Context, id, message string, move cor
 	move.CounterRoll = e.random(100)
 	if move.Phase == core.GrinchAttack || move.Phase == core.GrinchFinalAttack {
 		move.FinalBoard = uint8(e.random(14) + 1) // Both attack and gift tiles.
+		move.SnowballLeft = 1 + e.random(core.GrinchSnowballSlot)
 	}
 	if move.Phase == core.GrinchFinalAttack {
 		move.GiftPoints = e.random(e.rules.GiftPointsMax-e.rules.GiftPointsMin+1) + e.rules.GiftPointsMin
@@ -148,6 +149,7 @@ func (e *GrinchEncounter) Play(ctx context.Context, id, message string, move cor
 			return state, NeedGift, err
 		}
 	}
+	shift := move.SnowballLeft
 	state, _, err := e.changeWithRewards(ctx, func(g *core.Grinch) (bool, map[string]core.GrinchReward) {
 		if g.ID != id || g.MessageID == "" || g.MessageID != message {
 			reply = "This fight is no longer active."
@@ -159,10 +161,14 @@ func (e *GrinchEncounter) Play(ctx context.Context, id, message string, move cor
 			return true, nil
 		}
 		move.NextBoard = next
+		// The Snowball button always lands somewhere else.
+		if shift != 0 {
+			move.SnowballLeft = (g.SnowballLeft + shift) % (core.GrinchSnowballSlot + 1)
+		}
 		if move.FinalBoard != 0 && move.FinalBoard == g.FinalBoard {
 			move.FinalBoard = g.FinalBoard%14 + 1 // The row always looks different after a pick.
 		}
-		count, blocked := len(g.Accepted), g.Blocked[move.Member]
+		count, blocked, snowball := len(g.Accepted), g.Blocked[move.Member], g.SnowballSlot()
 		reply = g.Move(e.rules, move)
 		accepted := len(g.Accepted) != count
 		if accepted && g.Blocked[move.Member] > blocked {
@@ -171,7 +177,7 @@ func (e *GrinchEncounter) Play(ctx context.Context, id, message string, move cor
 		if accepted && move.Revive != "" {
 			return true, map[string]core.GrinchReward{move.Member: {SpentGift: move.Revive}}
 		}
-		if accepted && move.Phase == core.GrinchFinalAttack && move.Slot == core.GrinchSnowballSlot {
+		if accepted && move.Phase == core.GrinchFinalAttack && move.Slot == snowball {
 			return true, map[string]core.GrinchReward{move.Member: {Snowballs: e.rules.FinalSnowballReward}}
 		}
 		return advanced || accepted, nil

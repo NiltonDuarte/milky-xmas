@@ -50,7 +50,12 @@ func TestGrinchRewardsAreAtomicAndSurviveRestart(t *testing.T) {
 	if credits != 1 {
 		t.Fatalf("duplicate interaction produced %d credits", credits)
 	}
-	move.RequestID, move.FinalRound = "second", 2
+	// The Snowball button moved after the first pick.
+	moved, _, err := one.LoadGrinch(ctx, scope)
+	if err != nil || moved.SnowballSlot() == core.GrinchSnowballSlot {
+		t.Fatalf("snowball button at %d, %v", moved.SnowballSlot(), err)
+	}
+	move.RequestID, move.FinalRound, move.Slot = "second", 2, moved.SnowballSlot()
 	if _, reply, err := first.Play(ctx, fight.ID, fight.MessageID, move); err != nil || reply != classicFight(core.DefaultTuning().Grinch).SnowballEarned() {
 		t.Fatalf("second click = %q, %v", reply, err)
 	}

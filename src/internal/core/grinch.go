@@ -2,10 +2,12 @@ package core
 
 import (
 	"fmt"
+	"slices"
 	"time"
 )
 
-// GrinchSnowballSlot is the fixed fifth button of the final attack row.
+// GrinchSnowballSlot is the last button of the final attack row, counting from zero. The Snowball
+// button starts there and moves around the row after each pick.
 const GrinchSnowballSlot = 4
 
 // SnowballEarned is the reply for the final row's Snowball button.
@@ -51,9 +53,12 @@ type GrinchMove struct {
 	Roll int
 	// Perks is what the player's list gives them. It counts when the player enters the fight.
 	Perks *GrinchPerks
+	// SnowballLeft places the next final row's Snowball button. See Grinch.SnowballLeft.
+	SnowballLeft int
 	// CounterRoll is a random number in [0, 100) that decides whether the Grinch hits back.
 	CounterRoll int
-	// Revive, when set, spends one of the fallen player's gifts of that rarity to get back up.
+	// Revive, when set, spends one of the player's gifts of that rarity: to get back up, or, while
+	// standing, to bring back the player who fell first.
 	Revive GiftRarity
 	// Shield says the player keeps a shield, which blocks the next hit.
 	Shield bool
@@ -75,6 +80,7 @@ type Grinch struct {
 	Board          uint8
 	FinalBoard     uint8
 	FinalRound     int
+	SnowballLeft   int // How many places left of the row's end the Snowball button sits.
 	Gifts          map[string]int
 	Snowballs      map[string]int // Snowballs each player collected with the final ❄️ button.
 	PlayerFeed     []GrinchEvent  // The latest attacks, for the players' text area.
@@ -89,6 +95,7 @@ type Grinch struct {
 	Perks          map[string]GrinchPerks // Players on a list, as they entered the fight.
 	LastMove       map[string]time.Time   // Each player's last accepted action, for the cooldown.
 	DownAt         time.Time              // When the last player standing fell, if one may still get up.
+	Fallen         []string               // Players out of HP, in the order they fell.
 	Blocked        map[string]int         // Hits each player's shields stopped.
 	Dirty          bool
 }
@@ -98,6 +105,18 @@ func (g Grinch) Health(rules GrinchRules) float64 {
 		return float64(rules.SnowballsBossHP)/100 - float64(g.Defenses*rules.DefenseTotal())/(100*float64(g.defensePlayerCount()))
 	}
 	return float64(g.HP) / 100
+}
+
+// SnowballSlot is where the final row's Snowball button is.
+func (g Grinch) SnowballSlot() int { return GrinchSnowballSlot - g.SnowballLeft }
+
+// FinalGift reports whether a button of the final row, other than the Snowball one, gives gift
+// points instead of attacking. FinalBoard describes those four buttons in order.
+func (g Grinch) FinalGift(slot int) bool {
+	if slot > g.SnowballSlot() {
+		slot--
+	}
+	return g.FinalBoard&(1<<slot) != 0
 }
 
 func (g Grinch) defensePlayerCount() int {
@@ -302,7 +321,11 @@ func (g *Grinch) block(move GrinchMove) bool {
 func (g *Grinch) hurt(rules GrinchRules, move GrinchMove, percent int) {
 	g.PlayerDamage[move.Member] += percent
 	g.bossEvent(GrinchEvent{Kind: EventMiss, Member: move.Member, Amount: percent, Roll: move.Roll})
-	if g.PlayerDamage[move.Member] < 100 || g.hasSurvivor() {
+	if g.PlayerDamage[move.Member] < 100 {
+		return
+	}
+	g.Fallen = append(g.Fallen, move.Member)
+	if g.hasSurvivor() {
 		return
 	}
 	if rules.CanRevive() && rules.LastChance > 0 {
@@ -327,24 +350,51 @@ func (g *Grinch) counterattack(rules GrinchRules, move GrinchMove) string {
 	return fmt.Sprintf(" The Grinch hit you back: -%d%% HP.", percent)
 }
 
-// revive gets a fallen player back up with the gift they chose.
+// NextFallen is who a standing player's gift would bring back: the one who fell first. It is empty
+// when nobody is down.
+func (g Grinch) NextFallen() string {
+	for _, member := range g.Fallen {
+		if g.PlayerDamage[member] >= 100 {
+			return member
+		}
+	}
+	// A fight saved before the order was kept.
+	var first string
+	for member := range g.Joined {
+		if g.PlayerDamage[member] >= 100 && (first == "" || member < first) {
+			first = member
+		}
+	}
+	return first
+}
+
+// revive spends the player's gift: on themselves when they are down, and otherwise on the player
+// who fell first.
 func (g *Grinch) revive(rules GrinchRules, move GrinchMove) string {
 	switch g.Phase {
 	case GrinchSnowballs, GrinchDefense, GrinchAttack, GrinchFinalAttack:
 	default:
 		return "This part of the fight has ended."
 	}
-	if g.PlayerDamage[move.Member] < 100 {
-		return "You are still standing. A gift only brings you back after you fall."
+	target := move.Member
+	if g.PlayerDamage[target] < 100 {
+		target = g.NextFallen()
+	}
+	if target == "" {
+		return "Nobody needs a gift right now."
 	}
 	hp := rules.ReviveHP(move.Revive)
 	if hp <= 0 {
-		return "That gift cannot bring you back."
+		return "That gift cannot bring anyone back."
 	}
-	g.PlayerDamage[move.Member] = 100 - hp
-	g.bossEvent(GrinchEvent{Kind: EventRevive, Member: move.Member, Amount: hp})
+	g.PlayerDamage[target] = 100 - hp
+	g.Fallen = slices.DeleteFunc(slices.Clone(g.Fallen), func(member string) bool { return member == target })
+	g.bossEvent(GrinchEvent{Kind: EventRevive, Member: move.Member, Target: target, Amount: hp})
 	g.accept(move)
-	return fmt.Sprintf("You are back with %d%% HP!", hp)
+	if target == move.Member {
+		return fmt.Sprintf("You are back with %d%% HP!", hp)
+	}
+	return fmt.Sprintf("You brought them back with %d%% HP!", hp)
 }
 
 // accept counts an action and starts the player's wait for the next one.
@@ -460,7 +510,7 @@ func (g *Grinch) move(rules GrinchRules, move GrinchMove) string {
 		damage.Hundredths = damageApplied
 		reply = "Attack hit!"
 		if g.HP == rules.AttackBossHP {
-			g.Phase, g.FinalBoard, g.FinalRound = GrinchFinalAttack, move.FinalBoard, 1
+			g.Phase, g.FinalBoard, g.FinalRound, g.SnowballLeft = GrinchFinalAttack, move.FinalBoard, 1, move.SnowballLeft
 			g.bossEvent(GrinchEvent{Kind: EventPhase, Phase: GrinchFinalAttack, Roll: move.Roll})
 		}
 	case GrinchFinalAttack:
@@ -470,14 +520,14 @@ func (g *Grinch) move(rules GrinchRules, move GrinchMove) string {
 		if move.Slot < 0 || move.Slot > GrinchSnowballSlot || (g.FinalRound == 0 && move.Slot != 0 && move.Slot != GrinchSnowballSlot) {
 			return "Choose a button on the final row."
 		}
-		if move.Slot == GrinchSnowballSlot {
+		if move.Slot == g.SnowballSlot() {
 			if g.Snowballs == nil {
 				g.Snowballs = make(map[string]int)
 			}
 			g.Snowballs[move.Member] += int(rules.FinalSnowballReward)
 			g.bossEvent(GrinchEvent{Kind: EventSnowball, Member: move.Member, Amount: int(rules.FinalSnowballReward), Roll: move.Roll})
 			reply = rules.SnowballEarned()
-		} else if g.FinalBoard&(1<<move.Slot) != 0 {
+		} else if g.FinalGift(move.Slot) {
 			if move.GiftPoints < rules.GiftPointsMin || move.GiftPoints > rules.GiftPointsMax {
 				return "Could not award gift points."
 			}
@@ -496,7 +546,7 @@ func (g *Grinch) move(rules GrinchRules, move GrinchMove) string {
 				g.end(rules, GrinchWon, move.At)
 			}
 		}
-		g.FinalBoard, g.FinalRound = move.FinalBoard, g.FinalRound+1
+		g.FinalBoard, g.FinalRound, g.SnowballLeft = move.FinalBoard, g.FinalRound+1, move.SnowballLeft
 	default:
 		return "This part of the fight has ended."
 	}

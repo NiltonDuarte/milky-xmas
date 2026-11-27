@@ -33,6 +33,8 @@ type GrinchEvent struct {
 	// Phase is the phase the fight entered, for EventPhase.
 	Phase GrinchPhase
 	Roll  int
+	// Target is who was brought back, for EventRevive.
+	Target string
 }
 
 func addEvent(feed []GrinchEvent, event GrinchEvent) []GrinchEvent {

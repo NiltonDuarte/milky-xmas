@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -18,15 +19,29 @@ func TestLocalGrinch(t *testing.T) {
 	store := &giftfixture.Store{}
 	service := app.NewService(store, func() time.Time { return now }, func(int) int { return 0 })
 	handler := newHandler(service, newGrinchFixture(func() time.Time { return now }, store, stepGrinchRules()))
+	var shown string
 	send := func(command, want string) {
 		t.Helper()
 		request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(url.Values{"command": {command}}.Encode()))
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(response, request)
-		if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), want) {
+		shown = response.Body.String()
+		if response.Code != http.StatusOK || !strings.Contains(shown, want) {
 			t.Fatalf("%s: %d %q, want %q", command, response.Code, response.Body, want)
 		}
+	}
+	// pick clicks the final row's first button with the emoji, wherever the row has it now.
+	pick := func(emoji, want string) {
+		t.Helper()
+		send("/grinch view", "final")
+		for slot := range core.GrinchSnowballSlot + 1 {
+			if number := strconv.Itoa(slot + 1); strings.Contains(shown, number+" "+emoji) {
+				send("/grinch hit "+number, want)
+				return
+			}
+		}
+		t.Fatalf("no %s button in %q", emoji, shown)
 	}
 	send("/grinch summon", "🎅 0 ready")
 	send("/grinch join", "🎅 1 ready")
@@ -45,17 +60,16 @@ func TestLocalGrinch(t *testing.T) {
 		send("/grinch hit 1", "HP\nattack")
 	}
 	send("/grinch hit 1", "5.00/100% HP\nfinal")
-	send("/grinch hit 1", "5.00/100% HP\nfinal")
-	send("/grinch view", "5 ❄️")
-	send("/grinch hit 5", "5.00/100% HP\nfinal")
-	send("/grinch hit 5", "5.00/100% HP\nfinal")
+	pick("🎁", "5.00/100% HP\nfinal")
+	pick("❄️", "5.00/100% HP\nfinal")
+	pick("❄️", "5.00/100% HP\nfinal")
 	send("/look in-your-stocking", "❄️ Normal   2\n")
 	send("/look in-your-stocking", "Coal\n```\n0\n")
 	send("/look in-your-stocking", "🟡 Yellow   0\n")
 	for range 4 {
-		send("/grinch hit 4", "HP\nfinal")
+		pick("⚔️", "HP\nfinal")
 	}
-	send("/grinch hit 4", "Damage leaderboard\n1. fixture — 100.00 dmg\n\nGift leaderboard\n1. fixture — 2\n\nSnowball leaderboard\n1. fixture — 2")
+	pick("⚔️", "Damage leaderboard\n1. fixture — 100.00 dmg\n\nGift leaderboard\n1. fixture — 2\n\nSnowball leaderboard\n1. fixture — 2")
 	send("/grinch view", "👽 Grinch · 0.00/100% HP")
 	send("/look in-your-stocking", "❄️ Normal   2\n")
 	send("/look in-your-stocking", "Coal\n```\n0\n")

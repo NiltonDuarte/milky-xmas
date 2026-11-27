@@ -72,13 +72,19 @@ A Gift Rain SHALL end after ten collections in total. Each collection SHALL have
 
 ### Requirement: Final message with collectors
 
-When a drop ends, because its ten minutes passed or a Gift Rain reached ten collections, its message SHALL say `⌛ This drop has expired.`, remove its buttons, and list each collection as the player and the prize in order, or say that nobody collected a gift. The list SHALL NOT ping players. The local chat ends a drop with `/drop expire <id>`.
+When a drop ends, because its ten minutes passed or a Gift Rain reached ten collections, its message SHALL say `⌛ This drop has expired.`, remove its buttons, and list each collection as the player and the prize in order, or say that nobody collected a gift. The list SHALL NOT ping players. A Random Active Drop whose time ran out SHALL also replace its picture with the end GIF in Discord. The local chat ends a drop with `/drop expire <id>`.
 
 #### Scenario: Expired with collectors
 
 - **GIVEN** two players collected from a drop
 - **WHEN** the drop expires
 - **THEN** the message lists both players with their prizes and has no buttons
+
+#### Scenario: Random drop picture
+
+- **GIVEN** a Random Active Drop in Discord
+- **WHEN** its time runs out
+- **THEN** the buttons are gone and the message shows the end GIF
 
 #### Scenario: Expired without collectors
 

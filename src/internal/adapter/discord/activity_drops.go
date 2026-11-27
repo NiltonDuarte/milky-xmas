@@ -27,6 +27,13 @@ var activeDropImage []byte
 //go:embed giftrain.webp
 var giftRainImage []byte
 
+// dropEndImage replaces the picture of a Random Active Drop whose time ran out.
+//
+//go:embed dropend.gif
+var dropEndImage []byte
+
+const dropEndImageName = "dropend.gif"
+
 type dropBot struct {
 	avatars *avatarEmojis
 	drops   *app.ActivityDrops
@@ -75,21 +82,33 @@ func (b *dropBot) expire(session *discordgo.Session, channelID, messageID, dropI
 	if !ok {
 		return // Already finished, for example when the tenth Gift Rain gift was collected.
 	}
-	showDropEnd(session, channelID, messageID, b.avatars.message(gifttext.DropExpired(summary.Claims, userMention)))
+	var picture []byte
+	if summary.Kind == core.RandomActiveDrop {
+		picture = dropEndImage
+	}
+	showDropEnd(session, channelID, messageID, b.avatars.message(gifttext.DropExpired(summary.Claims, userMention)), picture)
 }
 
 func userMention(userID string) string { return "<@" + userID + ">" }
 
-// showDropEnd replaces a drop's message and buttons with its final text.
-func showDropEnd(session *discordgo.Session, channelID, messageID, content string) {
+// showDropEnd replaces a drop's message and buttons with its final text and, when given, its
+// picture with a new GIF.
+func showDropEnd(session *discordgo.Session, channelID, messageID, content string, picture []byte) {
 	components := []discordgo.MessageComponent{}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	_, err := session.ChannelMessageEditComplex(&discordgo.MessageEdit{
+	edit := &discordgo.MessageEdit{
 		ID: messageID, Channel: channelID, Content: &content, Components: &components,
 		AllowedMentions: &discordgo.MessageAllowedMentions{},
-	}, discordgo.WithContext(ctx))
-	if err != nil {
+	}
+	timeout := 5 * time.Second
+	if picture != nil {
+		edit.Files = []*discordgo.File{{Name: dropEndImageName, ContentType: "image/gif", Reader: bytes.NewReader(picture)}}
+		edit.Attachments = attachmentsFor(edit.Files) // Drops the picture it replaces.
+		edit.Embeds = &[]*discordgo.MessageEmbed{{Image: &discordgo.MessageEmbedImage{URL: "attachment://" + dropEndImageName}}}
+		timeout = pictureUploadTimeout
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	if _, err := session.ChannelMessageEditComplex(edit, discordgo.WithContext(ctx)); err != nil {
 		log.Printf("Show expired gift drop: %v", err)
 	}
 }
@@ -153,7 +172,7 @@ func (b *dropBot) button(session *discordgo.Session, interaction *discordgo.Inte
 		if message := interaction.Message; message != nil {
 			switch {
 			case award.Finished != nil:
-				showDropEnd(session, interaction.ChannelID, message.ID, b.avatars.message(gifttext.DropFinished(award.Finished.Claims, userMention)))
+				showDropEnd(session, interaction.ChannelID, message.ID, b.avatars.message(gifttext.DropFinished(award.Finished.Claims, userMention)), nil)
 			case award.Kind == core.RandomActiveDrop:
 				components := dropComponents(parts[1], award.Taken)
 				if _, err := session.ChannelMessageEditComplex(&discordgo.MessageEdit{

@@ -105,14 +105,17 @@ func fixtureSummary(rules core.GrinchRules, state core.Grinch) string {
 		fmt.Fprint(&message, "\n/grinch hit 1")
 	case core.GrinchFinalAttack:
 		fmt.Fprintln(&message)
-		for slot := range 4 {
+		for slot := range core.GrinchSnowballSlot + 1 {
 			emoji := "⚔️"
-			if state.FinalBoard&(1<<slot) != 0 {
+			switch {
+			case slot == state.SnowballSlot():
+				emoji = "❄️"
+			case state.FinalGift(slot):
 				emoji = "🎁"
 			}
 			fmt.Fprintf(&message, "%d %s  ", slot+1, emoji)
 		}
-		fmt.Fprintf(&message, "%d ❄️\n/grinch hit <tile>", core.GrinchSnowballSlot+1)
+		fmt.Fprint(&message, "\n/grinch hit <tile>")
 	case core.GrinchDefense, core.GrinchAttack:
 		on, off := "🎄", "❄️"
 		if state.Phase == core.GrinchAttack {

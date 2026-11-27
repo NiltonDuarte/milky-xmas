@@ -134,7 +134,11 @@ func TestGrinchViewShowsPlayerCardsDuringTheFight(t *testing.T) {
 		}
 	}
 	// The card with most damage comes first.
-	if strings.Index(text, "<@p00>") > strings.Index(text, "<@p01>") {
+	// The panel also names who is down, so the cards are found by their bold mention.
+	if !strings.Contains(text, "<@p01> is out of HP!") {
+		t.Errorf("the panel does not name who is down: %q", text)
+	}
+	if strings.Index(text, "**<@p00>**") > strings.Index(text, "**<@p01>**") {
 		t.Errorf("cards are not ordered by damage: %q", text)
 	}
 }

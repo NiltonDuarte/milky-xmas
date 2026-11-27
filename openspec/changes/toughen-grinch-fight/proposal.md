@@ -9,7 +9,7 @@ The fight ends in a few clicks, and the safe trees are shown, so a player's HP a
 - The panel is refreshed right after each action, and the final row always changes after a pick.
 - A wait between actions exists in the tuning but is off: it made clicks feel broken in play.
 - The Grinch has a 10% chance of hitting back at an attacker.
-- A fallen player gets back up by spending one of their own gifts: 25%, 50%, or 100% HP by rarity. When everybody is down, the Grinch waits 20 seconds before winning.
+- A player out of HP gets back up by spending one of their gifts, or a standing player spends theirs on them: 25%, 50%, or 100% HP by rarity. When everybody is down, the Grinch waits 20 seconds before winning.
 - The fight clock after the snowball phase is three minutes instead of one.
 
 ## Capabilities

@@ -167,7 +167,9 @@ func dropEditSession(t *testing.T, edits chan<- capturedEdit, replies chan<- str
 			return fakeResponse(http.StatusOK, `{"id":"501"}`), nil
 		case r.Method == http.MethodPatch && r.URL.Path == "/api/v9/channels/400/messages/500":
 			var edit capturedEdit
-			if err := json.NewDecoder(r.Body).Decode(&edit); err != nil {
+			if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
+				edit.Files = decodeMultipartPayload(t, r, &edit, dropEndImageName)
+			} else if err := json.NewDecoder(r.Body).Decode(&edit); err != nil {
 				t.Error(err)
 			}
 			edits <- edit
@@ -313,6 +315,9 @@ func TestDropExpiresAfterItsLifetimeAndListsPlayers(t *testing.T) {
 		if edit.Content == nil || *edit.Content != "⏰ Time's up! The Grinch stole all the presents! 😈\n**Collected by**\n<@alice> — 🎁 rare gift" || len(edit.Components) != 0 {
 			t.Fatalf("expiry message = %+v", edit)
 		}
+		if edit.Files != 1 || len(edit.Embeds) != 1 || edit.Embeds[0].Image.URL != "attachment://dropend.gif" {
+			t.Fatalf("expiry picture = %+v", edit)
+		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("the drop never expired")
 	}
@@ -323,6 +328,12 @@ func TestDropExpiresAfterItsLifetimeAndListsPlayers(t *testing.T) {
 
 // capturedEdit is the part of a message edit these tests check.
 type capturedEdit struct {
+	Files  int `json:"-"` // Copies of the end picture uploaded with the edit.
+	Embeds []struct {
+		Image struct {
+			URL string `json:"url"`
+		} `json:"image"`
+	} `json:"embeds"`
 	Content    *string `json:"content"`
 	Components []struct {
 		Components []struct {

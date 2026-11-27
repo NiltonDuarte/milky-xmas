@@ -457,18 +457,18 @@ func grinchMessage(rules core.GrinchRules, state core.Grinch) (string, []discord
 			break
 		}
 		tiles := make([]discordgo.MessageComponent, 0, core.GrinchSnowballSlot+1)
-		for slot := range core.GrinchSnowballSlot {
+		for slot := range core.GrinchSnowballSlot + 1 {
 			emoji := "⚔️"
-			if state.FinalBoard&(1<<slot) != 0 {
+			switch {
+			case slot == state.SnowballSlot():
+				emoji = "❄️"
+			case state.FinalGift(slot):
 				emoji = "🎁"
 			}
 			tile := button(slot, emoji, "")
 			tile.CustomID += ":" + strconv.Itoa(state.FinalRound)
 			tiles = append(tiles, tile)
 		}
-		snowball := button(core.GrinchSnowballSlot, "❄️", "")
-		snowball.CustomID += ":" + strconv.Itoa(state.FinalRound)
-		tiles = append(tiles, snowball)
 		rows = []discordgo.MessageComponent{discordgo.ActionsRow{Components: tiles}}
 	default:
 		content += "\nThe snowball phase ended."
@@ -484,7 +484,8 @@ func grinchMessage(rules core.GrinchRules, state core.Grinch) (string, []discord
 		if ends := state.LastChanceEnds(rules); !ends.IsZero() {
 			content += fmt.Sprintf("\n💀 **Everyone is down!** Use a gift to get back up, or the Grinch wins <t:%d:R>.", ends.Unix())
 		} else {
-			content += "\nOut of HP? Use one of your gifts to get back up."
+			content += fmt.Sprintf("\n💀 %s is out of HP! A gift button spends **your** gift to bring them back. If you are down, it brings you back.",
+				mentionUser(state.NextFallen()))
 		}
 		var gifts []discordgo.MessageComponent
 		for _, gift := range []struct {

@@ -42,13 +42,19 @@ An accepted attack SHALL have a 10% chance of costing the attacker the HP of a m
 
 ### Requirement: Getting back up with a gift
 
-A player out of HP SHALL be able to spend one of their own gifts to get back up with 25% HP for a normal gift, 50% for a rare one, and 100% for an epic one. It SHALL be refused, changing nothing, without that gift or while standing.
+A player SHALL be able to spend one of their own gifts: when out of HP to get back up, and while standing to bring back the player who fell first, with 25% HP for a normal gift, 50% for a rare one, and 100% for an epic one. The panel SHALL name who a standing player's gift would bring back. It SHALL be refused, changing nothing, without that gift or with nobody down.
 
 #### Scenario: Revival
 
 - **GIVEN** Bob is out of HP and has a rare gift
 - **WHEN** Bob presses the rare gift button
 - **THEN** Bob has 50% HP and one rare gift less
+
+#### Scenario: Helping a friend
+
+- **GIVEN** Bob is out of HP and Alice is standing with a rare gift
+- **WHEN** Alice presses the rare gift button
+- **THEN** Bob has 50% HP and Alice has one rare gift less
 
 #### Scenario: No gift
 
@@ -65,3 +71,14 @@ When nobody in the fight is standing, the Grinch SHALL win after 20 seconds unle
 - **GIVEN** a lone player falls
 - **WHEN** they use a gift within 20 seconds
 - **THEN** the fight goes on
+
+### Requirement: Moving Snowball button
+
+The Snowball button of the final attack row SHALL be in a different place after each accepted pick. This replaces the fixed fifth button of earlier changes.
+
+#### Scenario: After a pick
+
+- **GIVEN** the final attack row
+- **WHEN** a pick is accepted
+- **THEN** the Snowball button is somewhere else in the row
+

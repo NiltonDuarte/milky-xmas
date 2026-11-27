@@ -7,7 +7,7 @@
 - Gifts only bring players back; they do not heal a standing player.
 - The last chance exists because a lone player would otherwise lose the moment they fell.
 - With the optional wait on, a click during it is ignored and the panel says how long it is.
-- A fixed Snowball button ends the final row; only the other four are redrawn.
+- The final row's Snowball button always moves to another of the five places after a pick; the other four are redrawn.
 
 ## Risks / Trade-offs
 
