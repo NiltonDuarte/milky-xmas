@@ -60,5 +60,6 @@ func cloneGrinch(state core.Grinch) core.Grinch {
 	state.Accepted = maps.Clone(state.Accepted)
 	state.Perks = maps.Clone(state.Perks)
 	state.LastMove = maps.Clone(state.LastMove)
+	state.Blocked = maps.Clone(state.Blocked)
 	return state
 }

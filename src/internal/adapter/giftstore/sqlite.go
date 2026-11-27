@@ -168,6 +168,22 @@ func initSchema(ctx context.Context, db *sql.DB) error {
 			return err
 		}
 	}
+	var hasShields bool
+	err = tx.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM pragma_table_info('gift_players') WHERE name = 'shields')
+	`).Scan(&hasShields)
+	if err != nil {
+		return err
+	}
+	if !hasShields {
+		_, err = tx.ExecContext(ctx, `
+			ALTER TABLE gift_players ADD COLUMN shields INTEGER NOT NULL DEFAULT 0 CHECK (shields >= 0);
+			ALTER TABLE gift_players ADD COLUMN extra_waterings INTEGER NOT NULL DEFAULT 0 CHECK (extra_waterings >= 0)
+		`)
+		if err != nil {
+			return err
+		}
+	}
 	return tx.Commit()
 }
 

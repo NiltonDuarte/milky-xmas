@@ -33,7 +33,8 @@ O anúncio tem um botão **Start**. O primeiro clique começa a contagem regress
 
 > **Regras atuais (valem no lugar dos "6 cliques" e do relógio de 1 min citados abaixo):**
 > - Snowballs, ataque e ataque final pedem **8 acertos por jogador, no mínimo 15** cada (`grinch.hits.per_player` e `minimum`). O dano de um acerto é o HP da fase dividido por esse número; os danos fixos abaixo só valem com `grinch.hits` zerado.
-> - Cada jogador espera **2s** entre duas ações (`grinch.click_cooldown`).
+> - **Sem espera** entre cliques (`grinch.click_cooldown: 0s`; um valor maior liga a espera).
+> - A defesa pede **4 defesas certas por jogador, entre 8 e 30** (`grinch.defense.per_player`, `minimum`, `max_defenses`).
 > - Cada ataque tem **10%** de chance de o Grinch revidar (`grinch.counterattack_percent`), tirando o mesmo HP de um erro na defesa (20%; Nice 34%, Naughty 10%).
 > - Quem cai volta gastando um **gift próprio**: Normal **25%** de HP, Rare **50%**, Epic **100%**. Com todos caídos, o Grinch espera **20s** antes de vencer (`grinch.revive`).
 > - O relógio de combate depois das snowballs é de **3 min** (`grinch.fight_duration`).
@@ -129,14 +130,14 @@ Arquivo: [`tuning.yaml`](../tuning.yaml), apontado por `MILKY_TUNING_CONFIG` (Di
 | Inscritos que iniciam a luta na hora | `grinch.registration.early_start_players` | `3` |
 | Relógio de combate | `grinch.fight_duration` | `3m` |
 | Acertos por jogador e mínimo por fase | `grinch.hits.per_player`, `grinch.hits.minimum` | `8`, `15` |
-| Espera entre ações | `grinch.click_cooldown` | `2s` |
+| Espera entre ações | `grinch.click_cooldown` | `0s` (sem espera) |
+| Defesas por jogador, mínimo e máximo | `grinch.defense.per_player`, `minimum`, `max_defenses` | `4`, `8`, `30` |
 | Chance de revide | `grinch.counterattack_percent` | `10` |
 | Voltar com um gift | `grinch.revive.normal_hp_percent`, `rare_hp_percent`, `epic_hp_percent` | `25`, `50`, `100` |
 | Última chance com todos caídos | `grinch.revive.last_chance` | `20s` |
 | Dano por clique de snowball (% de HP) | `grinch.snowballs.damage` | `4.17` |
 | HP do boss ao fim da fase 1 | `grinch.snowballs.boss_hp_after` | `75` |
 | HP do boss ao fim da defesa | `grinch.defense.boss_hp_after` | `45` |
-| Máximo de defesas necessárias | `grinch.defense.max_defenses` | `6` |
 | HP perdido por erro na defesa (% do máximo do jogador) | `grinch.defense.miss_hp_loss_percent` | `20` |
 | Dano do ☃️ | `grinch.attack.damage` | `6.67` |
 | Dano do 🧊 | `grinch.attack.heavy_damage` | `7` |

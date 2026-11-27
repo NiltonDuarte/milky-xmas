@@ -11,6 +11,7 @@ const (
 	EventHit    GrinchEventKind = "hit"
 	EventDefend GrinchEventKind = "defend"
 	EventRevive GrinchEventKind = "revive"
+	EventShield GrinchEventKind = "shield"
 	// Boss side: what the Grinch did to the players and what they took back from him.
 	EventPhase    GrinchEventKind = "phase"
 	EventMiss     GrinchEventKind = "miss"

@@ -43,6 +43,9 @@ func WateredBlocks(member string, watering app.Watering, tree core.Tree, rules c
 	case watering.ListChange < 0:
 		first += fmt.Sprintf(" (😈 Naughty list %d%%)", watering.ListChange)
 	}
+	if watering.Extra {
+		first += "\n🎁 Extra watering used."
+	}
 	if watering.GoodDeeds > 0 {
 		first += fmt.Sprintf("\n😇 Good deeds +%d", watering.GoodDeeds)
 	}

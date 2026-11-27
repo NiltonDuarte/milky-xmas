@@ -132,6 +132,7 @@ func (e *GrinchEncounter) Play(ctx context.Context, id, message string, move cor
 			return core.Grinch{}, "", fmt.Errorf("load aura: %w", err)
 		}
 		move.Perks = e.aura.GrinchPerks(record.Aura, e.rules)
+		move.Shield = record.Inventory.Shields > 0
 	}
 	if move.Revive != "" {
 		// Without an inventory to take the gift from, nobody gets back up.
@@ -158,9 +159,15 @@ func (e *GrinchEncounter) Play(ctx context.Context, id, message string, move cor
 			return true, nil
 		}
 		move.NextBoard = next
-		count := len(g.Accepted)
+		if move.FinalBoard != 0 && move.FinalBoard == g.FinalBoard {
+			move.FinalBoard = g.FinalBoard%14 + 1 // The row always looks different after a pick.
+		}
+		count, blocked := len(g.Accepted), g.Blocked[move.Member]
 		reply = g.Move(e.rules, move)
 		accepted := len(g.Accepted) != count
+		if accepted && g.Blocked[move.Member] > blocked {
+			return true, map[string]core.GrinchReward{move.Member: {UsedShield: true}}
+		}
 		if accepted && move.Revive != "" {
 			return true, map[string]core.GrinchReward{move.Member: {SpentGift: move.Revive}}
 		}

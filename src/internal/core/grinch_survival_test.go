@@ -7,6 +7,7 @@ import (
 
 func TestGrinchCooldownCounterattackAndRevival(t *testing.T) {
 	rules := DefaultTuning().Grinch
+	rules.ClickCooldown = 2 * time.Second
 	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
 	fight := Grinch{ID: "f", Phase: GrinchSnowballs, StartedAt: now, HP: GrinchBossHP,
 		Joined: map[string]bool{"alice": true, "bob": true}, PlayerDamage: map[string]int{"bob": 80},
@@ -52,5 +53,12 @@ func TestGrinchCooldownCounterattackAndRevival(t *testing.T) {
 	move("alice", "8", 22*time.Second, 99, "")
 	if fight.Advance(rules, now.Add(41*time.Second)) || !fight.Advance(rules, now.Add(42*time.Second)) || fight.Phase != GrinchDefeat {
 		t.Fatalf("after the last chance: phase %s", fight.Phase)
+	}
+}
+
+func TestDefenseTakesSeveralHitsAndClicksDoNotWait(t *testing.T) {
+	rules := DefaultTuning().Grinch
+	if rules.ClickCooldown != 0 || rules.DefensesNeeded(1) != 8 || rules.DefensesNeeded(3) != 12 || rules.DefensesNeeded(20) != 30 {
+		t.Fatalf("defaults: cooldown %s, defenses %d/%d/%d", rules.ClickCooldown, rules.DefensesNeeded(1), rules.DefensesNeeded(3), rules.DefensesNeeded(20))
 	}
 }

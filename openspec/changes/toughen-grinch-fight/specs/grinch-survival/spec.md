@@ -10,15 +10,25 @@ The snowball, attack, and final phases SHALL each take about eight hits per play
 - **WHEN** they bring the Grinch to 75% HP
 - **THEN** it takes 24 hits
 
-### Requirement: Wait between actions
+### Requirement: No wait by default
 
-A player SHALL wait two seconds between accepted actions of a fight. Earlier clicks SHALL not count.
+Actions SHALL count as fast as players press, unless `grinch.click_cooldown` sets a wait. The panel SHALL be refreshed right after an action.
 
 #### Scenario: Quick second click
 
-- **GIVEN** a player hit one second ago
-- **WHEN** they hit again
-- **THEN** nothing changes
+- **GIVEN** the default numbers and a player who hit a moment ago
+- **WHEN** they hit again on the current buttons
+- **THEN** the hit counts
+
+### Requirement: Longer defense
+
+The defense phase SHALL need four safe defenses for each player in the fight, at least eight and at most thirty. This replaces one per player up to six.
+
+#### Scenario: Lone player
+
+- **GIVEN** one player reaches the defense phase
+- **WHEN** they defend
+- **THEN** it takes eight safe defenses
 
 ### Requirement: The Grinch hits back
 

@@ -2,6 +2,7 @@ package giftstore_test
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -129,5 +130,55 @@ func TestDailyAuraLimitIsStored(t *testing.T) {
 	current, auraErr := service.CheckAura(t.Context(), alice)
 	if err != nil || auraErr != nil || effect != app.AuraMoved || current != 30 {
 		t.Fatalf("next day = effect %d, aura %d, %v %v", effect, current, err, auraErr)
+	}
+}
+
+func TestOpenedShieldAndExtraWateringAreUsedOnce(t *testing.T) {
+	store := openGiftPlayers(t, filepath.Join(t.TempDir(), "gifts.db"))
+	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
+	roll := 1 // Rare: the extra watering.
+	service := app.NewService(store, func() time.Time { return now }, func(n int) int {
+		if n == 6 {
+			return roll
+		}
+		return 0
+	})
+	alice := app.Member{ServerID: "guild", UserID: "alice"}
+	if saved, err := store.Save(t.Context(), app.GiftUpdate{Member: alice, Next: core.GiftRecord{Inventory: core.Inventory{Rare: 1, Epic: 1}}}); err != nil || !saved {
+		t.Fatal(saved, err)
+	}
+	open := func(rarity core.GiftRarity, want core.Surprise) {
+		t.Helper()
+		if got, err := service.OpenGift(t.Context(), alice, rarity); err != nil || got.Surprise != want {
+			t.Fatalf("open %s = %+v, %v", rarity, got, err)
+		}
+	}
+	open(core.RareGift, core.SurpriseExtraWatering)
+
+	tree := service.RewardTree(app.NewTree(&app.MemoryTreeStore{}, func() time.Time { return now }))
+	for i, extra := range []bool{false, true} {
+		if _, watering, err := tree.Water(t.Context(), alice); err != nil || watering.Extra != extra {
+			t.Fatalf("watering %d = %+v, %v", i+1, watering, err)
+		}
+	}
+	if _, _, err := tree.Water(t.Context(), alice); !errors.Is(err, core.ErrTreeCooldown) {
+		t.Fatalf("third watering = %v", err)
+	}
+
+	roll = 0 // Epic: the shield.
+	open(core.EpicGift, core.SurpriseShield)
+	fight := core.Grinch{ID: "f", MessageID: "m", Phase: core.GrinchDefense, StartedAt: now, TimedAt: now, HP: 7500, Board: 1, DefenseRound: 1, DefensePlayers: 2,
+		Joined: map[string]bool{"alice": true, "bob": true}, PlayerDamage: map[string]int{}, DamageDealt: map[string]core.GrinchDamage{}, Accepted: map[string]bool{}}
+	if saved, err := store.SaveGrinch(t.Context(), "guild:c", 0, fight, "guild", nil); err != nil || !saved {
+		t.Fatal(saved, err)
+	}
+	encounter := service.AuraEncounter(app.NewGrinchEncounter(store, "guild", "guild:c", core.DefaultTuning().Grinch, func() time.Time { return now }, func(int) int { return 0 }))
+	for i, damage := range []int{0, 20} {
+		state, _, err := encounter.Play(t.Context(), "f", "m", core.GrinchMove{
+			Phase: core.GrinchDefense, Member: "alice", RequestID: string(rune('a' + i)), Slot: 7, DefenseRound: i + 1, At: now.Add(time.Duration(i) * 3 * time.Second)})
+		record, loadErr := store.Load(t.Context(), alice)
+		if err != nil || loadErr != nil || state.PlayerDamage["alice"] != damage || record.Inventory.Shields != 0 {
+			t.Fatalf("miss %d: damage %d, shields %d, %v %v", i+1, state.PlayerDamage["alice"], record.Inventory.Shields, err, loadErr)
+		}
 	}
 }

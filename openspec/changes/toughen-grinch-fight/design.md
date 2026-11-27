@@ -6,7 +6,8 @@
 - A revival takes the gift in the same transaction that saves the fight. It does not move the aura or wait for the click cooldown.
 - Gifts only bring players back; they do not heal a standing player.
 - The last chance exists because a lone player would otherwise lose the moment they fell.
-- A click during the wait is ignored. The panel says how long the wait is, rather than sending a message for every quick click.
+- With the optional wait on, a click during it is ignored and the panel says how long it is.
+- A fixed Snowball button ends the final row; only the other four are redrawn.
 
 ## Risks / Trade-offs
 

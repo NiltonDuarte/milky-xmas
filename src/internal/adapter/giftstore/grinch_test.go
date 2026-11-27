@@ -163,5 +163,6 @@ func classicFight(rules core.GrinchRules) core.GrinchRules {
 	rules.HitsPerPlayer, rules.MinHits, rules.ClickCooldown, rules.CounterattackPercent = 0, 0, 0, 0
 	rules.LastChance = 0
 	rules.FightDuration = time.Minute
+	rules.DefensePerPlayer, rules.DefenseMinimum, rules.DefenseMaxDefenses = 0, 0, 6
 	return rules
 }

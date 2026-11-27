@@ -88,6 +88,7 @@ func (b bot) registerCommands(ctx context.Context, session *discordgo.Session) e
 		dailyCommand(),
 		sendCommand(),
 		giveCommand(),
+		openCommand(),
 		auraCommand(),
 		{
 			Type:        discordgo.ChatApplicationCommand,
@@ -223,6 +224,9 @@ func (b bot) handleInteraction(session *discordgo.Session, event *discordgo.Inte
 		if commandSubcommand(data.Options, app.StockingSubcommand) != nil {
 			b.handleStocking(session, event.Interaction)
 		}
+		return
+	case gifttext.OpenCommand:
+		b.handleOpenGift(session, event.Interaction, data)
 		return
 	case sendCommandName:
 		b.handleSendGift(session, event.Interaction, data)

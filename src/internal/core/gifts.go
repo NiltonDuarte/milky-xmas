@@ -26,6 +26,8 @@ type Inventory struct {
 	Snowballs       int64
 	YellowSnowballs int64
 	Coal            int64
+	Shields         int64 // A kept shield blocks the Grinch's next hit.
+	ExtraWaterings  int64 // A kept extra watering skips the wait of /water once.
 }
 
 func (inventory Inventory) GiftTotal() int64 {

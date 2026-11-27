@@ -72,3 +72,23 @@ func replyGiveGift(w http.ResponseWriter, r *http.Request, service app.Service, 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	io.WriteString(w, gifttext.GiftGiven(amount, args[3], args[1]))
 }
+
+func replyOpenGift(w http.ResponseWriter, r *http.Request, service app.Service, args []string) {
+	if len(args) != 2 || args[0] != "gift" {
+		http.Error(w, "Use /open gift <rarity>.", http.StatusBadRequest)
+		return
+	}
+	member := app.Member{ServerID: fixtureServerID, UserID: fixtureUserID}
+	rarity := core.GiftRarity(args[1])
+	opened, err := service.OpenGift(r.Context(), member, rarity)
+	if err != nil {
+		if reply := gifttext.OpenRejection(err); reply != "" {
+			http.Error(w, reply, http.StatusBadRequest)
+			return
+		}
+		http.Error(w, gifttext.OpenUnavailable, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	io.WriteString(w, gifttext.OpenedGift(rarity, opened))
+}

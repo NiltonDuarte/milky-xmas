@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -68,6 +69,7 @@ type Watering struct {
 	Added      int // Percent of water added, including ListChange.
 	ListChange int // What the player's list added to or took off the usual water.
 	GoodDeeds  int
+	Extra      bool // A kept extra watering skipped the wait.
 }
 
 // Water adds the member's watering and returns the tree with what the watering did.
@@ -84,11 +86,28 @@ func (tree *Tree) Water(ctx context.Context, member Member) (core.Tree, Watering
 			rules.WaterPoints = tree.aura.WaterPoints(record.Aura, rules.WaterPoints)
 		}
 	}
-	next, err := tree.save(ctx, member, rules)
+	next, err := tree.save(ctx, member, rules, false)
+	extra := false
+	if errors.Is(err, core.ErrTreeCooldown) {
+		// The extra watering is taken first, so it cannot be used twice, and given back if the
+		// tree still refuses.
+		took, takeErr := tree.setExtraWatering(ctx, member, 1, 0)
+		if takeErr != nil {
+			return next, Watering{}, takeErr
+		}
+		if took {
+			if next, err = tree.save(ctx, member, rules, true); err != nil {
+				if _, back := tree.setExtraWatering(ctx, member, 0, 1); back != nil {
+					err = errors.Join(err, back)
+				}
+			}
+			extra = err == nil
+		}
+	}
 	if err != nil {
 		return next, Watering{}, err
 	}
-	watering := Watering{Added: rules.WaterPoints, ListChange: rules.WaterPoints - tree.rules.WaterPoints}
+	watering := Watering{Added: rules.WaterPoints, ListChange: rules.WaterPoints - tree.rules.WaterPoints, Extra: extra}
 	watering.GoodDeeds, err = tree.reward(ctx, member)
 	if err != nil {
 		return next, watering, fmt.Errorf("%w: %w", ErrGoodDeedNotSaved, err)
@@ -96,12 +115,44 @@ func (tree *Tree) Water(ctx context.Context, member Member) (core.Tree, Watering
 	return next, watering, nil
 }
 
-func (tree *Tree) save(ctx context.Context, member Member, rules core.TreeRules) (core.Tree, error) {
+// setExtraWatering changes the member's kept extra waterings from one count to another and
+// reports whether they had the first.
+func (tree *Tree) setExtraWatering(ctx context.Context, member Member, from, to int64) (bool, error) {
+	if tree.players == nil {
+		return false, nil
+	}
+	for ctx.Err() == nil {
+		record, err := tree.players.Load(ctx, member)
+		if err != nil {
+			return false, fmt.Errorf("load extra watering: %w", err)
+		}
+		if record.Inventory.ExtraWaterings != from {
+			return false, nil
+		}
+		updated := record
+		updated.Inventory.ExtraWaterings = to
+		saved, err := tree.players.Save(ctx, GiftUpdate{Member: member, Previous: record, Next: updated, Reason: ReasonWater})
+		if err != nil {
+			return false, fmt.Errorf("save extra watering: %w", err)
+		}
+		if saved {
+			return true, nil
+		}
+	}
+	return false, ctx.Err()
+}
+
+// save counts the watering on the tree. skipWait forgets the member's last watering.
+func (tree *Tree) save(ctx context.Context, member Member, rules core.TreeRules, skipWait bool) (core.Tree, error) {
 	now := tree.now().UTC()
 	for ctx.Err() == nil {
 		stored, revision, err := tree.store.LoadTree(ctx, member.ServerID)
 		if err != nil {
 			return core.Tree{}, fmt.Errorf("load tree: %w", err)
+		}
+		if skipWait {
+			stored.Waterings = maps.Clone(stored.Waterings)
+			delete(stored.Waterings, member.UserID)
 		}
 		next, err := stored.Water(rules, now, member.UserID)
 		if err != nil {

@@ -182,6 +182,19 @@ func (b *grinchBot) button(s *discordgo.Session, i *discordgo.Interaction) {
 	case move.Revive != "":
 		// A revival costs a gift, so the player hears how it went.
 		privateFollowup(s, i, reply)
+		b.refresh(s, i.ID)
+	default:
+		// Show the new buttons now, without waiting for the next tick of the panel.
+		b.refresh(s, i.ID)
+	}
+}
+
+// refresh edits the fight message right after an action, so its buttons keep up with the players.
+func (b *grinchBot) refresh(s *discordgo.Session, interactionID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if _, err := b.encounter.Sync(ctx, grinchDisplay{s, b.channel, b.encounter.Rules(), &b.shown, b.avatars}); err != nil {
+		logInteractionError(interactionID, "update the fight after an action", err)
 	}
 }
 

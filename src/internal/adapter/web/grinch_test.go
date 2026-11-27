@@ -53,9 +53,9 @@ func TestLocalGrinch(t *testing.T) {
 	send("/look in-your-stocking", "Coal\n```\n0\n")
 	send("/look in-your-stocking", "🟡 Yellow   0\n")
 	for range 4 {
-		send("/grinch hit 2", "HP\nfinal")
+		send("/grinch hit 4", "HP\nfinal")
 	}
-	send("/grinch hit 2", "Damage leaderboard\n1. fixture — 100.00 dmg\n\nGift leaderboard\n1. fixture — 2\n\nSnowball leaderboard\n1. fixture — 2")
+	send("/grinch hit 4", "Damage leaderboard\n1. fixture — 100.00 dmg\n\nGift leaderboard\n1. fixture — 2\n\nSnowball leaderboard\n1. fixture — 2")
 	send("/grinch view", "👽 Grinch · 0.00/100% HP")
 	send("/look in-your-stocking", "❄️ Normal   2\n")
 	send("/look in-your-stocking", "Coal\n```\n0\n")
@@ -101,5 +101,6 @@ func classicFight(rules core.GrinchRules) core.GrinchRules {
 	rules.HitsPerPlayer, rules.MinHits, rules.ClickCooldown, rules.CounterattackPercent = 0, 0, 0, 0
 	rules.LastChance = 0
 	rules.FightDuration = time.Minute
+	rules.DefensePerPlayer, rules.DefenseMinimum, rules.DefenseMaxDefenses = 0, 0, 6
 	return rules
 }

@@ -8,6 +8,8 @@ type GrinchReward struct {
 	YellowSnowballs int64
 	// SpentGift, when set, takes one gift of the rarity, which got the player back up.
 	SpentGift GiftRarity
+	// UsedShield takes the player's shield, which blocked a hit.
+	UsedShield bool
 }
 
 // Gifts is how many gifts of the rarity the inventory holds.
@@ -21,6 +23,9 @@ func (inventory Inventory) Gifts(rarity GiftRarity) int64 {
 func (inventory Inventory) AddGrinchReward(reward GrinchReward) Inventory {
 	if balance := inventory.balance(reward.SpentGift); balance != nil && *balance > 0 {
 		*balance--
+	}
+	if reward.UsedShield {
+		inventory.Shields = 0
 	}
 	inventory.Snowballs += min(reward.Snowballs, math.MaxInt64-inventory.Snowballs)
 	inventory.Coal += min(reward.Coal, math.MaxInt64-inventory.Coal)

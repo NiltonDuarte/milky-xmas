@@ -45,10 +45,21 @@ func InventorySections(items core.Inventory, colored bool) []string {
 		return "### " + title + "\n```" + language + "\n" + strings.Join(rows, "\n") + "\n```"
 	}
 	snow := SnowballEmoji(core.NormalSnowball)
-	return []string{
+	sections := []string{
 		section("🎁 Gifts", row("", "Normal", white, items.Normal), row("", "Rare", green, items.Rare), row("", "Epic", pink, items.Epic)),
 		section(snow+" Snowballs", row(snow+" ", "Normal", white, items.Snowballs),
 			row(SnowballEmoji(core.YellowSnowball)+" ", "Yellow", white, items.YellowSnowballs)),
 		section(CoalEmoji+" Coal", paint(white, fmt.Sprint(items.Coal))),
 	}
+	var kept []string
+	if items.Shields > 0 {
+		kept = append(kept, "🛡️ Shield ready")
+	}
+	if items.ExtraWaterings > 0 {
+		kept = append(kept, "💧 Extra watering ready")
+	}
+	if len(kept) > 0 {
+		sections = append(sections, strings.Join(kept, " · "))
+	}
+	return sections
 }

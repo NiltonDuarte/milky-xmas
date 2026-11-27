@@ -23,12 +23,13 @@ func loadPlayer(ctx context.Context, reader playerReader, member app.Member) (co
 	var record core.GiftRecord
 	var lastClaim string
 	err := reader.QueryRowContext(ctx, `
-		SELECT normal, rare, epic, snowballs, yellow_snowballs, coal, aura, last_claim, aura_day, aura_raised, aura_lowered
+		SELECT normal, rare, epic, snowballs, yellow_snowballs, coal, aura, last_claim, aura_day, aura_raised, aura_lowered, shields, extra_waterings
 		FROM gift_players WHERE server_id = ? AND user_id = ?
 	`, member.ServerID, member.UserID).Scan(
 		&record.Inventory.Normal, &record.Inventory.Rare, &record.Inventory.Epic,
 		&record.Inventory.Snowballs, &record.Inventory.YellowSnowballs, &record.Inventory.Coal, &record.Aura, &lastClaim,
-		&record.AuraDay, &record.AuraRaised, &record.AuraLowered)
+		&record.AuraDay, &record.AuraRaised, &record.AuraLowered,
+		&record.Inventory.Shields, &record.Inventory.ExtraWaterings)
 	if errors.Is(err, sql.ErrNoRows) {
 		return core.GiftRecord{}, nil
 	}
@@ -178,22 +179,26 @@ func savePlayer(ctx context.Context, writer playerWriter, update app.GiftUpdate)
 	next, previous := update.Next, update.Previous
 	result, err := writer.ExecContext(ctx, `
 		INSERT INTO gift_players (server_id, user_id, normal, rare, epic, snowballs, yellow_snowballs, coal, aura, last_claim,
-			aura_day, aura_raised, aura_lowered)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			aura_day, aura_raised, aura_lowered, shields, extra_waterings)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (server_id, user_id) DO UPDATE SET
 			normal = excluded.normal, rare = excluded.rare, epic = excluded.epic,
 			snowballs = excluded.snowballs, yellow_snowballs = excluded.yellow_snowballs, coal = excluded.coal,
 			aura = excluded.aura, last_claim = excluded.last_claim,
-			aura_day = excluded.aura_day, aura_raised = excluded.aura_raised, aura_lowered = excluded.aura_lowered
+			aura_day = excluded.aura_day, aura_raised = excluded.aura_raised, aura_lowered = excluded.aura_lowered,
+			shields = excluded.shields, extra_waterings = excluded.extra_waterings
 		WHERE gift_players.normal = ? AND gift_players.rare = ? AND gift_players.epic = ?
 			AND gift_players.snowballs = ? AND gift_players.yellow_snowballs = ? AND gift_players.coal = ?
 			AND gift_players.aura = ? AND gift_players.last_claim = ?
 			AND gift_players.aura_day = ? AND gift_players.aura_raised = ? AND gift_players.aura_lowered = ?
+			AND gift_players.shields = ? AND gift_players.extra_waterings = ?
 	`, update.Member.ServerID, update.Member.UserID,
 		next.Inventory.Normal, next.Inventory.Rare, next.Inventory.Epic, next.Inventory.Snowballs, next.Inventory.YellowSnowballs, next.Inventory.Coal,
 		next.Aura, claimTime(next.LastClaim), next.AuraDay, next.AuraRaised, next.AuraLowered,
+		next.Inventory.Shields, next.Inventory.ExtraWaterings,
 		previous.Inventory.Normal, previous.Inventory.Rare, previous.Inventory.Epic, previous.Inventory.Snowballs, previous.Inventory.YellowSnowballs, previous.Inventory.Coal,
-		previous.Aura, claimTime(previous.LastClaim), previous.AuraDay, previous.AuraRaised, previous.AuraLowered)
+		previous.Aura, claimTime(previous.LastClaim), previous.AuraDay, previous.AuraRaised, previous.AuraLowered,
+		previous.Inventory.Shields, previous.Inventory.ExtraWaterings)
 	if err != nil {
 		return false, err
 	}

@@ -53,6 +53,7 @@ const (
 	ReasonModGift       Reason = "mod_gift"
 	ReasonGrinchReward  Reason = "grinch_reward"
 	ReasonWater         Reason = "water"
+	ReasonOpenGift      Reason = "open_gift"
 )
 
 type GiftClaim struct {

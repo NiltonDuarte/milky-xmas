@@ -502,7 +502,7 @@ func TestGrinchDefaultHitsGrowWithThePlayers(t *testing.T) {
 		hits := map[GrinchPhase]int{}
 		for sequence := 0; fight.Phase != GrinchWon && sequence < 400; sequence++ {
 			phase := fight.Phase
-			move := GrinchMove{Phase: phase, Member: strconv.Itoa(sequence % players), RequestID: strconv.Itoa(sequence), At: now.Add(time.Duration(sequence) * 2 * time.Second),
+			move := GrinchMove{Phase: phase, Member: strconv.Itoa(sequence % players), RequestID: strconv.Itoa(sequence), At: now.Add(time.Duration(sequence) * time.Second),
 				NextBoard: 5, FinalBoard: 2, FinalRound: fight.FinalRound, DefenseRound: fight.DefenseRound}
 			if phase == GrinchDefense {
 				for fight.Board&(1<<move.Slot) == 0 {
@@ -523,7 +523,7 @@ func TestGrinchDefaultHitsGrowWithThePlayers(t *testing.T) {
 		needed := map[int]int{1: 15, 3: 24, 5: 40}[players]
 		// Rounding the damage up lets five players finish the last 5% one hit early.
 		final := map[int]int{1: 15, 3: 24, 5: 39}[players]
-		want := map[GrinchPhase]int{GrinchSnowballs: needed, GrinchDefense: min(players, 6), GrinchAttack: needed, GrinchFinalAttack: final}
+		want := map[GrinchPhase]int{GrinchSnowballs: needed, GrinchDefense: max(8, 4*players), GrinchAttack: needed, GrinchFinalAttack: final}
 		if fight.Phase != GrinchWon || !maps.Equal(hits, want) {
 			t.Errorf("%d players needed %v hits, want %v (phase %s, HP %d)", players, hits, want, fight.Phase, fight.HP)
 		}
@@ -536,5 +536,6 @@ func classicFight(rules GrinchRules) GrinchRules {
 	rules.HitsPerPlayer, rules.MinHits, rules.ClickCooldown, rules.CounterattackPercent = 0, 0, 0, 0
 	rules.LastChance = 0
 	rules.FightDuration = time.Minute
+	rules.DefensePerPlayer, rules.DefenseMinimum, rules.DefenseMaxDefenses = 0, 0, 6
 	return rules
 }

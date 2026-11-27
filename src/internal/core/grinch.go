@@ -55,6 +55,8 @@ type GrinchMove struct {
 	CounterRoll int
 	// Revive, when set, spends one of the fallen player's gifts of that rarity to get back up.
 	Revive GiftRarity
+	// Shield says the player keeps a shield, which blocks the next hit.
+	Shield bool
 }
 
 // Grinch uses hundredths of HP for attack damage. Defense HP derives from the
@@ -87,6 +89,7 @@ type Grinch struct {
 	Perks          map[string]GrinchPerks // Players on a list, as they entered the fight.
 	LastMove       map[string]time.Time   // Each player's last accepted action, for the cooldown.
 	DownAt         time.Time              // When the last player standing fell, if one may still get up.
+	Blocked        map[string]int         // Hits each player's shields stopped.
 	Dirty          bool
 }
 
@@ -281,6 +284,19 @@ func (g Grinch) SomeoneDown() bool {
 	return false
 }
 
+// block stops a hit with the player's shield, and reports whether there was one.
+func (g *Grinch) block(move GrinchMove) bool {
+	if !move.Shield {
+		return false
+	}
+	if g.Blocked == nil {
+		g.Blocked = make(map[string]int)
+	}
+	g.Blocked[move.Member]++
+	g.bossEvent(GrinchEvent{Kind: EventShield, Member: move.Member, Roll: move.Roll})
+	return true
+}
+
 // hurt takes HP from a player and records it for the boss' text area. When nobody is left standing
 // the Grinch wins, after the last chance to get back up if gifts can do that.
 func (g *Grinch) hurt(rules GrinchRules, move GrinchMove, percent int) {
@@ -302,6 +318,9 @@ func (g *Grinch) hurt(rules GrinchRules, move GrinchMove, percent int) {
 func (g *Grinch) counterattack(rules GrinchRules, move GrinchMove) string {
 	if rules.CounterattackPercent <= 0 || move.CounterRoll < 100-rules.CounterattackPercent || !g.EndedAt.IsZero() {
 		return ""
+	}
+	if g.block(move) {
+		return " Your shield blocked the Grinch's counterattack."
 	}
 	percent := g.perks(rules, move.Member).MissHPLoss
 	g.hurt(rules, move, percent)
@@ -393,7 +412,7 @@ func (g *Grinch) move(rules GrinchRules, move GrinchMove) string {
 		damage.Hundredths = applied
 		reply = fmt.Sprintf("Snowball hit for %s HP.", FormatHundredths(applied))
 		if g.HP == rules.SnowballsBossHP {
-			g.DefensePlayers = min(len(g.Joined), rules.DefenseMaxDefenses)
+			g.DefensePlayers = rules.DefensesNeeded(len(g.Joined))
 			g.Phase, g.Board, g.TimedAt, g.DefenseRound = GrinchDefense, move.NextBoard, move.At, 1
 			g.bossEvent(GrinchEvent{Kind: EventPhase, Phase: GrinchDefense, Roll: move.Roll})
 		}
@@ -405,8 +424,12 @@ func (g *Grinch) move(rules GrinchRules, move GrinchMove) string {
 			return "That defense tile is unavailable."
 		}
 		if g.Board&(1<<move.Slot) == 0 {
-			reply = SnowflakeHit(perks.MissHPLoss)
-			g.hurt(rules, move, perks.MissHPLoss)
+			if g.block(move) {
+				reply = "Your shield blocked the snowflake!"
+			} else {
+				reply = SnowflakeHit(perks.MissHPLoss)
+				g.hurt(rules, move, perks.MissHPLoss)
+			}
 		} else {
 			g.Defenses++
 			damage.Defenses = 1

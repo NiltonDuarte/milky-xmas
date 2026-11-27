@@ -218,6 +218,9 @@ func TestGrinchButtonAcknowledgement(t *testing.T) {
 		t.Fatalf("expected two distinct players: %+v, %v", state.Joined, err)
 	}
 	s.Client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
+		if r.Method == http.MethodPatch { // The panel is refreshed right after the action.
+			return fakeResponse(http.StatusOK, `{"id":"999"}`), nil
+		}
 		var response discordgo.InteractionResponse
 		if err := json.NewDecoder(r.Body).Decode(&response); err != nil {
 			t.Fatal(err)
@@ -366,6 +369,7 @@ func TestGrinchReshuffleEditsOriginalMessage(t *testing.T) {
 			return nil, nil
 		}
 	})
+	b.shown.set("999", grinchHeartImageName) // The final attack's picture is already on the message.
 	for index := range 2 {
 		b.button(s, &discordgo.Interaction{
 			ID:        fmt.Sprint(((now.UnixMilli() - 1420070400000) << 22) + int64(index)),
@@ -374,7 +378,6 @@ func TestGrinchReshuffleEditsOriginalMessage(t *testing.T) {
 			Data:   discordgo.MessageComponentInteractionData{CustomID: "grinch:fight:final:4:1"},
 		})
 	}
-	b.shown.set("999", grinchHeartImageName) // The final attack's picture is already on the message.
 	if _, err := b.encounter.Sync(t.Context(), grinchDisplay{s, b.channel, classicFight(core.DefaultTuning().Grinch), &b.shown, nil}); err != nil {
 		t.Fatal(err)
 	}
@@ -573,5 +576,6 @@ func classicFight(rules core.GrinchRules) core.GrinchRules {
 	rules.HitsPerPlayer, rules.MinHits, rules.ClickCooldown, rules.CounterattackPercent = 0, 0, 0, 0
 	rules.LastChance = 0
 	rules.FightDuration = time.Minute
+	rules.DefensePerPlayer, rules.DefenseMinimum, rules.DefenseMaxDefenses = 0, 0, 6
 	return rules
 }

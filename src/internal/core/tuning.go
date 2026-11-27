@@ -122,7 +122,10 @@ type GrinchRules struct {
 	DefenseBossHP     int
 	// DefenseMissHPLoss is the share, in percent, of a player's maximum HP that a miss costs.
 	DefenseMissHPLoss int
-	// DefenseMaxDefenses caps the safe defenses the group needs: one per player up to this.
+	// The group needs DefensePerPlayer safe defenses for each player in the fight, never under
+	// DefenseMinimum nor over DefenseMaxDefenses. With the first two at zero it needs one each.
+	DefensePerPlayer   int
+	DefenseMinimum     int
 	DefenseMaxDefenses int
 	AttackDamage       int
 	AttackHeavyDamage  int
@@ -158,6 +161,15 @@ type GrinchRules struct {
 	LossCoal int64
 	// LossYellowPerGroupMember multiplies the number of registered players.
 	LossYellowPerGroupMember int64
+}
+
+// DefensesNeeded is how many safe defenses a group of the given size needs.
+func (rules GrinchRules) DefensesNeeded(players int) int {
+	needed := max(rules.DefenseMinimum, rules.DefensePerPlayer*players)
+	if needed <= 0 {
+		needed = players
+	}
+	return min(needed, rules.DefenseMaxDefenses)
 }
 
 // DefenseTotal is the HP the defense phase removes in total, split across the players.
@@ -220,7 +232,7 @@ func DefaultTuning() Tuning {
 			FightDuration:            GrinchDuration,
 			HitsPerPlayer:            8,
 			MinHits:                  15,
-			ClickCooldown:            2 * time.Second,
+			ClickCooldown:            0,
 			CounterattackPercent:     10,
 			ReviveNormalHP:           25,
 			ReviveRareHP:             50,
@@ -231,7 +243,9 @@ func DefaultTuning() Tuning {
 			SnowballsBossHP:          7500,
 			DefenseBossHP:            4500,
 			DefenseMissHPLoss:        20,
-			DefenseMaxDefenses:       6,
+			DefensePerPlayer:         4,
+			DefenseMinimum:           8,
+			DefenseMaxDefenses:       30,
 			AttackDamage:             667,
 			AttackHeavyDamage:        700,
 			AttackBossHP:             500,
@@ -334,6 +348,8 @@ func (tuning Tuning) Validate() error {
 	if g.DefenseMissHPLoss < 1 || g.DefenseMissHPLoss > 100 {
 		bad("grinch.defense.miss_hp_loss_percent", "must be between 1 and 100, got %d", g.DefenseMissHPLoss)
 	}
+	atLeast("grinch.defense.per_player", g.DefensePerPlayer, 0)
+	atLeast("grinch.defense.minimum", g.DefenseMinimum, 0)
 	atLeast("grinch.defense.max_defenses", g.DefenseMaxDefenses, 1)
 	atLeast("grinch.hits.per_player", g.HitsPerPlayer, 0)
 	atLeast("grinch.hits.minimum", g.MinHits, 0)
