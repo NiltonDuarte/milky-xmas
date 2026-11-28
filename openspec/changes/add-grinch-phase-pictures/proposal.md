@@ -5,7 +5,7 @@ The fight shows the same picture in every phase. The developer supplied one pict
 ## What Changes
 
 - While the players defend, the fight shows an animated picture of the Grinch.
-- In the final attack, from 5% HP, it shows the Grinch with his heart.
+- In the final attack, from 5% HP, it shows the Grinch from behind, escaping through a hole in the wall.
 - Other phases and the final messages keep their pictures.
 
 ## Capabilities

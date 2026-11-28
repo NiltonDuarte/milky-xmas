@@ -369,7 +369,7 @@ func TestGrinchReshuffleEditsOriginalMessage(t *testing.T) {
 			return nil, nil
 		}
 	})
-	b.shown.set("999", grinchHeartImageName) // The final attack's picture is already on the message.
+	b.shown.set("999", grinchFinalImageName) // The final attack's picture is already on the message.
 	for index := range 2 {
 		b.button(s, &discordgo.Interaction{
 			ID:        fmt.Sprint(((now.UnixMilli() - 1420070400000) << 22) + int64(index)),

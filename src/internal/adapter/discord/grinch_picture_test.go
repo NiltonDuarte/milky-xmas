@@ -36,8 +36,8 @@ func TestGrinchPictureFollowsThePhaseAndUploadsOnlyOnChange(t *testing.T) {
 		{core.GrinchDefense, "grinchdefense.gif", true},
 		{core.GrinchDefense, "grinchdefense.gif", false},
 		{core.GrinchAttack, "grinch.jpg", true},
-		{core.GrinchFinalAttack, "grinchheart.jpg", true},
-		{core.GrinchFinalAttack, "grinchheart.jpg", false},
+		{core.GrinchFinalAttack, "grinchfinal.jpg", true},
+		{core.GrinchFinalAttack, "grinchfinal.jpg", false},
 	} {
 		state := fightWithPlayers(step.phase, 1)
 		state.MessageID = "m"
@@ -45,7 +45,7 @@ func TestGrinchPictureFollowsThePhaseAndUploadsOnlyOnChange(t *testing.T) {
 			t.Fatal(err)
 		}
 		var named []string
-		for _, name := range []string{"grinch.jpg", "grinchdefense.gif", "grinchheart.jpg"} {
+		for _, name := range []string{"grinch.jpg", "grinchdefense.gif", "grinchfinal.jpg"} {
 			if strings.Contains(body, "attachment://"+name) {
 				named = append(named, name)
 			}

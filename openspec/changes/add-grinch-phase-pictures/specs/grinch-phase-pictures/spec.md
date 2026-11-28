@@ -2,7 +2,7 @@
 
 ### Requirement: Picture per phase
 
-The Discord fight message SHALL show the animated attack picture during the defense phase, the heart picture during the final attack, and the Grinch portrait during the other running phases.
+The Discord fight message SHALL show the animated attack picture during the defense phase, the escape picture during the final attack, and the Grinch portrait during the other running phases.
 
 #### Scenario: The Grinch attacks
 
@@ -14,7 +14,7 @@ The Discord fight message SHALL show the animated attack picture during the defe
 
 - **GIVEN** the Grinch reaches 5% HP
 - **WHEN** the final attack starts
-- **THEN** the fight message shows the heart picture
+- **THEN** the fight message shows the escape picture
 
 #### Scenario: Same phase
 

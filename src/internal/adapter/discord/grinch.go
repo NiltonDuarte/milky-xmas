@@ -242,12 +242,12 @@ var grinchDeadImage []byte
 //go:embed grinchdefense.gif
 var grinchDefenseImage []byte
 
-//go:embed grinchheart.jpg
-var grinchHeartImage []byte
+//go:embed grinchfinal.jpg
+var grinchFinalImage []byte
 
 const (
 	grinchDefenseImageName = "grinchdefense.gif"
-	grinchHeartImageName   = "grinchheart.jpg"
+	grinchFinalImageName   = "grinchfinal.jpg"
 )
 
 type grinchPicture struct {
@@ -260,13 +260,13 @@ func (picture grinchPicture) file() *discordgo.File {
 }
 
 // phasePicture is the picture of a running fight: the Grinch attacking while the players defend,
-// his heart in the last 5%, and his portrait otherwise.
+// him escaping through the wall in the last 5%, and his portrait otherwise.
 func phasePicture(phase core.GrinchPhase) grinchPicture {
 	switch phase {
 	case core.GrinchDefense:
 		return grinchPicture{grinchDefenseImageName, grinchDefenseImage}
 	case core.GrinchFinalAttack:
-		return grinchPicture{grinchHeartImageName, grinchHeartImage}
+		return grinchPicture{grinchFinalImageName, grinchFinalImage}
 	default:
 		return grinchPicture{grinchImageName, grinchImage}
 	}

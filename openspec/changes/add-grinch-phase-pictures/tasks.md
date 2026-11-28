@@ -6,3 +6,5 @@
 
 - [x] 2.1 Run `go fmt ./...`, `go vet ./...`, `go test -race -count=1 ./...`, and `openspec validate add-grinch-phase-pictures --strict`.
 - [x] 2.2 Discord test server: play a fight and check the animation in the defense phase and the heart picture at 5%.
+- [x] 1.2 Replace the final attack picture with the escape picture (`grinchfinal.jpg`).
+- [ ] 2.3 Discord test server: check the escape picture at 5%.
