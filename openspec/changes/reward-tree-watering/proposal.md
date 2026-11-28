@@ -7,7 +7,7 @@ Watering helps the whole community but gives the player nothing, the water bar l
 - Each watering that counts moves the player's aura 1 point toward good deeds (`tree.water_aura`).
 - The water level is a row of ten emoji squares.
 - The tree reply is one box with the picture and the text. The top waterers list is removed; waterings are still counted.
-- The picture follows the level: withered up to 50% and decorated at 100%. From 51% to 99% there is no picture yet.
+- The picture follows the level, with four pictures: up to 25%, 26% to 50%, 51% to 75%, and 76% to 100%.
 - Discord acknowledges `/water` before doing any work.
 
 ## Capabilities

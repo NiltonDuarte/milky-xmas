@@ -14,11 +14,17 @@ import (
 
 const waterCommandName = "water"
 
-//go:embed deadtree.jpg
-var deadTreeImage []byte
+//go:embed tree1.jpg
+var witheredTreeImage []byte
 
-//go:embed fulltree.png
-var fullTreeImage []byte
+//go:embed tree2.jpg
+var wiltingTreeImage []byte
+
+//go:embed tree3.png
+var recoveringTreeImage []byte
+
+//go:embed tree4.jpg
+var decoratedTreeImage []byte
 
 func waterCommand() *discordgo.ApplicationCommand {
 	return &discordgo.ApplicationCommand{
@@ -26,16 +32,17 @@ func waterCommand() *discordgo.ApplicationCommand {
 	}
 }
 
-// treeImage picks the picture for a water stage: withered up to 50% and decorated when full.
-// From 51% to 99% there is no picture yet, so it returns nil.
+// treeImage picks the picture for a water stage: up to 25%, up to 50%, up to 75%, and from 76%.
 func treeImage(stage int) *privateImage {
 	switch stage {
-	case 4:
-		return &privateImage{Name: "fulltree.png", Data: fullTreeImage}
-	case 2, 3:
-		return nil
+	case 0:
+		return &privateImage{Name: "tree1.jpg", Data: witheredTreeImage}
+	case 1:
+		return &privateImage{Name: "tree2.jpg", Data: wiltingTreeImage}
+	case 2:
+		return &privateImage{Name: "tree3.png", Data: recoveringTreeImage}
 	default:
-		return &privateImage{Name: "deadtree.jpg", Data: deadTreeImage}
+		return &privateImage{Name: "tree4.jpg", Data: decoratedTreeImage}
 	}
 }
 

@@ -40,13 +40,13 @@ The tree SHALL show its level as ten squares, one blue square for each full 10% 
 
 ### Requirement: Tree box and picture
 
-A Discord tree reply with a picture SHALL be one box holding the picture, the watering line, the tree's level and state, without a list of waterers. Waterings are still counted for each player. The picture SHALL be the withered tree from 0% to 50% and the decorated tree at 100%. From 51% to 99% the box SHALL have no picture.
+A Discord tree reply with a picture SHALL be one box holding the picture, the watering line, the tree's level and state, without a list of waterers. Waterings are still counted for each player. The picture SHALL follow the water level, with one picture for each of 0% to 25%, 26% to 50%, 51% to 75%, and 76% to 100%.
 
 #### Scenario: Passing the halfway mark
 
 - **GIVEN** a tree at 49%
 - **WHEN** a player waters it
-- **THEN** the channel sees one box with the text and no picture
+- **THEN** the channel sees one box with the picture for 51% to 75%
 
 #### Scenario: Filling the tree
 

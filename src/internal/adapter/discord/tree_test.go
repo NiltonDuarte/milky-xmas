@@ -136,7 +136,7 @@ func TestWaterInteraction(t *testing.T) {
 	got := water(t, b, "alice", http.StatusOK)
 	want := "💧 <@alice> watered the tree! +2%\n😇 Good deeds +1\n## 🎄 The Christmas tree\n🟦⬜⬜⬜⬜⬜⬜⬜⬜⬜  **12%** 💧\n🥀 The tree is withered."
 	if !slices.Equal(got.calls, []string{"ack", "channel", "delete"}) || !strings.HasPrefix(got.channel, want) ||
-		strings.Contains(got.channel, "Top waterers") || got.image != "deadtree.jpg" {
+		strings.Contains(got.channel, "Top waterers") || got.image != "tree1.jpg" {
 		t.Errorf("watering = %+v", got)
 	}
 	got = water(t, b, "alice", http.StatusOK)
@@ -151,20 +151,23 @@ func TestWaterInteraction(t *testing.T) {
 	for _, tt := range []struct {
 		start int
 		image string
-	}{{48, "deadtree.jpg"}, {49, ""}, {97, ""}, {98, "fulltree.png"}} {
+	}{
+		{23, "tree1.jpg"}, {24, "tree2.jpg"}, {48, "tree2.jpg"}, {49, "tree3.png"},
+		{73, "tree3.png"}, {74, "tree4.jpg"}, {98, "tree4.jpg"},
+	} {
 		if got := water(t, waterBot(now, tt.start), "alice", http.StatusOK); got.image != tt.image {
 			t.Errorf("watering from %d%% shows %q, want %q", tt.start, got.image, tt.image)
 		}
 	}
 
 	got = water(t, waterBot(now, core.TreeMaxLevel), "alice", http.StatusOK)
-	if !slices.Equal(got.calls, []string{"ack", "edit"}) || got.image != "fulltree.png" || got.channel != "" ||
+	if !slices.Equal(got.calls, []string{"ack", "edit"}) || got.image != "tree4.jpg" || got.channel != "" ||
 		got.private != "🎄 The tree is fully watered. Try again later!" {
 		t.Errorf("watering a full tree = %+v", got)
 	}
 
 	got = water(t, waterBot(core.TreeEventEnd, core.TreeStartLevel), "alice", http.StatusOK)
-	if !slices.Equal(got.calls, []string{"ack", "edit"}) || got.image != "deadtree.jpg" ||
+	if !slices.Equal(got.calls, []string{"ack", "edit"}) || got.image != "tree1.jpg" ||
 		!strings.HasPrefix(got.private, "🎄 The event is over, so the tree can't be watered any more.\n## 🎄 The Christmas tree") ||
 		!strings.Contains(got.private, "The event has ended. This is the tree's final state.") {
 		t.Errorf("event-over reply = %+v", got)
