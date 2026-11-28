@@ -18,13 +18,13 @@ const throwCommandName = "throw"
 //go:embed snowballnormal.png
 var normalSnowballImage []byte
 
-//go:embed snowball.jpg
+//go:embed snowballyellow.png
 var yellowSnowballImage []byte
 
 // snowballPicture is the picture posted with the notice of a thrown snowball.
 func snowballPicture(kind core.SnowballType) *discordgo.File {
 	if kind == core.YellowSnowball {
-		return &discordgo.File{Name: "snowball.jpg", ContentType: "image/jpeg", Reader: bytes.NewReader(yellowSnowballImage)}
+		return &discordgo.File{Name: "snowballyellow.png", ContentType: "image/png", Reader: bytes.NewReader(yellowSnowballImage)}
 	}
 	return &discordgo.File{Name: "snowballnormal.png", ContentType: "image/png", Reader: bytes.NewReader(normalSnowballImage)}
 }

@@ -42,7 +42,7 @@ func TestThrownSnowballInteraction(t *testing.T) {
 			picture := "snowballnormal.png"
 			if step.yellow {
 				item, emoji = "yellow snowball", "🟡"
-				picture = "snowball.jpg"
+				picture = "snowballyellow.png"
 				wantInventory = core.Inventory{YellowSnowballs: 1}
 				options = append(options, &discordgo.ApplicationCommandInteractionDataOption{
 					Type: discordgo.ApplicationCommandOptionString, Name: "type", Value: "yellow",
@@ -246,7 +246,7 @@ func decodeMultipartSend(t *testing.T, r *http.Request) (discordgo.MessageSend, 
 			if err := json.NewDecoder(part).Decode(&message); err != nil {
 				t.Fatal(err)
 			}
-		} else if part.FileName() == "snowball.jpg" || part.FileName() == "snowballnormal.png" {
+		} else if part.FileName() == "snowballyellow.png" || part.FileName() == "snowballnormal.png" {
 			if data, _ := io.ReadAll(part); len(data) > 0 {
 				files++
 			}
