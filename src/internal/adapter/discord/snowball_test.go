@@ -39,8 +39,10 @@ func TestThrownSnowballInteraction(t *testing.T) {
 			options := []*discordgo.ApplicationCommandInteractionDataOption{
 				{Type: discordgo.ApplicationCommandOptionUser, Name: "recipient", Value: target.UserID},
 			}
+			picture := "snowballnormal.png"
 			if step.yellow {
 				item, emoji = "yellow snowball", "🟡"
+				picture = "snowball.jpg"
 				wantInventory = core.Inventory{YellowSnowballs: 1}
 				options = append(options, &discordgo.ApplicationCommandInteractionDataOption{
 					Type: discordgo.ApplicationCommandOptionString, Name: "type", Value: "yellow",
@@ -89,7 +91,7 @@ func TestThrownSnowballInteraction(t *testing.T) {
 					if message.Content != "<@500>❕  Alice has thrown a "+emoji+" "+item+" at you. 🥶" {
 						t.Errorf("recipient notification = %q", message.Content)
 					}
-					if len(message.Embeds) != 1 || message.Embeds[0].Image == nil || message.Embeds[0].Image.URL != "attachment://snowball.jpg" || files != 1 {
+					if len(message.Embeds) != 1 || message.Embeds[0].Image == nil || message.Embeds[0].Image.URL != "attachment://"+picture || files != 1 {
 						t.Errorf("expected the snowball image attached, got %+v with %d files", message.Embeds, files)
 					}
 					if mentions := message.AllowedMentions; mentions == nil || len(mentions.Parse) != 0 || len(mentions.Users) != 1 || mentions.Users[0] != target.UserID {
@@ -244,7 +246,7 @@ func decodeMultipartSend(t *testing.T, r *http.Request) (discordgo.MessageSend, 
 			if err := json.NewDecoder(part).Decode(&message); err != nil {
 				t.Fatal(err)
 			}
-		} else if part.FileName() == "snowball.jpg" {
+		} else if part.FileName() == "snowball.jpg" || part.FileName() == "snowballnormal.png" {
 			if data, _ := io.ReadAll(part); len(data) > 0 {
 				files++
 			}

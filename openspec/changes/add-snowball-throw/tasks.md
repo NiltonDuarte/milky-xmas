@@ -6,6 +6,7 @@
 - [x] 1.2 Wire the command and notification in both adapters. Verify Discord registration, notification failure, and local chat behavior.
 
 - [x] 1.3 Post the recipient notification in the Discord interaction channel and test routing, mention permissions, and failed posts.
+- [x] 1.4 Post a different picture for a normal snowball and keep the previous one for a yellow snowball.
 
 ## 2. Verification
 

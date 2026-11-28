@@ -45,3 +45,19 @@ Discord SHALL register `snowball` under `/throw` with one required user option. 
 - **GIVEN** the bot cannot post in the command channel
 - **WHEN** a throw is persisted
 - **THEN** the recipient keeps the snowball and the sender is told the notification could not be posted
+
+### Requirement: Picture per snowball type
+
+The Discord notification SHALL show the normal snowball picture for a normal snowball and the other snowball picture for a yellow snowball. The local chat shows no picture.
+
+#### Scenario: A normal snowball
+
+- **GIVEN** Alice owns a normal snowball
+- **WHEN** she throws it at Bob
+- **THEN** the notification shows the normal snowball picture
+
+#### Scenario: A yellow snowball
+
+- **GIVEN** Alice owns a yellow snowball
+- **WHEN** she throws it at Bob
+- **THEN** the notification shows the other snowball picture

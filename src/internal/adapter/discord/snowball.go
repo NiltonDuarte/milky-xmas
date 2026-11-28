@@ -14,10 +14,20 @@ import (
 )
 
 const throwCommandName = "throw"
-const snowballImageName = "snowball.jpg"
+
+//go:embed snowballnormal.png
+var normalSnowballImage []byte
 
 //go:embed snowball.jpg
-var snowballImage []byte
+var yellowSnowballImage []byte
+
+// snowballPicture is the picture posted with the notice of a thrown snowball.
+func snowballPicture(kind core.SnowballType) *discordgo.File {
+	if kind == core.YellowSnowball {
+		return &discordgo.File{Name: "snowball.jpg", ContentType: "image/jpeg", Reader: bytes.NewReader(yellowSnowballImage)}
+	}
+	return &discordgo.File{Name: "snowballnormal.png", ContentType: "image/png", Reader: bytes.NewReader(normalSnowballImage)}
+}
 
 func throwCommand() *discordgo.ApplicationCommand {
 	return &discordgo.ApplicationCommand{
@@ -86,10 +96,11 @@ func resolvedMember(guild, userID string, resolved *discordgo.ApplicationCommand
 }
 
 func (b bot) notifySnowball(ctx context.Context, session *discordgo.Session, channelID, recipientID string, kind core.SnowballType, senderName string) error {
+	picture := snowballPicture(kind)
 	_, err := session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
 		Content: b.avatars.message(gifttext.SnowballReceived("<@"+recipientID+">", senderName, kind)),
-		Embeds:  []*discordgo.MessageEmbed{{Image: &discordgo.MessageEmbedImage{URL: "attachment://" + snowballImageName}}},
-		Files:   []*discordgo.File{{Name: snowballImageName, ContentType: "image/jpeg", Reader: bytes.NewReader(snowballImage)}},
+		Embeds:  []*discordgo.MessageEmbed{{Image: &discordgo.MessageEmbedImage{URL: "attachment://" + picture.Name}}},
+		Files:   []*discordgo.File{picture},
 		AllowedMentions: &discordgo.MessageAllowedMentions{
 			Parse: []discordgo.AllowedMentionType{},
 			Users: []string{recipientID},
