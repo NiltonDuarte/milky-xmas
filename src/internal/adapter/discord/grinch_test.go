@@ -423,7 +423,7 @@ func TestGrinchFinalMessageImages(t *testing.T) {
 		phase  core.GrinchPhase
 		images []string
 	}{
-		{"won", core.GrinchWon, []string{"grinch.jpg"}},
+		{"won", core.GrinchWon, []string{"grinchdead.webp"}},
 		{"defeat", core.GrinchDefeat, []string{"maxpee.jpg"}},
 		{"escaped", core.GrinchEscaped, []string{"maxpee.jpg"}},
 	} {

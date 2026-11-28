@@ -8,7 +8,7 @@ Make the end of the Grinch fight clear: who won, and who scored.
 
 ### Requirement: Only Max when the Grinch wins
 
-When a fight ends with the Grinch alive, because he escaped or defeated all registered players, the final message SHALL show Max's image and SHALL NOT show the Grinch's image. A victory by the group SHALL show only the Grinch's image.
+When a fight ends with the Grinch alive, because he escaped or defeated all registered players, the final message SHALL show Max's image and SHALL NOT show the Grinch's image. A victory by the group SHALL show only the picture of the defeated Grinch.
 
 #### Scenario: The Grinch escapes or wins
 
@@ -20,7 +20,7 @@ When a fight ends with the Grinch alive, because he escaped or defeated all regi
 
 - **GIVEN** the group defeats the Grinch
 - **WHEN** the final message is shown
-- **THEN** only the Grinch's image is shown
+- **THEN** only the picture of the defeated Grinch is shown
 
 ### Requirement: Damage, not points
 

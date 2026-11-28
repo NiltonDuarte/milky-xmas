@@ -224,6 +224,7 @@ const grinchImageName = "grinch.jpg"
 // grinchReviveID is the part of a button ID that asks to get back up with a gift.
 const grinchReviveID = "revive"
 const maxImageName = "maxpee.jpg"
+const grinchDeadImageName = "grinchdead.webp"
 
 //go:embed grinch.jpg
 var grinchImage []byte
@@ -232,6 +233,11 @@ var grinchImage []byte
 //
 //go:embed maxpee.jpg
 var maxImage []byte
+
+// grinchDeadImage is shown when the group defeats the Grinch.
+//
+//go:embed grinchdead.webp
+var grinchDeadImage []byte
 
 //go:embed grinchdefense.gif
 var grinchDefenseImage []byte
@@ -328,7 +334,10 @@ func (display grinchDisplay) Update(ctx context.Context, state core.Grinch) erro
 	_, overflow := grinchStandings(display.rules, state)
 	overflow = final && overflow
 	picture := phasePicture(state.Phase)
-	if final && state.Phase != core.GrinchWon {
+	switch {
+	case final && state.Phase == core.GrinchWon:
+		picture = grinchPicture{grinchDeadImageName, grinchDeadImage}
+	case final:
 		// The Grinch survived: Max's picture replaces his.
 		picture = grinchPicture{maxImageName, maxImage}
 	}
@@ -367,8 +376,8 @@ func (display grinchDisplay) Update(ctx context.Context, state core.Grinch) erro
 	}
 	if (overflow || changed) && errors.As(err, &denied) && denied.Message != nil && denied.Message.Code == 50013 {
 		// Without permission to attach files nothing can be uploaded. The announcement's picture is the
-		// Grinch's, so it stays only when he lost the fight. When he won, Max's picture cannot be shown
-		// and the message has no picture rather than the Grinch's.
+		// Grinch's portrait, so it stays only when he lost the fight. When he won, Max's picture cannot
+		// be shown and the message has no picture rather than the Grinch's.
 		var kept []string
 		if state.Phase == core.GrinchWon {
 			kept = []string{grinchImageName}

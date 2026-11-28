@@ -126,7 +126,7 @@ The snowball notification reads `<recipient>❕  <sender> has thrown a <type> at
 
 The Grinch announcement shows the Grinch image below the registration text. In the Discord test server, summon the Grinch with `/grinch summon` and check the image, then press Start and confirm the image stays while the fight updates.
 
-If the Grinch escapes or defeats all players, the final battle message shows only Max's image, with no Grinch image. A victory shows only the Grinch. Check both endings in the Discord test server.
+If the Grinch escapes or defeats all players, the final battle message shows only Max's image, with no Grinch image. A victory shows only the picture of the defeated Grinch. Check both endings in the Discord test server.
 
 Run `/help me-milky` to list the commands you can use. In Discord, moderator commands appear only for members with the permission: Manage Messages for `/give gift` and `/grinch summon`, Manage Server for `/setup`. The reply is private. The list is written by hand in `gifttext/help.go`, so update it when a command is added or renamed. In the Discord test server, run it with a regular account and with a moderator account and compare the lists.
 
